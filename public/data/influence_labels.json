@@ -1,0 +1,25 @@
+{
+  "specialty": {
+    "25": "Your units take {p1} percent of normal damage (200 = 2x).",
+    "13": "This enemy does not attack.",
+    "23": "Reflects damage back at the attacker (counterattack).",
+    "53": "Resists slow and time-stop by {p2} percent.",
+    "16": "Loses its own HP over time (self damage-over-time).",
+    "35": "Raises the ATK of enemies of a specific element over time, up to {p1} percent.",
+    "37": "Immune to paralysis.",
+    "18": "Radius of this enemy's aura (the area its aura effect, e.g. the DoT in id 19, covers). Not damage by itself.",
+    "19": "Damages allied units standing inside its aura (id 18 sets the radius) over time.",
+    "31": "Cosmetic hit effect only (no gameplay effect).",
+    "36": "Buffs the DEF of nearby allied enemies (x {p1}/100).",
+    "64": "Caps the damage it takes to {p3} per hit."
+  },
+  "term": {
+    "11": "Raises the DEF of enemies matching the expression by {p1} percent.",
+    "18": "Raises the ATK of enemies matching the expression by {p1} percent.",
+    "24": "Restricts your team composition (IsOverlapMember()!=1 = no duplicate units).",
+    "26": "Makai debuff: lowers your units' ATK by {p1} percent.",
+    "27": "Makai debuff: lowers your units' DEF by {p1} percent.",
+    "30": "Makai debuff: slows your cost/UP natural regen by {p1} percent.",
+    "17": "No cost generation (your cost/UP does not regenerate over time)."
+  }
+}

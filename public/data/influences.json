@@ -1,0 +1,6109 @@
+{
+  "specialty": [
+    {
+      "influence": 0,
+      "meaning": null,
+      "param_note": null,
+      "count": 2,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 1,
+      "meaning": null,
+      "param_note": null,
+      "count": 406,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 406
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsClassType(61, 1219, 1317, 1322) == 1;",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "influence": 2,
+      "meaning": null,
+      "param_note": null,
+      "count": 108,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            1200,
+            0,
+            0
+          ],
+          "n": 54
+        },
+        {
+          "params": [
+            0,
+            6000,
+            0,
+            0
+          ],
+          "n": 14
+        },
+        {
+          "params": [
+            1,
+            1200,
+            0,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            0,
+            6000,
+            1,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            0,
+            1200,
+            1,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            0,
+            2400,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            1,
+            6000,
+            1,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            0,
+            6050,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            1,
+            2000,
+            1,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            0,
+            1000,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            0,
+            2000,
+            1,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            1,
+            200,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 3,
+      "meaning": null,
+      "param_note": null,
+      "count": 4,
+      "param_patterns": [
+        {
+          "params": [
+            80,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            30,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            70,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 4,
+      "meaning": null,
+      "param_note": null,
+      "count": 7,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 7
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 5,
+      "meaning": null,
+      "param_note": null,
+      "count": 141,
+      "param_patterns": [
+        {
+          "params": [
+            50,
+            200,
+            0,
+            0
+          ],
+          "n": 30
+        },
+        {
+          "params": [
+            25,
+            300,
+            0,
+            0
+          ],
+          "n": 29
+        },
+        {
+          "params": [
+            75,
+            110,
+            0,
+            0
+          ],
+          "n": 14
+        },
+        {
+          "params": [
+            50,
+            130,
+            0,
+            0
+          ],
+          "n": 14
+        },
+        {
+          "params": [
+            25,
+            150,
+            0,
+            0
+          ],
+          "n": 14
+        },
+        {
+          "params": [
+            75,
+            150,
+            0,
+            0
+          ],
+          "n": 12
+        },
+        {
+          "params": [
+            50,
+            300,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            25,
+            500,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            50,
+            150,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            75,
+            130,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            50,
+            160,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            25,
+            200,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 6,
+      "meaning": null,
+      "param_note": null,
+      "count": 3,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 7,
+      "meaning": null,
+      "param_note": null,
+      "count": 220,
+      "param_patterns": [
+        {
+          "params": [
+            2,
+            7,
+            0,
+            0
+          ],
+          "n": 28
+        },
+        {
+          "params": [
+            2,
+            6,
+            0,
+            0
+          ],
+          "n": 16
+        },
+        {
+          "params": [
+            2,
+            12,
+            0,
+            0
+          ],
+          "n": 14
+        },
+        {
+          "params": [
+            3,
+            6,
+            0,
+            0
+          ],
+          "n": 12
+        },
+        {
+          "params": [
+            3,
+            7,
+            0,
+            0
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            4,
+            6,
+            0,
+            0
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            5,
+            8,
+            0,
+            0
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            5,
+            4,
+            0,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            3,
+            10,
+            0,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            4,
+            8,
+            0,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            3,
+            12,
+            0,
+            0
+          ],
+          "n": 6
+        },
+        {
+          "params": [
+            2,
+            21,
+            0,
+            0
+          ],
+          "n": 6
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 8,
+      "meaning": null,
+      "param_note": null,
+      "count": 472,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 262
+        },
+        {
+          "params": [
+            3,
+            0,
+            0,
+            0
+          ],
+          "n": 102
+        },
+        {
+          "params": [
+            2,
+            0,
+            0,
+            0
+          ],
+          "n": 43
+        },
+        {
+          "params": [
+            5,
+            0,
+            0,
+            0
+          ],
+          "n": 30
+        },
+        {
+          "params": [
+            4,
+            0,
+            0,
+            0
+          ],
+          "n": 17
+        },
+        {
+          "params": [
+            6,
+            0,
+            0,
+            0
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            8,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            12,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsOwnerUnit();",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "influence": 9,
+      "meaning": null,
+      "param_note": null,
+      "count": 144,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 144
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 10,
+      "meaning": null,
+      "param_note": null,
+      "count": 88,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 88
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 11,
+      "meaning": null,
+      "param_note": null,
+      "count": 11,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 11
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 12,
+      "meaning": null,
+      "param_note": null,
+      "count": 14,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 9
+        },
+        {
+          "params": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "n": 5
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 13,
+      "meaning": null,
+      "param_note": null,
+      "count": 248,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 248
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 14,
+      "meaning": null,
+      "param_note": null,
+      "count": 74,
+      "param_patterns": [
+        {
+          "params": [
+            59,
+            40,
+            200,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            365,
+            85,
+            300,
+            0
+          ],
+          "n": 6
+        },
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            59,
+            40,
+            150,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            366,
+            220,
+            300,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            203,
+            80,
+            100,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            59,
+            40,
+            300,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            366,
+            80,
+            300,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            366,
+            80,
+            100,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            59,
+            40,
+            100,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            203,
+            80,
+            200,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            301,
+            60,
+            200,
+            0
+          ],
+          "n": 2
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "Play_BurstEffect( \"HitEffectMagicBig\" ); ",
+          "n": 27
+        },
+        {
+          "expr": "Play_BurstEffect( \"HitEffectDeathGod\" ); ",
+          "n": 6
+        },
+        {
+          "expr": "Play_BurstEffect( \"HitEffectMagicBig3\" ); ",
+          "n": 4
+        },
+        {
+          "expr": "Play_BurstEffect( \"HitEffectMagicBig2\" ); ",
+          "n": 4
+        },
+        {
+          "expr": "Play_BurstEffect( \"HitEffectDemLv15\" ); ",
+          "n": 2
+        },
+        {
+          "expr": "Play_BurstEffect( \"HitEffectThunderBig\" ); ",
+          "n": 2
+        },
+        {
+          "expr": "Play_BurstEffect( \"HitEffectDeathGod3\" ); ",
+          "n": 1
+        },
+        {
+          "expr": "Play_BurstEffect( \"HitEffectDemLv11\" ); ",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "influence": 15,
+      "meaning": null,
+      "param_note": null,
+      "count": 95,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 95
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 16,
+      "meaning": "self-DoT (enemy's own HP drains over time)",
+      "param_note": "Param_2 = HP lost per tick, Param_3 = tick interval in ENGINE frames (60fps); the game DISPLAYS at 30fps so [_,100,30] = 100 HP / 30 engine frames = 100 HP / 15 displayed frames. user-confirmed.",
+      "count": 192,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            100,
+            30,
+            0
+          ],
+          "n": 41
+        },
+        {
+          "params": [
+            0,
+            50,
+            30,
+            0
+          ],
+          "n": 14
+        },
+        {
+          "params": [
+            0,
+            6,
+            30,
+            0
+          ],
+          "n": 13
+        },
+        {
+          "params": [
+            0,
+            25,
+            6,
+            0
+          ],
+          "n": 6
+        },
+        {
+          "params": [
+            0,
+            15,
+            30,
+            0
+          ],
+          "n": 6
+        },
+        {
+          "params": [
+            0,
+            9999999,
+            1,
+            0
+          ],
+          "n": 6
+        },
+        {
+          "params": [
+            0,
+            20,
+            0,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            25,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            80,
+            0,
+            150,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            0,
+            26,
+            5,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            40,
+            30,
+            0,
+            0
+          ],
+          "n": 3
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 17,
+      "meaning": null,
+      "param_note": null,
+      "count": 363,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            10,
+            5,
+            2000
+          ],
+          "n": 20
+        },
+        {
+          "params": [
+            5000,
+            0,
+            2,
+            3
+          ],
+          "n": 20
+        },
+        {
+          "params": [
+            100,
+            0,
+            30,
+            12000
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            100,
+            0,
+            30,
+            8000
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            0,
+            65,
+            5,
+            30000
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            70,
+            0,
+            30,
+            4000
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            80,
+            0,
+            30,
+            8000
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            100,
+            0,
+            30,
+            4000
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            0,
+            60,
+            5,
+            30000
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            0,
+            10,
+            5,
+            2250
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            0,
+            10,
+            5,
+            2500
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            0,
+            10,
+            5,
+            2750
+          ],
+          "n": 4
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 18,
+      "meaning": "aura range / area-of-effect radius (for the enemy's aura effect)",
+      "param_note": "Param_2 = radius. NOT a DoT itself -- it just defines the area the paired effect (e.g. DoT id 19, or a buff) applies to. Grows to a huge value to make the aura global (Amon berserk Param_2=2000 = DoT全体). 868/1043 configs have 18 with NO DoT, so 18 is a generic aura range.",
+      "count": 1045,
+      "param_patterns": [
+        {
+          "params": [
+            1,
+            2000,
+            2,
+            0
+          ],
+          "n": 612
+        },
+        {
+          "params": [
+            1,
+            1,
+            2,
+            1
+          ],
+          "n": 44
+        },
+        {
+          "params": [
+            1,
+            100,
+            2,
+            0
+          ],
+          "n": 41
+        },
+        {
+          "params": [
+            1,
+            70,
+            10,
+            0
+          ],
+          "n": 29
+        },
+        {
+          "params": [
+            1,
+            1,
+            10,
+            1
+          ],
+          "n": 29
+        },
+        {
+          "params": [
+            1,
+            60,
+            2,
+            0
+          ],
+          "n": 22
+        },
+        {
+          "params": [
+            1,
+            100,
+            2,
+            99999
+          ],
+          "n": 21
+        },
+        {
+          "params": [
+            1,
+            2000,
+            10,
+            0
+          ],
+          "n": 17
+        },
+        {
+          "params": [
+            1,
+            1,
+            2,
+            30000
+          ],
+          "n": 17
+        },
+        {
+          "params": [
+            1,
+            20,
+            10,
+            0
+          ],
+          "n": 14
+        },
+        {
+          "params": [
+            1,
+            125,
+            10,
+            0
+          ],
+          "n": 12
+        },
+        {
+          "params": [
+            1,
+            2000,
+            30,
+            0
+          ],
+          "n": 12
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 19,
+      "meaning": "DoT damage (HP lost per tick by units inside the aura, id 18)",
+      "param_note": "Param_2 = damage per tick (Amon = 200). Always paired with id 18 (the aura range); id 19 NEVER appears without 18. interval is in engine frames elsewhere; ref Amon DoT = 200減少/5f.",
+      "count": 175,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            10,
+            0,
+            0
+          ],
+          "n": 17
+        },
+        {
+          "params": [
+            0,
+            30,
+            0,
+            0
+          ],
+          "n": 14
+        },
+        {
+          "params": [
+            0,
+            20,
+            0,
+            0
+          ],
+          "n": 13
+        },
+        {
+          "params": [
+            0,
+            60,
+            0,
+            0
+          ],
+          "n": 13
+        },
+        {
+          "params": [
+            0,
+            15,
+            0,
+            0
+          ],
+          "n": 12
+        },
+        {
+          "params": [
+            0,
+            5,
+            0,
+            0
+          ],
+          "n": 11
+        },
+        {
+          "params": [
+            0,
+            8,
+            0,
+            0
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            0,
+            150,
+            0,
+            0
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            0,
+            200,
+            0,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            0,
+            45,
+            0,
+            0
+          ],
+          "n": 6
+        },
+        {
+          "params": [
+            0,
+            100,
+            0,
+            0
+          ],
+          "n": 6
+        },
+        {
+          "params": [
+            0,
+            50,
+            0,
+            0
+          ],
+          "n": 6
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 20,
+      "meaning": null,
+      "param_note": null,
+      "count": 108,
+      "param_patterns": [
+        {
+          "params": [
+            30,
+            0,
+            0,
+            0
+          ],
+          "n": 20
+        },
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 13
+        },
+        {
+          "params": [
+            100,
+            0,
+            0,
+            0
+          ],
+          "n": 11
+        },
+        {
+          "params": [
+            70,
+            0,
+            0,
+            0
+          ],
+          "n": 10
+        },
+        {
+          "params": [
+            80,
+            0,
+            0,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            75,
+            0,
+            0,
+            0
+          ],
+          "n": 6
+        },
+        {
+          "params": [
+            60,
+            0,
+            0,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            85,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            90,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            10,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            100,
+            -800,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            100,
+            -200,
+            0,
+            0
+          ],
+          "n": 2
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsPrince();",
+          "n": 15
+        },
+        {
+          "expr": "IsRace(\"人間\")",
+          "n": 3
+        },
+        {
+          "expr": "IsRace(\"魚人\")",
+          "n": 1
+        },
+        {
+          "expr": "IsRace(\"エルフ\",\"ハーフエルフ\",\"ダークエルフ\")",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "influence": 21,
+      "meaning": null,
+      "param_note": null,
+      "count": 90,
+      "param_patterns": [
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 18
+        },
+        {
+          "params": [
+            70,
+            0,
+            0,
+            0
+          ],
+          "n": 15
+        },
+        {
+          "params": [
+            100,
+            0,
+            0,
+            0
+          ],
+          "n": 11
+        },
+        {
+          "params": [
+            30,
+            0,
+            0,
+            0
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            75,
+            0,
+            0,
+            0
+          ],
+          "n": 6
+        },
+        {
+          "params": [
+            60,
+            0,
+            0,
+            0
+          ],
+          "n": 6
+        },
+        {
+          "params": [
+            80,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            90,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            85,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            20,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            10,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            100,
+            -800,
+            0,
+            0
+          ],
+          "n": 2
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsRace(\"人間\")",
+          "n": 3
+        },
+        {
+          "expr": "IsRace(\"エルフ\",\"ハーフエルフ\",\"ダークエルフ\")",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "influence": 22,
+      "meaning": null,
+      "param_note": null,
+      "count": 53,
+      "param_patterns": [
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            80,
+            0,
+            0,
+            0
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            70,
+            0,
+            0,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            100,
+            0,
+            0,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            100,
+            -10,
+            0,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            60,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            100,
+            -5,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            100,
+            -30,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            100,
+            -20,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            100,
+            -40,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            100,
+            -15,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            30,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 23,
+      "meaning": null,
+      "param_note": null,
+      "count": 82,
+      "param_patterns": [
+        {
+          "params": [
+            100,
+            100,
+            0,
+            0
+          ],
+          "n": 12
+        },
+        {
+          "params": [
+            100,
+            25,
+            104,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            100,
+            100,
+            104,
+            0
+          ],
+          "n": 6
+        },
+        {
+          "params": [
+            100,
+            100,
+            45,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            100,
+            21,
+            104,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            100,
+            30,
+            104,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            100,
+            100,
+            11,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            100,
+            5,
+            103,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            100,
+            50,
+            11,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            100,
+            30,
+            11,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            100,
+            70,
+            11,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            100,
+            50,
+            620,
+            0
+          ],
+          "n": 2
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 25,
+      "meaning": null,
+      "param_note": null,
+      "count": 21,
+      "param_patterns": [
+        {
+          "params": [
+            200,
+            0,
+            0,
+            0
+          ],
+          "n": 9
+        },
+        {
+          "params": [
+            130,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            120,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            107,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            125,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            150,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            300,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            100,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            110,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 26,
+      "meaning": null,
+      "param_note": null,
+      "count": 9,
+      "param_patterns": [
+        {
+          "params": [
+            12,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            70,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            40,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            150,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            6,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 27,
+      "meaning": null,
+      "param_note": null,
+      "count": 1,
+      "param_patterns": [
+        {
+          "params": [
+            2,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 28,
+      "meaning": null,
+      "param_note": null,
+      "count": 96,
+      "param_patterns": [
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 62
+        },
+        {
+          "params": [
+            30,
+            0,
+            0,
+            0
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            40,
+            0,
+            0,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            100,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            80,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            70,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            60,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            20,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            90,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 29,
+      "meaning": null,
+      "param_note": null,
+      "count": 97,
+      "param_patterns": [
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 62
+        },
+        {
+          "params": [
+            30,
+            0,
+            0,
+            0
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            40,
+            0,
+            0,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            100,
+            0,
+            0,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            80,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            70,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            60,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            20,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            90,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 30,
+      "meaning": null,
+      "param_note": null,
+      "count": 2,
+      "param_patterns": [
+        {
+          "params": [
+            100,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            20,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 31,
+      "meaning": "hit visual effect (cosmetic)",
+      "param_note": "_ExtParam names the effect (e.g. HitEffectAmon9)",
+      "count": 447,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 182
+        },
+        {
+          "params": [
+            6292768,
+            0,
+            0,
+            0
+          ],
+          "n": 52
+        },
+        {
+          "params": [
+            6292944,
+            0,
+            0,
+            0
+          ],
+          "n": 34
+        },
+        {
+          "params": [
+            6293104,
+            0,
+            0,
+            0
+          ],
+          "n": 26
+        },
+        {
+          "params": [
+            6292384,
+            0,
+            0,
+            0
+          ],
+          "n": 16
+        },
+        {
+          "params": [
+            6293840,
+            0,
+            0,
+            0
+          ],
+          "n": 16
+        },
+        {
+          "params": [
+            6292400,
+            0,
+            0,
+            0
+          ],
+          "n": 14
+        },
+        {
+          "params": [
+            6292512,
+            0,
+            0,
+            0
+          ],
+          "n": 11
+        },
+        {
+          "params": [
+            6291802,
+            0,
+            0,
+            0
+          ],
+          "n": 9
+        },
+        {
+          "params": [
+            6292800,
+            0,
+            0,
+            0
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            6293008,
+            0,
+            0,
+            0
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            6291480,
+            0,
+            0,
+            0
+          ],
+          "n": 7
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 32,
+      "meaning": null,
+      "param_note": null,
+      "count": 151,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            20,
+            20,
+            30000
+          ],
+          "n": 15
+        },
+        {
+          "params": [
+            0,
+            20,
+            5,
+            30000
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            0,
+            2000,
+            2,
+            30000
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            0,
+            20,
+            12,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            0,
+            20,
+            10,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            0,
+            25,
+            5,
+            30000
+          ],
+          "n": 6
+        },
+        {
+          "params": [
+            0,
+            40,
+            5,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            0,
+            10,
+            5,
+            30000
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            0,
+            15,
+            2,
+            30000
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            0,
+            20,
+            6,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            0,
+            10,
+            5,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            0,
+            30,
+            6,
+            0
+          ],
+          "n": 3
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 34,
+      "meaning": null,
+      "param_note": null,
+      "count": 34,
+      "param_patterns": [
+        {
+          "params": [
+            200,
+            0,
+            0,
+            0
+          ],
+          "n": 23
+        },
+        {
+          "params": [
+            10000,
+            0,
+            0,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            1000,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            400,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            500,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 35,
+      "meaning": "ATK buff to a specific enemy element (gradual, up to Param_1%)",
+      "param_note": "Param_1 = max buff percent; _Expression names the target element (IsEnemyElementAny(\"X\")). Often emitted by a hidden flag enemy that ramps the boss ATK over time (e.g. up to 3x on the dual majin advent).",
+      "count": 449,
+      "param_patterns": [
+        {
+          "params": [
+            120,
+            0,
+            0,
+            0
+          ],
+          "n": 34
+        },
+        {
+          "params": [
+            100,
+            0,
+            0,
+            0
+          ],
+          "n": 32
+        },
+        {
+          "params": [
+            200,
+            0,
+            0,
+            0
+          ],
+          "n": 27
+        },
+        {
+          "params": [
+            300,
+            0,
+            0,
+            0
+          ],
+          "n": 26
+        },
+        {
+          "params": [
+            140,
+            0,
+            0,
+            0
+          ],
+          "n": 22
+        },
+        {
+          "params": [
+            160,
+            0,
+            0,
+            0
+          ],
+          "n": 22
+        },
+        {
+          "params": [
+            180,
+            0,
+            0,
+            0
+          ],
+          "n": 22
+        },
+        {
+          "params": [
+            220,
+            0,
+            0,
+            0
+          ],
+          "n": 21
+        },
+        {
+          "params": [
+            240,
+            0,
+            0,
+            0
+          ],
+          "n": 20
+        },
+        {
+          "params": [
+            260,
+            0,
+            0,
+            0
+          ],
+          "n": 20
+        },
+        {
+          "params": [
+            280,
+            0,
+            0,
+            0
+          ],
+          "n": 20
+        },
+        {
+          "params": [
+            150,
+            0,
+            0,
+            0
+          ],
+          "n": 14
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsEnemyElementAny( \"カリュブディス\") == 1",
+          "n": 20
+        },
+        {
+          "expr": "IsEnemyElementAny( \"恋姫(主人)\",\"恋姫\") == 1",
+          "n": 16
+        },
+        {
+          "expr": "IsEnemyElementAny( \"デルフィーナ\") == 1",
+          "n": 15
+        },
+        {
+          "expr": "IsEnemyRace(\"デーモン\") == 1",
+          "n": 14
+        },
+        {
+          "expr": "IsEnemyElementAny( \"アモン\") == 1",
+          "n": 14
+        },
+        {
+          "expr": "IsEnemyElementAny( \"武狭\") == 1",
+          "n": 11
+        },
+        {
+          "expr": "IsEnemyElementAny( \"紂王\") == 1",
+          "n": 11
+        },
+        {
+          "expr": "IsEnemyElementAny( \"水着テュト\") == 1",
+          "n": 11
+        }
+      ]
+    },
+    {
+      "influence": 36,
+      "meaning": "enemy DEF buff aura to nearby enemies",
+      "param_note": "Param_1 = multiplier x100 (500 = x5.0)",
+      "count": 209,
+      "param_patterns": [
+        {
+          "params": [
+            100,
+            0,
+            0,
+            0
+          ],
+          "n": 20
+        },
+        {
+          "params": [
+            150,
+            0,
+            0,
+            0
+          ],
+          "n": 15
+        },
+        {
+          "params": [
+            120,
+            0,
+            0,
+            0
+          ],
+          "n": 9
+        },
+        {
+          "params": [
+            100,
+            800,
+            0,
+            0
+          ],
+          "n": 9
+        },
+        {
+          "params": [
+            100,
+            400,
+            0,
+            0
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            100,
+            200,
+            0,
+            0
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            100,
+            500,
+            0,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            200,
+            0,
+            0,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            100,
+            80,
+            0,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            100,
+            160,
+            0,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            100,
+            150,
+            0,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            90,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsEnemyElementAny( \"カリュブディス\") == 1",
+          "n": 20
+        },
+        {
+          "expr": "IsEnemyElementAny( \"恋姫(主人)\",\"恋姫\") == 1",
+          "n": 16
+        },
+        {
+          "expr": "IsEnemyElementAny( \"デルフィーナ\") == 1",
+          "n": 15
+        },
+        {
+          "expr": "IsEnemyRace(\"デーモン\") == 1",
+          "n": 13
+        },
+        {
+          "expr": "IsEnemyElementAny( \"水着テュト\") == 1",
+          "n": 11
+        },
+        {
+          "expr": "IsEnemyElementAny( \"女性\") == 1",
+          "n": 10
+        },
+        {
+          "expr": "IsEnemyRace(\"妖怪\") == 1",
+          "n": 10
+        },
+        {
+          "expr": "IsEnemyRace(\"獣\");",
+          "n": 4
+        }
+      ]
+    },
+    {
+      "influence": 37,
+      "meaning": "status immunity (paralysis / instant-death) -- TENTATIVE",
+      "param_note": "Param_1 = 100 observed. Correlates with 麻痺無効/即死無効; assassination resistance is a SEPARATE field (Param_ResistanceAssassin), not this.",
+      "count": 888,
+      "param_patterns": [
+        {
+          "params": [
+            100,
+            0,
+            0,
+            0
+          ],
+          "n": 888
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 39,
+      "meaning": null,
+      "param_note": null,
+      "count": 22,
+      "param_patterns": [
+        {
+          "params": [
+            100,
+            150,
+            0,
+            0
+          ],
+          "n": 10
+        },
+        {
+          "params": [
+            100,
+            200,
+            0,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            100,
+            130,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            100,
+            300,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            100,
+            120,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            100,
+            180,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            100,
+            110,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsRace(\"人間\")",
+          "n": 6
+        },
+        {
+          "expr": "IsGender(0) == 1;",
+          "n": 3
+        },
+        {
+          "expr": "IsRace(\"魚人\")",
+          "n": 2
+        },
+        {
+          "expr": "IsClassType(61, 1219, 1317, 1322) == 1;",
+          "n": 2
+        },
+        {
+          "expr": "IsRace(\"天使\",\"人間\")",
+          "n": 1
+        },
+        {
+          "expr": "IsRace(\"デーモン\")|| IsIdentitiy(\"アンデッド\")",
+          "n": 1
+        },
+        {
+          "expr": "IsRace(\"デーモン\",\"ハーフデーモン\",\"天使\")",
+          "n": 1
+        },
+        {
+          "expr": "IsRace(\"天界人\",\"人間\")",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "influence": 40,
+      "meaning": null,
+      "param_note": null,
+      "count": 346,
+      "param_patterns": [
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 87
+        },
+        {
+          "params": [
+            20,
+            0,
+            0,
+            0
+          ],
+          "n": 52
+        },
+        {
+          "params": [
+            10,
+            0,
+            0,
+            0
+          ],
+          "n": 41
+        },
+        {
+          "params": [
+            30,
+            0,
+            0,
+            0
+          ],
+          "n": 29
+        },
+        {
+          "params": [
+            80,
+            0,
+            0,
+            0
+          ],
+          "n": 27
+        },
+        {
+          "params": [
+            100,
+            0,
+            0,
+            0
+          ],
+          "n": 20
+        },
+        {
+          "params": [
+            5,
+            0,
+            0,
+            0
+          ],
+          "n": 17
+        },
+        {
+          "params": [
+            60,
+            0,
+            0,
+            0
+          ],
+          "n": 12
+        },
+        {
+          "params": [
+            200,
+            0,
+            0,
+            0
+          ],
+          "n": 11
+        },
+        {
+          "params": [
+            40,
+            0,
+            0,
+            0
+          ],
+          "n": 10
+        },
+        {
+          "params": [
+            120,
+            0,
+            0,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            140,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsEnemyElementAny( \"ヌアザ\") == 1",
+          "n": 20
+        },
+        {
+          "expr": "IsEnemyRace(\"インセクト\") || IsEnemyElementAny( \"蟲使い\") == 1",
+          "n": 20
+        },
+        {
+          "expr": "IsEnemyElementAny( \"アンデッド\") == 1",
+          "n": 18
+        },
+        {
+          "expr": "IsEnemyElementAny( \"夜行さん(ヨユキ)\") == 1",
+          "n": 11
+        },
+        {
+          "expr": "IsEnemyRace(\"天使\");",
+          "n": 10
+        },
+        {
+          "expr": "IsEnemyRace(\"神\",\"半神\");",
+          "n": 10
+        },
+        {
+          "expr": "IsEnemyRace(\"獣\");",
+          "n": 10
+        },
+        {
+          "expr": "IsEnemyRace(\"オーク\");",
+          "n": 9
+        }
+      ]
+    },
+    {
+      "influence": 41,
+      "meaning": null,
+      "param_note": null,
+      "count": 120,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 120
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsOwnerUnit();",
+          "n": 97
+        },
+        {
+          "expr": "IsEnemyElementAny( \"機神\") == 1",
+          "n": 10
+        },
+        {
+          "expr": "!IsOwnerUnit();",
+          "n": 7
+        },
+        {
+          "expr": "IsEnemyElementAny( \"ディアス\");",
+          "n": 4
+        },
+        {
+          "expr": "IsEnemyElementAny( \"機神\") || IsOwnerUnit();",
+          "n": 2
+        }
+      ]
+    },
+    {
+      "influence": 42,
+      "meaning": null,
+      "param_note": null,
+      "count": 25,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 25
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 43,
+      "meaning": null,
+      "param_note": null,
+      "count": 39,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 39
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsOwnerUnit();",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "influence": 44,
+      "meaning": null,
+      "param_note": null,
+      "count": 8,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 8
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 45,
+      "meaning": null,
+      "param_note": null,
+      "count": 3,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 46,
+      "meaning": null,
+      "param_note": null,
+      "count": 36,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 36
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 47,
+      "meaning": null,
+      "param_note": null,
+      "count": 3,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 48,
+      "meaning": null,
+      "param_note": null,
+      "count": 3,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 49,
+      "meaning": null,
+      "param_note": null,
+      "count": 54,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 54
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 50,
+      "meaning": null,
+      "param_note": null,
+      "count": 84,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 84
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 51,
+      "meaning": null,
+      "param_note": null,
+      "count": 127,
+      "param_patterns": [
+        {
+          "params": [
+            3,
+            12,
+            0,
+            0
+          ],
+          "n": 13
+        },
+        {
+          "params": [
+            3,
+            8,
+            0,
+            0
+          ],
+          "n": 13
+        },
+        {
+          "params": [
+            2,
+            6,
+            0,
+            0
+          ],
+          "n": 13
+        },
+        {
+          "params": [
+            3,
+            24,
+            0,
+            0
+          ],
+          "n": 12
+        },
+        {
+          "params": [
+            10,
+            6,
+            0,
+            0
+          ],
+          "n": 6
+        },
+        {
+          "params": [
+            2,
+            24,
+            0,
+            0
+          ],
+          "n": 6
+        },
+        {
+          "params": [
+            2,
+            10,
+            0,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            6,
+            6,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            8,
+            22,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            3,
+            30,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            2,
+            16,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            6,
+            8,
+            0,
+            0
+          ],
+          "n": 3
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 52,
+      "meaning": null,
+      "param_note": null,
+      "count": 64,
+      "param_patterns": [
+        {
+          "params": [
+            100,
+            0,
+            0,
+            0
+          ],
+          "n": 61
+        },
+        {
+          "params": [
+            150,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            30,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "!IsOwnerUnit();",
+          "n": 13
+        },
+        {
+          "expr": "!IsEnemyElementAny( \"置物\") && !IsOwnerUnit();",
+          "n": 2
+        },
+        {
+          "expr": "IsOwnerUnit();",
+          "n": 2
+        },
+        {
+          "expr": "IsEnemyElementAny( \"スルト\") == 1",
+          "n": 2
+        },
+        {
+          "expr": "IsEnemyElementAny( \"ボムプラント\") == 1",
+          "n": 1
+        },
+        {
+          "expr": "IsEnemyElementAny( \"チョコレート騎士団\") == 1",
+          "n": 1
+        },
+        {
+          "expr": "IsEnemyElementAny( \"噴霧器\") == 1",
+          "n": 1
+        },
+        {
+          "expr": "!IsOwnerUnit(); !IsEnemyElementAny( \"スイカ\") == 1",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "influence": 53,
+      "meaning": null,
+      "param_note": null,
+      "count": 142,
+      "param_patterns": [
+        {
+          "params": [
+            100,
+            100,
+            0,
+            0
+          ],
+          "n": 94
+        },
+        {
+          "params": [
+            100,
+            30,
+            0,
+            0
+          ],
+          "n": 22
+        },
+        {
+          "params": [
+            100,
+            75,
+            0,
+            0
+          ],
+          "n": 13
+        },
+        {
+          "params": [
+            100,
+            50,
+            0,
+            0
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            100,
+            90,
+            0,
+            0
+          ],
+          "n": 5
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 54,
+      "meaning": null,
+      "param_note": null,
+      "count": 1,
+      "param_patterns": [
+        {
+          "params": [
+            100,
+            100,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 55,
+      "meaning": null,
+      "param_note": null,
+      "count": 4,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 56,
+      "meaning": null,
+      "param_note": null,
+      "count": 1,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 57,
+      "meaning": null,
+      "param_note": null,
+      "count": 17,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 17
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 58,
+      "meaning": null,
+      "param_note": null,
+      "count": 10,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 10
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 59,
+      "meaning": null,
+      "param_note": null,
+      "count": 70,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 70
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 60,
+      "meaning": null,
+      "param_note": null,
+      "count": 2,
+      "param_patterns": [
+        {
+          "params": [
+            40,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "!IsEnemyFlight() && !IsEnemyElementAny( \"グラシャラボラス\");",
+          "n": 1
+        },
+        {
+          "expr": "!IsEnemyFlight()",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "influence": 62,
+      "meaning": null,
+      "param_note": null,
+      "count": 11,
+      "param_patterns": [
+        {
+          "params": [
+            10,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            5,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            15,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            3,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 63,
+      "meaning": null,
+      "param_note": null,
+      "count": 21,
+      "param_patterns": [
+        {
+          "params": [
+            100,
+            0,
+            0,
+            0
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            130,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            110,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            120,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            140,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            150,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            300,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            200,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsEnemyRace(\"インセクト\") || IsEnemyElementAny( \"蟲使い\") == 1",
+          "n": 18
+        },
+        {
+          "expr": "IsEnemyElementAny( \"スライム\") == 1",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "influence": 64,
+      "meaning": "incoming damage cap",
+      "param_note": "Param_3 = cap value (9999)",
+      "count": 11,
+      "param_patterns": [
+        {
+          "params": [
+            30,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            0,
+            0,
+            9999,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            0,
+            0,
+            100,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            0,
+            0,
+            10,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            20,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    }
+  ],
+  "term": [
+    {
+      "influence": 8,
+      "meaning": null,
+      "param_note": null,
+      "count": 51,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            10,
+            20,
+            0
+          ],
+          "n": 18
+        },
+        {
+          "params": [
+            0,
+            5,
+            30,
+            0
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            0,
+            20,
+            30,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            0,
+            10,
+            30,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            0,
+            50,
+            30,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            0,
+            75,
+            30,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            0,
+            300,
+            30,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            0,
+            25,
+            20,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            0,
+            540,
+            30,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            0,
+            30,
+            30,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 9,
+      "meaning": null,
+      "param_note": null,
+      "count": 44,
+      "param_patterns": [
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 20
+        },
+        {
+          "params": [
+            20,
+            0,
+            0,
+            0
+          ],
+          "n": 12
+        },
+        {
+          "params": [
+            80,
+            0,
+            0,
+            0
+          ],
+          "n": 10
+        },
+        {
+          "params": [
+            95,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "!IsPlayerSupportUnit();",
+          "n": 30
+        },
+        {
+          "expr": "IsClassType(98);",
+          "n": 12
+        },
+        {
+          "expr": "!(IsCardID(1633) || IsPlayerSupportUnit());",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "influence": 10,
+      "meaning": null,
+      "param_note": null,
+      "count": 3,
+      "param_patterns": [
+        {
+          "params": [
+            5,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            10,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            15,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 11,
+      "meaning": "enemy DEF buff (conditional, +Param_1% to elements in expr)",
+      "param_note": "Param_1 = percent (400 = +400% / x5 DEF); gated by _Expression. On the dual advent: triggered while StageFlag 1 set (Chimeries present) and applies to アーマー element enemies.",
+      "count": 40,
+      "param_patterns": [
+        {
+          "params": [
+            300,
+            0,
+            0,
+            0
+          ],
+          "n": 16
+        },
+        {
+          "params": [
+            200,
+            0,
+            0,
+            0
+          ],
+          "n": 6
+        },
+        {
+          "params": [
+            500,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            150,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            180,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            250,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            1000,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            400,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            130,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            140,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            270,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            10,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsStageFlag( 1);",
+          "n": 12
+        },
+        {
+          "expr": "IsStageFlag( 1) && IsEnemyElementAny( \"機械\") ;",
+          "n": 3
+        },
+        {
+          "expr": "IsStageFlag( 1) && IsEnemyElementAny( \"アーマー\") ;",
+          "n": 3
+        },
+        {
+          "expr": "IsStageFlag( 1)&&(IsEnemyElementAny( \"チャーム\") == 1);",
+          "n": 2
+        },
+        {
+          "expr": "IsStageFlag( 2)&&(IsEnemyElementAny( \"女性\") == 0);",
+          "n": 1
+        },
+        {
+          "expr": "(IsStageFlag( 1) == 1);",
+          "n": 1
+        },
+        {
+          "expr": "IsEnemyElementAny( \"ジーラトス\");",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "influence": 12,
+      "meaning": null,
+      "param_note": null,
+      "count": 30,
+      "param_patterns": [
+        {
+          "params": [
+            200,
+            0,
+            0,
+            0
+          ],
+          "n": 21
+        },
+        {
+          "params": [
+            250,
+            0,
+            0,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            120,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            130,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            300,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            150,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 13,
+      "meaning": null,
+      "param_note": null,
+      "count": 50,
+      "param_patterns": [
+        {
+          "params": [
+            150,
+            0,
+            0,
+            0
+          ],
+          "n": 15
+        },
+        {
+          "params": [
+            30,
+            0,
+            0,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            10,
+            0,
+            0,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            200,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            170,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            250,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            85,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            70,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            300,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            80,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsAssign(\"帝国\");",
+          "n": 16
+        },
+        {
+          "expr": "IsClassType(9, 94, 95, 96, 97, 99, 209, 1001,1220,1251,1273,1315,1318,1320,1323,1328,1350,1353,1534) == 1;",
+          "n": 5
+        },
+        {
+          "expr": "IsStageFlag( 2)&&(IsGender(0) == 1);",
+          "n": 4
+        },
+        {
+          "expr": "IsClassType( 1,201);",
+          "n": 1
+        },
+        {
+          "expr": "IsClassType( 100,300);",
+          "n": 1
+        },
+        {
+          "expr": "IsClassType( 3,203);",
+          "n": 1
+        },
+        {
+          "expr": "IsClassType( 101,301);",
+          "n": 1
+        },
+        {
+          "expr": "IsClassType( 16,216);",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "influence": 14,
+      "meaning": null,
+      "param_note": null,
+      "count": 69,
+      "param_patterns": [
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 17
+        },
+        {
+          "params": [
+            150,
+            0,
+            0,
+            0
+          ],
+          "n": 16
+        },
+        {
+          "params": [
+            30,
+            0,
+            0,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            200,
+            0,
+            0,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            70,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            10,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            170,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            250,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            75,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            20,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            85,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            300,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsAssign(\"帝国\");",
+          "n": 16
+        },
+        {
+          "expr": "IsClassType(98);",
+          "n": 9
+        },
+        {
+          "expr": "IsClassType(9, 94, 95, 96, 97, 99, 209, 1001,1220,1251,1273,1315,1318,1320,1323,1328,1350,1353,1534) == 1;",
+          "n": 5
+        },
+        {
+          "expr": "IsStageFlag( 1)&&(IsGender(0) == 1);",
+          "n": 4
+        },
+        {
+          "expr": "IsStageFlag( 1);",
+          "n": 4
+        },
+        {
+          "expr": "IsClassType( 102,302)&&IsStageFlag( 1);",
+          "n": 3
+        },
+        {
+          "expr": "IsClassType( 1,201);",
+          "n": 1
+        },
+        {
+          "expr": "IsClassType( 100,300);",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "influence": 15,
+      "meaning": null,
+      "param_note": null,
+      "count": 3,
+      "param_patterns": [
+        {
+          "params": [
+            175,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 16,
+      "meaning": null,
+      "param_note": null,
+      "count": 3,
+      "param_patterns": [
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 17,
+      "meaning": null,
+      "param_note": null,
+      "count": 42,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 40
+        },
+        {
+          "params": [
+            36,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "(IsOverlapMember() != 1;) &&IsToken() || IsGenus(\"クリスマス\");",
+          "n": 2
+        }
+      ]
+    },
+    {
+      "influence": 18,
+      "meaning": "enemy ATK buff (conditional, +Param_1% to elements in expr)",
+      "param_note": "Param_1 = percent (300 = +300%); gated by _Expression. On the dual advent: triggered while StageFlag 8 set (Chimeries form3) for アーマー enemies. NOTE: in the SPECIALTY context id 18 is a DoT, not this.",
+      "count": 69,
+      "param_patterns": [
+        {
+          "params": [
+            150,
+            0,
+            0,
+            0
+          ],
+          "n": 11
+        },
+        {
+          "params": [
+            120,
+            0,
+            0,
+            0
+          ],
+          "n": 9
+        },
+        {
+          "params": [
+            200,
+            0,
+            0,
+            0
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            130,
+            0,
+            0,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            300,
+            0,
+            0,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            125,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            170,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            160,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            75,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            20,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            10,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsStageFlag( 1);",
+          "n": 8
+        },
+        {
+          "expr": "IsStageFlag( 1) && IsEnemyElementAny( \"スカラベ\") ;",
+          "n": 3
+        },
+        {
+          "expr": "IsStageFlag( 8) && IsEnemyElementAny( \"アーマー\") ;",
+          "n": 3
+        },
+        {
+          "expr": "IsStageFlag( 1)&&(IsEnemyElementAny( \"チャーム\") == 1);",
+          "n": 2
+        },
+        {
+          "expr": "IsStageFlag( 1)&&(IsEnemyElementAny( \"女性\") == 0);",
+          "n": 1
+        },
+        {
+          "expr": "(IsStageFlag( 2) == 1);",
+          "n": 1
+        },
+        {
+          "expr": "IsEnemyElementAny( \"魔森の狩人\", \"真なる狩人\");",
+          "n": 1
+        },
+        {
+          "expr": "IsEnemyElementAny( \"黒鎧の戦神\");",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "influence": 19,
+      "meaning": null,
+      "param_note": null,
+      "count": 57,
+      "param_patterns": [
+        {
+          "params": [
+            65,
+            0,
+            0,
+            0
+          ],
+          "n": 36
+        },
+        {
+          "params": [
+            150,
+            0,
+            0,
+            0
+          ],
+          "n": 6
+        },
+        {
+          "params": [
+            120,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            250,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            300,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            200,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            140,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            40,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            130,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            265,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            85,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 20,
+      "meaning": null,
+      "param_note": null,
+      "count": 51,
+      "param_patterns": [
+        {
+          "params": [
+            150,
+            0,
+            0,
+            0
+          ],
+          "n": 13
+        },
+        {
+          "params": [
+            200,
+            0,
+            0,
+            0
+          ],
+          "n": 9
+        },
+        {
+          "params": [
+            120,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            130,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            300,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            125,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            75,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            20,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            220,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            170,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            65,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            55,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsEnemyElementAny( \"黒鎧の戦神\");",
+          "n": 1
+        },
+        {
+          "expr": "IsEnemyElementAny( \"ジーラトス\");",
+          "n": 1
+        },
+        {
+          "expr": "IsEnemyElementAny( \"魔神\") == 1;",
+          "n": 1
+        },
+        {
+          "expr": "IsEnemyRace(\"ゴーレム\") == 1;",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "influence": 21,
+      "meaning": null,
+      "param_note": null,
+      "count": 13,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            60,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            150,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            0,
+            50,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            110,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            120,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            0,
+            55,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            300,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsStageFlag( 50);",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "influence": 22,
+      "meaning": null,
+      "param_note": null,
+      "count": 10,
+      "param_patterns": [
+        {
+          "params": [
+            60,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            10,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            80,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            70,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            30,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 23,
+      "meaning": null,
+      "param_note": null,
+      "count": 2,
+      "param_patterns": [
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            10,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 24,
+      "meaning": "unit composition restriction (e.g. no duplicate units)",
+      "param_note": "logic in _Expression (IsOverlapMember()!=1 = no dup units)",
+      "count": 283,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 111
+        },
+        {
+          "params": [
+            10,
+            0,
+            0,
+            0
+          ],
+          "n": 96
+        },
+        {
+          "params": [
+            36,
+            0,
+            0,
+            0
+          ],
+          "n": 26
+        },
+        {
+          "params": [
+            12,
+            0,
+            0,
+            0
+          ],
+          "n": 6
+        },
+        {
+          "params": [
+            4,
+            0,
+            0,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            2,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            5,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            30,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            32,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            3,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            19,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            25,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsOverlapMember() != 1;",
+          "n": 93
+        },
+        {
+          "expr": "((IsGender(1) == 0) && (IsToken()) || IsGender(0) || IsPlayerSupportUnit();",
+          "n": 4
+        },
+        {
+          "expr": "IsRearguard();",
+          "n": 4
+        },
+        {
+          "expr": "IsClassType(98) == 0;",
+          "n": 4
+        },
+        {
+          "expr": "IsClassType(9, 94, 95, 96, 97, 99, 209, 1001) == 0;",
+          "n": 3
+        },
+        {
+          "expr": "IsVanguard() && IsOverlapMember() != 1;",
+          "n": 3
+        },
+        {
+          "expr": "((IsGender(0) == 0) && (IsToken()) || IsGender(1) || IsPlayerSupportUnit();",
+          "n": 2
+        },
+        {
+          "expr": "IsVanguard();",
+          "n": 2
+        }
+      ]
+    },
+    {
+      "influence": 25,
+      "meaning": null,
+      "param_note": null,
+      "count": 26,
+      "param_patterns": [
+        {
+          "params": [
+            300,
+            0,
+            0,
+            0
+          ],
+          "n": 15
+        },
+        {
+          "params": [
+            70,
+            0,
+            0,
+            0
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            200,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsAssign(\"帝国\");",
+          "n": 8
+        },
+        {
+          "expr": "IsRearguard();",
+          "n": 4
+        },
+        {
+          "expr": "IsAssign(\"帝国\") != 1;",
+          "n": 3
+        },
+        {
+          "expr": "GetRaryty() >= 4 && IsToken() == 0;",
+          "n": 2
+        },
+        {
+          "expr": "IsRearguard() && !IsClassType(102,302);",
+          "n": 2
+        },
+        {
+          "expr": "IsVanguard();",
+          "n": 1
+        },
+        {
+          "expr": "GetRaryty() >= 3 && IsToken() == 0;",
+          "n": 1
+        },
+        {
+          "expr": "IsGender(0);",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "influence": 26,
+      "meaning": "Makai miasma: ally ATK down by Param_1%",
+      "param_note": "Param_1 = percent (50 = -50% ally ATK)",
+      "count": 33,
+      "param_patterns": [
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 25
+        },
+        {
+          "params": [
+            30,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            90,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            70,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsStageFlag( 1);",
+          "n": 4
+        }
+      ]
+    },
+    {
+      "influence": 27,
+      "meaning": "Makai miasma: ally DEF down by Param_1%",
+      "param_note": "Param_1 = percent (50 = -50% ally DEF)",
+      "count": 33,
+      "param_patterns": [
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 25
+        },
+        {
+          "params": [
+            30,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            90,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            70,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsStageFlag( 1);",
+          "n": 4
+        }
+      ]
+    },
+    {
+      "influence": 29,
+      "meaning": null,
+      "param_note": null,
+      "count": 23,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            10,
+            30,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            0,
+            20,
+            30,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            0,
+            120,
+            10,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            0,
+            50,
+            30,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            0,
+            20,
+            10,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            0,
+            120,
+            30,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            0,
+            80,
+            6,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            0,
+            60,
+            5,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            0,
+            240,
+            10,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            0,
+            60,
+            10,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "(IsIdentitiy(\"アンデッド\") || IsRace(\"デーモン\")) == 0;",
+          "n": 13
+        },
+        {
+          "expr": "IsStageFlag( 1) && IsEnemyElementAny( \"スカラベ\") ;",
+          "n": 1
+        },
+        {
+          "expr": "IsEnemyElementAny( \"魔神\") == 0;",
+          "n": 1
+        },
+        {
+          "expr": "IsEnemyElementAny( \"変異\");",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "influence": 30,
+      "meaning": "Makai miasma: ally cost natural-regen down by Param_1%",
+      "param_note": "Param_1 = percent (50 = -50% cost regen)",
+      "count": 48,
+      "param_patterns": [
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 28
+        },
+        {
+          "params": [
+            30,
+            0,
+            0,
+            0
+          ],
+          "n": 5
+        },
+        {
+          "params": [
+            70,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            90,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            60,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            40,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            150,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            10,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            200,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsStageFlag( 1);",
+          "n": 4
+        },
+        {
+          "expr": "(IsStageFlag( 0) == 1);",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "influence": 31,
+      "meaning": null,
+      "param_note": null,
+      "count": 9,
+      "param_patterns": [
+        {
+          "params": [
+            130,
+            0,
+            0,
+            0
+          ],
+          "n": 9
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 32,
+      "meaning": null,
+      "param_note": null,
+      "count": 9,
+      "param_patterns": [
+        {
+          "params": [
+            130,
+            0,
+            0,
+            0
+          ],
+          "n": 9
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 34,
+      "meaning": null,
+      "param_note": null,
+      "count": 35,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            10,
+            30,
+            0
+          ],
+          "n": 16
+        },
+        {
+          "params": [
+            0,
+            10,
+            6,
+            0
+          ],
+          "n": 10
+        },
+        {
+          "params": [
+            0,
+            15,
+            6,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            0,
+            6,
+            30,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            0,
+            20,
+            6,
+            0
+          ],
+          "n": 2
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsStageFlag( 50);",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "influence": 35,
+      "meaning": null,
+      "param_note": null,
+      "count": 35,
+      "param_patterns": [
+        {
+          "params": [
+            100,
+            0,
+            0,
+            0
+          ],
+          "n": 35
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsStageFlag( 50);",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "influence": 36,
+      "meaning": null,
+      "param_note": null,
+      "count": 35,
+      "param_patterns": [
+        {
+          "params": [
+            100,
+            0,
+            0,
+            0
+          ],
+          "n": 35
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "IsStageFlag( 50);",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "influence": 41,
+      "meaning": null,
+      "param_note": null,
+      "count": 15,
+      "param_patterns": [
+        {
+          "params": [
+            0,
+            60,
+            30,
+            0
+          ],
+          "n": 8
+        },
+        {
+          "params": [
+            0,
+            100,
+            30,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            0,
+            200,
+            30,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            0,
+            25,
+            30,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": [
+        {
+          "expr": "(IsIdentitiy(\"アンデッド\") || IsRace(\"デーモン\")) == 0;",
+          "n": 13
+        }
+      ]
+    },
+    {
+      "influence": 45,
+      "meaning": null,
+      "param_note": null,
+      "count": 13,
+      "param_patterns": [
+        {
+          "params": [
+            100,
+            -70,
+            0,
+            0
+          ],
+          "n": 7
+        },
+        {
+          "params": [
+            100,
+            -500,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            100,
+            -800,
+            0,
+            0
+          ],
+          "n": 2
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 48,
+      "meaning": null,
+      "param_note": null,
+      "count": 42,
+      "param_patterns": [
+        {
+          "params": [
+            65,
+            0,
+            0,
+            0
+          ],
+          "n": 40
+        },
+        {
+          "params": [
+            40,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 49,
+      "meaning": null,
+      "param_note": null,
+      "count": 6,
+      "param_patterns": [
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 3
+        },
+        {
+          "params": [
+            80,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            70,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            30,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 50,
+      "meaning": null,
+      "param_note": null,
+      "count": 8,
+      "param_patterns": [
+        {
+          "params": [
+            60,
+            0,
+            0,
+            0
+          ],
+          "n": 4
+        },
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        },
+        {
+          "params": [
+            80,
+            0,
+            0,
+            0
+          ],
+          "n": 2
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 51,
+      "meaning": null,
+      "param_note": null,
+      "count": 2,
+      "param_patterns": [
+        {
+          "params": [
+            60,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        },
+        {
+          "params": [
+            50,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 52,
+      "meaning": null,
+      "param_note": null,
+      "count": 1,
+      "param_patterns": [
+        {
+          "params": [
+            80,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    },
+    {
+      "influence": 59,
+      "meaning": null,
+      "param_note": null,
+      "count": 1,
+      "param_patterns": [
+        {
+          "params": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "n": 1
+        }
+      ],
+      "sample_expressions": []
+    }
+  ]
+}
