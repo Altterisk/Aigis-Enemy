@@ -44,6 +44,16 @@ export function useInfluenceLabels() {
   return labels;
 }
 
+export function useRaceLabels() {
+  const [labels, set] = useState(null);
+  useEffect(() => {
+    loadJSON("race_labels")
+      .then(set)
+      .catch(() => set({}));
+  }, []);
+  return labels;
+}
+
 export function spriteUrl(patternId) {
   return `${import.meta.env.BASE_URL}sprites/${patternId}.png`;
 }

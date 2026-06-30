@@ -2,6 +2,51 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useStages } from "../data.js";
 
+function bannerUrl(missionId) {
+  return `${import.meta.env.BASE_URL}banners/${missionId}.png`;
+}
+
+// One event block: banner + title, then its stages.
+function EventBlock({ event, category, missionId, stages }) {
+  const [imgOk, setImgOk] = useState(true);
+  return (
+    <section className="event-group">
+      <div className="event-head">
+        {missionId && imgOk && (
+          <img
+            className="event-banner"
+            src={bannerUrl(missionId)}
+            alt=""
+            loading="lazy"
+            onError={() => setImgOk(false)}
+          />
+        )}
+        <div>
+          <h3>
+            {category && <span className="cat-badge">{category}</span>} {event}
+          </h3>
+          <div className="muted small">{stages.length} stage(s)</div>
+        </div>
+      </div>
+      <ul className="stage-row">
+        {stages
+          .slice()
+          .sort((a, b) => a.level - b.level)
+          .map((s) => (
+            <li key={s.quest_id} className={s.active === false ? "archived" : ""}>
+              <Link to={`/stages/${s.quest_id}`}>
+                {s.name}
+                <span className="muted small"> ×{s.multiplier}</span>
+                <span className="muted small"> · {s.enemies.length} enemies</span>
+                {s.active === false && <span className="past-tag">past</span>}
+              </Link>
+            </li>
+          ))}
+      </ul>
+    </section>
+  );
+}
+
 export default function StageList() {
   const { loading, stages } = useStages();
   const [q, setQ] = useState("");
@@ -12,8 +57,8 @@ export default function StageList() {
     return [...new Set(stages.map((s) => s.event_category).filter(Boolean))].sort();
   }, [stages]);
 
-  // Group filtered stages by event.
-  const groups = useMemo(() => {
+  // Group filtered stages into events, then events into category sections.
+  const sections = useMemo(() => {
     if (!stages) return [];
     const term = q.trim().toLowerCase();
     const filtered = stages.filter((s) => {
@@ -25,19 +70,40 @@ export default function StageList() {
         String(s.quest_id).includes(term)
       );
     });
+
+    // group into events
     const byEvent = new Map();
     for (const s of filtered) {
-      const key = s.event || "(ungrouped)";
-      if (!byEvent.has(key))
-        byEvent.set(key, { event: key, category: s.event_category, stages: [] });
+      const key = s.mission_id || s.event || "(ungrouped)";
+      if (!byEvent.has(key)) {
+        byEvent.set(key, {
+          event: s.event || "(ungrouped)",
+          category: s.event_category,
+          missionId: s.mission_id,
+          stages: [],
+        });
+      }
       byEvent.get(key).stages.push(s);
     }
-    return [...byEvent.values()];
+    const events = [...byEvent.values()];
+
+    // group events into category sections; events ordered by mission_id
+    // (mission_id is roughly chronological).
+    const byCat = new Map();
+    for (const ev of events) {
+      const c = ev.category || "Other";
+      if (!byCat.has(c)) byCat.set(c, []);
+      byCat.get(c).push(ev);
+    }
+    for (const list of byCat.values()) {
+      list.sort((a, b) => (a.missionId || 0) - (b.missionId || 0));
+    }
+    return [...byCat.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [stages, q, cat]);
 
   if (loading) return <p className="loading">Loading stages…</p>;
 
-  const total = groups.reduce((n, g) => n + g.stages.length, 0);
+  const totalEvents = sections.reduce((n, [, evs]) => n + evs.length, 0);
 
   return (
     <div>
@@ -53,33 +119,17 @@ export default function StageList() {
             <option key={c} value={c}>{c}</option>
           ))}
         </select>
-        <span className="count">{total} stages · {groups.length} events</span>
+        <span className="count">{totalEvents} events</span>
       </div>
 
-      {groups.slice(0, 120).map((g) => (
-        <section key={g.event} className="event-group">
-          <h3>
-            {g.category && <span className="cat-badge">{g.category}</span>} {g.event}
-            <span className="muted small"> · {g.stages.length}</span>
-          </h3>
-          <ul className="stage-row">
-            {g.stages
-              .sort((a, b) => a.level - b.level)
-              .map((s) => (
-                <li key={s.quest_id}>
-                  <Link to={`/stages/${s.quest_id}`}>
-                    {s.name}
-                    <span className="muted small"> ×{s.multiplier}</span>
-                    <span className="muted small"> · {s.enemies.length} enemies</span>
-                  </Link>
-                </li>
-              ))}
-          </ul>
-        </section>
+      {sections.map(([category, events]) => (
+        <div key={category} className="cat-section">
+          <h2 className="cat-title">{category}</h2>
+          {events.slice(0, 200).map((ev) => (
+            <EventBlock key={ev.missionId || ev.event} {...ev} />
+          ))}
+        </div>
       ))}
-      {groups.length > 120 && (
-        <p className="muted">Showing first 120 events. Refine your search.</p>
-      )}
     </div>
   );
 }

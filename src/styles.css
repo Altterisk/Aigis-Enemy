@@ -88,6 +88,19 @@ main { padding: 18px 20px; max-width: 1100px; margin: 0 auto; }
 .badge.boss { background: #e0b341; }
 .badge.sky { background: #6fc3d9; }
 
+/* form-change trigger badge (on death / after attacking N times / after Ns) */
+.trigger-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #3a2e4a;
+  color: #d6bcff;
+  border: 1px solid #5a4a72;
+}
+
 /* event category badge */
 .cat-badge {
   display: inline-block;
@@ -144,36 +157,103 @@ section h3 { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 .stat-label { color: var(--muted); font-size: 12px; }
 .stat-value { font-size: 18px; font-weight: 600; }
 
-/* enemy cards in stage detail */
-.enemy-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px;
-}
+/* enemy cards in stage detail (one card per enemy, full width) */
+.enemy-cards { display: flex; flex-direction: column; gap: 10px; }
 .enemy-card {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
 }
-.enemy-card-head { display: flex; gap: 12px; align-items: center; }
-.enemy-name { font-weight: 600; }
-.enemy-sub { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12px; margin-top: 2px; }
-.enemy-stats {
+.enemy-row { display: flex; gap: 16px; align-items: flex-start; }
+.enemy-sprite-cell {
+  width: 140px;
+  height: 140px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  margin-top: 10px;
+  align-items: center;
+  justify-content: center;
+  background: #0d0f13;
+  border-radius: 8px;
+  flex: none;
+}
+.enemy-main { flex: 1; min-width: 0; }
+.enemy-name { font-weight: 600; margin-bottom: 2px; }
+
+/* the stat table (clear zones, not a cramped row) */
+.enemy-stat-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
   font-size: 13px;
 }
+.enemy-stat-table th {
+  text-align: right;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 11px;
+  padding: 2px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.enemy-stat-table th:first-child,
+.enemy-stat-table th:last-child { text-align: left; }
+.enemy-stat-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.enemy-stat-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+}
+.c-attack { white-space: nowrap; }
+.c-speed { text-align: right; white-space: nowrap; }
+.c-support { white-space: nowrap; line-height: 1.35; }
+.c-effect { width: 36%; }
+.eff-note { padding: 2px 0; line-height: 1.35; }
+.eff-id { color: #8a909c; font-size: 11px; }
+.eff-meaning { color: #9ece6a; }
+.eff-cond { color: var(--muted); font-style: italic; }
+.variant-row td { background: rgba(255, 255, 255, 0.03); }
+.variant-row .block-label { display: block; margin-bottom: 2px; }
+
 .enemy-card details { margin-top: 8px; }
 .enemy-card summary { cursor: pointer; color: var(--muted); font-size: 12px; }
 
+/* category section (stage list) */
+.cat-section { margin-bottom: 28px; }
+.cat-title {
+  position: sticky;
+  top: 49px;
+  background: var(--bg);
+  margin: 0 0 10px;
+  padding: 6px 0;
+  border-bottom: 2px solid var(--accent);
+  z-index: 4;
+}
+
 /* event groups (stage list) */
 .event-group { margin-bottom: 18px; }
-.event-group h3 {
+.event-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
   border-bottom: 1px solid var(--line);
   padding-bottom: 6px;
+}
+.event-banner {
+  width: 120px;
+  height: 70px;
+  object-fit: contain;
+  image-rendering: auto;
+  background: #0d0f13;
+  border-radius: 6px;
+  flex: none;
+}
+.event-group h3 {
+  border: none;
+  padding: 0;
+  margin: 0 0 2px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -181,6 +261,26 @@ section h3 { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 .event-line { margin: 4px 0 8px; color: #c8d3f5; }
 .stage-row { list-style: none; padding-left: 0; margin: 8px 0; columns: 2; }
 .stage-row li { padding: 3px 0; break-inside: avoid; }
+.stage-row li.archived a { opacity: 0.55; }
+.past-tag {
+  margin-left: 6px;
+  font-size: 10px;
+  background: #4a3535;
+  color: #d0a0a0;
+  border-radius: 3px;
+  padding: 0 5px;
+}
+
+.popups { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.popup {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  padding: 8px 12px;
+  white-space: pre-wrap;
+  font-size: 13px;
+}
 
 .hard-box {
   background: #221a1a;

@@ -1,0 +1,98 @@
+{
+  "1": {
+    "name": "アーマー",
+    "en": "Armored"
+  },
+  "2": {
+    "name": "ドラゴン",
+    "en": "Dragon"
+  },
+  "3": {
+    "name": "デーモン",
+    "en": "Demon"
+  },
+  "4": {
+    "name": "妖怪",
+    "en": "Spectre"
+  },
+  "5": {
+    "name": "ゴーレム",
+    "en": "Golem"
+  },
+  "6": {
+    "name": "天使",
+    "en": "Angel"
+  },
+  "7": {
+    "name": "魚人",
+    "en": "Merman"
+  },
+  "8": {
+    "name": "オーク",
+    "en": "Orc"
+  },
+  "9": {
+    "name": "ゴブリン",
+    "en": "Goblin"
+  },
+  "10": {
+    "name": "巨人",
+    "en": "Giant"
+  },
+  "11": {
+    "name": "獣",
+    "en": "Beast"
+  },
+  "12": {
+    "name": "獣人",
+    "en": "Beastman"
+  },
+  "13": {
+    "name": "魔獣",
+    "en": "Demon Beast"
+  },
+  "14": {
+    "name": "妖獣",
+    "en": "Spectre Beast"
+  },
+  "15": {
+    "name": "神獣",
+    "en": "Divine Beast"
+  },
+  "16": {
+    "name": "人間",
+    "en": "Human"
+  },
+  "17": {
+    "name": "巨神",
+    "en": "Titan"
+  },
+  "18": {
+    "name": "インセクト",
+    "en": "Insect"
+  },
+  "19": {
+    "name": "神",
+    "en": "God"
+  },
+  "20": {
+    "name": "天界人",
+    "en": "Celestial"
+  },
+  "21": {
+    "name": "冥界人",
+    "en": "Underworlder"
+  },
+  "22": {
+    "name": "半神",
+    "en": "Demigod"
+  },
+  "23": {
+    "name": "ゴブリンアンド巨人",
+    "en": "Goblin & Giant"
+  },
+  "24": {
+    "name": "神像兵器",
+    "en": "Divine Statue Weapon"
+  }
+}

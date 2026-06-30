@@ -1,17 +1,21 @@
 import { useState } from "react";
 import { spriteUrl, DMG_COLORS, useInfluenceLabels } from "./data.js";
 
-export function Sprite({ patternId, size = 56, alt = "" }) {
+export function Sprite({ patternId, size = 56, alt = "", fit = false }) {
   const [failed, setFailed] = useState(false);
   if (failed || patternId == null) {
     return <div className="sprite sprite--missing" style={{ width: size, height: size }} />;
   }
+  // fit: respect the sprite's real proportions, bounded by `size`, instead of
+  // forcing a square. The atlas frames are already the enemy's true scale.
+  const style = fit
+    ? { maxWidth: size, maxHeight: size, width: "auto", height: "auto" }
+    : { width: size, height: size };
   return (
     <img
       className="sprite"
       src={spriteUrl(patternId)}
-      width={size}
-      height={size}
+      style={style}
       alt={alt}
       loading="lazy"
       onError={() => setFailed(true)}
@@ -32,6 +36,28 @@ export function DamageBadge({ type }) {
 // dmg/sec = dmg * 60 / interval. We surface per-frame and per-second so the
 // real numbers are clear. id 19's interval defaults to 10 engine frames when
 // absent (matches the reference 200/5 display-frames = 1200/sec).
+// Fill a label template with param values.
+//  {pN}          -> the Nth param value (1-based).
+//  {?pN: text}   -> include "text" only when param N is set (nonzero); the
+//                   text may itself contain {pM} placeholders.
+function fillLabel(tpl, params) {
+  const val = (n) => params?.[Number(n) - 1] ?? 0;
+  let out = tpl;
+  // branch: [[?pN| text-if-set | text-if-not-set]] picks one side based on
+  // whether param N is set (nonzero). Either side may contain {pM}.
+  out = out.replace(
+    /\[\[\?p([1-4])\|([\s\S]*?)\|([\s\S]*?)\]\]/g,
+    (_, n, ifSet, ifNot) => (val(n) ? ifSet : ifNot)
+  );
+  // include-if-set: [[?pN: text]] shows text only when param N is set.
+  out = out.replace(/\[\[\?p([1-4]):([\s\S]*?)\]\]/g, (_, n, text) =>
+    val(n) ? text : ""
+  );
+  // plain placeholders
+  out = out.replace(/\{p([1-4])\}/g, (_, n) => String(val(n)));
+  return out.trim();
+}
+
 const DOT_IDS = new Set([16, 19]);
 
 function dotBreakdown(e) {
@@ -58,12 +84,7 @@ export function Effects({ effects }) {
           labels && e.kind && labels[e.kind]
             ? labels[e.kind][String(e.influence)]
             : null;
-        // substitute {p1}..{p4} with the actual param values
-        if (meaning) {
-          meaning = meaning.replace(/\{p([1-4])\}/g, (_, n) =>
-            String(e.params?.[Number(n) - 1] ?? 0)
-          );
-        }
+        if (meaning) meaning = fillLabel(meaning, e.params);
         const dot = dotBreakdown(e);
         return (
           <li key={i}>
