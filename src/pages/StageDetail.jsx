@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useStages } from "../data.js";
-import { Sprite, DamageBadge, Effects, Tags } from "../components.jsx";
+import { Sprite, DamageBadge, Effects, Tags, auraRadius } from "../components.jsx";
 
 import { useInfluenceLabels, useRaceLabels } from "../data.js";
 
@@ -24,8 +24,38 @@ function triggerText(d) {
     case 5: return "at 99% HP (on first damage)";
     case 3: return "at 50% HP";
     case 1: return "while blocked";
+    case 0:
+      // CC=0 route-driven: show the gating flag if we resolved one.
+      return d.from_flag ? `when stage flag ${d.from_flag[0]} is set` : "next state";
     default: return "next state";
   }
+}
+
+// The condition under which THIS form changes into the next one, phrased as an
+// outgoing action with the GLOBAL id it becomes: "on death → transform into
+// #35095". Uses to_condition/to_ticks/to_global_id/to_flag.
+function becomesText(d) {
+  const c = d.to_condition;
+  if (c == null) return null;
+  const dest =
+    d.to_global_id != null ? `transform into #${d.to_global_id}` : "change form";
+  let when;
+  switch (c) {
+    case 2: when = "on death"; break;
+    case 4: {
+      const n = d.to_ticks;
+      when = n && n > 1 ? `after attacking ${n} times` : "after attacking";
+      break;
+    }
+    case 5: when = "at 99% HP (first damage)"; break;
+    case 3: when = "at 50% HP"; break;
+    case 1: when = "while blocked"; break;
+    case 0:
+      when = d.to_flag ? `when stage flag ${d.to_flag[0]} is set` : null;
+      break;
+    default: when = null;
+  }
+  return when ? `${when} → ${dest}` : `→ ${dest}`;
 }
 
 // Resolve effect rows for the effect column. Always keep the influence id +
@@ -43,7 +73,7 @@ function effectLines(effects, labels) {
       m = m.replace(/\[\[\?p([1-4]):([\s\S]*?)\]\]/g, (_, n, t) => (e.params?.[n - 1] ? t : ""));
       m = m.replace(/\{p([1-4])\}/g, (_, n) => String(e.params?.[n - 1] ?? 0)).trim();
     }
-    return { id, meaning: m, expr: e.expression, ext: e.ext };
+    return { id, meaning: m, expr: e.expression, ext: e.ext, aura: auraRadius(e) };
   });
 }
 
@@ -57,13 +87,37 @@ function StatRow({ d, variant, labels }) {
         {variant && <span className="block-label">alt. attack</span>}
         <DamageBadge type={d.damage_type} />
         <div className="muted small">
-          {d.attack_range > 0 ? `ranged (${d.attack_range})` : "melee"}
+          {d.attack_range > 0
+            ? `ranged (${Math.round((d.attack_range * 4) / 3)})`
+            : "melee"}
         </div>
+        {d.missile?.splash && (
+          <div className="muted small" title="area-of-effect splash radius">
+            splash {d.missile.splash}
+          </div>
+        )}
+        {d.missile?.slow && (
+          <div className="muted small" title="slows hit units">
+            slow {d.missile.slow[0]}% / {d.missile.slow[1]}f
+          </div>
+        )}
+        {d.missile?.deflectable && (
+          <div className="muted small" title="can be deflected by deflect units">
+            deflectable
+          </div>
+        )}
       </td>
       <td className="num" title={`base ${d.base_hp?.toLocaleString()} × mult`}>
         {d.hp.toLocaleString()}
       </td>
-      <td className="num" title={`base ${d.base_attack?.toLocaleString()} × mult`}>
+      <td
+        className="num"
+        title={
+          d.attack_range > 0
+            ? `base ${d.base_attack?.toLocaleString()} (ranged ATK is NOT multiplied)`
+            : `base ${d.base_attack?.toLocaleString()} × mult`
+        }
+      >
         {d.attack.toLocaleString()}
       </td>
       <td className="num">{d.armor_defense}</td>
@@ -90,6 +144,7 @@ function StatRow({ d, variant, labels }) {
           <div key={i} className="eff-note">
             <code className="eff-id">{f.id}</code>
             {f.meaning && <span className="eff-meaning"> {f.meaning}</span>}
+            {f.aura && <span className="eff-meaning"> ({f.aura})</span>}
             {f.expr && <span className="eff-cond"> if {f.expr}</span>}
             {f.ext && <span className="eff-cond"> {f.ext}</span>}
           </div>
@@ -101,6 +156,37 @@ function StatRow({ d, variant, labels }) {
 
 // One enemy = a card: a large sprite (real scale) + a stat table of its
 // form(s) and attack-method/state variants.
+// Raw structured behaviour pulled from this enemy's route scripts: gated
+// transforms, flag sets, events, reroutes, etc. Shown verbatim for now.
+function RouteBehaviour({ rb }) {
+  const t = (x) =>
+    x.flag != null
+      ? `when flag ${x.flag}==${x.val} → transform${x.to ? ` to #${x.to}` : ""}`
+      : `transform${x.to ? ` to #${x.to}` : ""}${x.wait > 0 ? ` after ${Math.round(x.wait / 60)}s` : ""}`;
+  return (
+    <details className="commands">
+      <summary>route behaviour</summary>
+      {rb.transforms && (
+        <div>transforms: {rb.transforms.map(t).join(" · ")}</div>
+      )}
+      {rb.sets_flags && (
+        <div>
+          sets flags:{" "}
+          {rb.sets_flags
+            .map(([f, v, w]) => `${f}=${v}${w ? ` @${Math.round(w / 60)}s` : ""}`)
+            .join(", ")}
+        </div>
+      )}
+      {rb.calls_event && <div>calls event: {rb.calls_event.join(", ")}</div>}
+      {rb.reroutes && <div>reroute: {rb.reroutes.join(", ")}</div>}
+      {rb.creates_obj && <div>creates {rb.creates_obj} map object(s) (barrier/gate)</div>}
+      {rb.creates_guest && <div>creates {rb.creates_guest} guest unit(s)</div>}
+      {rb.force_dead && <div>force-dies</div>}
+      {rb.battle_styles && <div>battle style: {rb.battle_styles.join(", ")}</div>}
+    </details>
+  );
+}
+
 function EnemyCard({ e }) {
   const labels = useInfluenceLabels();
   const races = useRaceLabels();
@@ -108,7 +194,7 @@ function EnemyCard({ e }) {
   const blocks = [{ d: e }, ...(e.variants || []).map((v) => ({ d: v, variant: "variant" }))];
 
   return (
-    <article className="enemy-card">
+    <article className={`enemy-card${e.flag_enemy ? " flag-card" : ""}`}>
       <div className="enemy-row">
         <div className="enemy-sprite-cell">
           <Sprite patternId={e.pattern_id} size={128} alt={String(e.enemy_id)} fit />
@@ -116,14 +202,35 @@ function EnemyCard({ e }) {
         <div className="enemy-main">
           <div className="enemy-name">
             Enemy #{e.enemy_id}
-            {e.form_count > 1 && (
-              <span className="badge" style={{ marginLeft: 6 }}>
-                form {e.form_index + 1}/{e.form_count}
+            {e.global_id != null && (
+              <span className="muted small" title="stable global enemy id (Enemy.atb row)">
+                {" "}#{e.global_id}
               </span>
             )}
-            {triggerText(e) && (
+            {/* Only the base form announces its OWN incoming trigger. A transform
+                RESULT (form_index > 0) does not show "on death" etc. -- that's
+                stated on the base enemy as "→ transform into #X". */}
+            {e.form_index === 0 && triggerText(e) && (
               <span className="trigger-badge" title="how this form is reached">
                 {triggerText(e)}
+              </span>
+            )}
+            {becomesText(e) && (
+              <span className="trigger-badge" title="how this form changes into the next">
+                {becomesText(e)}
+              </span>
+            )}
+            {e.spawned_on_death_by && (
+              <span className="muted small" title="enemies that transform into this on death">
+                {" "}(from death of #{e.spawned_on_death_by.join(", #")})
+              </span>
+            )}
+            {e.flag_enemy && (
+              <span
+                className="trigger-badge"
+                title="off-map controller: never enters the field; cycles states to set stage flags that gate the real enemies"
+              >
+                flag controller (off-map)
               </span>
             )}
             {race && (
@@ -133,7 +240,23 @@ function EnemyCard({ e }) {
             )}
             {e.count > 1 && <span className="muted small"> ×{e.count}</span>}
             {e.level > 0 && <span className="muted small"> Lv{e.level}</span>}
+            {e.spawn_sec > 0 && (
+              <span className="muted small" title="approximate first-appearance time (cumulative spawn schedule)">
+                {" "}· spawns ~{Math.floor(e.spawn_sec / 60)}:{String(e.spawn_sec % 60).padStart(2, "0")}
+              </span>
+            )}
           </div>
+          {e.flag_enemy && e.flag_sets && e.flag_sets.length > 0 && (
+            <div className="muted small" title="stage flags this controller sets (gate the real enemies)">
+              sets stage flags:{" "}
+              {e.flag_sets.map(([f, v, w], i) => (
+                <span key={i}>
+                  {i > 0 && ", "}
+                  {f}={v}{w ? ` @${Math.round(w / 60)}s` : ""}
+                </span>
+              ))}
+            </div>
+          )}
           <Tags tags={e.tags} />
           <table className="enemy-stat-table">
             <thead>
@@ -166,6 +289,8 @@ function EnemyCard({ e }) {
               <pre className="cmd-raw">{e.commands.raw}</pre>
             </details>
           )}
+
+          {e.route_behaviour && <RouteBehaviour rb={e.route_behaviour} />}
         </div>
       </div>
     </article>

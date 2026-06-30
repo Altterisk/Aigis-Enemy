@@ -70,6 +70,17 @@ function dotBreakdown(e) {
   return `${dmg} dmg / ${displayFrames}f (${perSec}/sec)`;
 }
 
+// Aura range (influence 18). Param_2 is the raw radius; the in-game radius is
+// the raw value * 4/3 (same dot-scale conversion as attack range and missile
+// splash, per the old tool's missile.lua). Huge values (e.g. 2000) = global.
+export function auraRadius(e) {
+  if (e.kind !== "specialty" || e.influence !== 18) return null;
+  const raw = e.params?.[1] || 0;
+  if (!raw) return null;
+  if (raw >= 1000) return "global range";
+  return `range ${Math.round((raw * 4) / 3)}`;
+}
+
 // Render influences. Verified meanings are resolved HERE from a static label
 // table (influence_labels.json) keyed by kind+id, so adding/fixing a label
 // needs no data re-extract. Unknown ids show raw. The `kind` (term vs
@@ -86,6 +97,7 @@ export function Effects({ effects }) {
             : null;
         if (meaning) meaning = fillLabel(meaning, e.params);
         const dot = dotBreakdown(e);
+        const aura = auraRadius(e);
         return (
           <li key={i}>
             {e.kind && <span className="kind">{e.kind}</span>}
@@ -95,6 +107,7 @@ export function Effects({ effects }) {
             )}
             {meaning && <span className="meaning"> {meaning}</span>}
             {dot && <span className="dot-calc"> {dot}</span>}
+            {aura && <span className="dot-calc"> {aura}</span>}
             {e.expression && <span className="expr"> {e.expression}</span>}
             {e.ext && <span className="expr"> {e.ext}</span>}
           </li>

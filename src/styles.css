@@ -88,6 +88,13 @@ main { padding: 18px 20px; max-width: 1100px; margin: 0 auto; }
 .badge.boss { background: #e0b341; }
 .badge.sky { background: #6fc3d9; }
 
+/* off-map flag/timer controller card (not a combat enemy) */
+.flag-card {
+  border-style: dashed;
+  border-color: #5a4a72;
+  background: #1c1a24;
+}
+
 /* form-change trigger badge (on death / after attacking N times / after Ns) */
 .trigger-badge {
   display: inline-block;
