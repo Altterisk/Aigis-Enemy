@@ -34,9 +34,23 @@ code { color: #c8d3f5; font-size: 12px; }
   top: 0;
   z-index: 5;
 }
-.topbar h1 { font-size: 18px; margin: 0; }
-.topbar nav { display: flex; gap: 14px; }
-.topbar nav a.active { color: #fff; font-weight: 600; }
+.topbar h1 {
+  font-size: 18px;
+  margin: 0;
+  background: linear-gradient(90deg, #7aa2f7, #bb9af7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.topbar nav { display: flex; gap: 8px; }
+.topbar nav a {
+  padding: 5px 12px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.topbar nav a:hover { background: var(--panel2); text-decoration: none; color: var(--text); }
+.topbar nav a.active { color: #fff; background: var(--accent); }
 .topbar .note { margin-left: auto; color: var(--muted); font-size: 12px; }
 
 main { padding: 18px 20px; max-width: 1100px; margin: 0 auto; }
@@ -49,8 +63,9 @@ main { padding: 18px 20px; max-width: 1100px; margin: 0 auto; }
   padding: 7px 10px;
   border-radius: 6px;
 }
-.toolbar input { width: 320px; }
-.toolbar .count, .count { color: var(--muted); }
+.toolbar input { width: 280px; max-width: 100%; }
+.toolbar select { max-width: 260px; }
+.toolbar .count, .count { color: var(--muted); margin-left: auto; }
 .loading { color: var(--muted); }
 
 /* tables */
@@ -134,9 +149,20 @@ main { padding: 18px 20px; max-width: 1100px; margin: 0 auto; }
   border-radius: 8px;
   color: var(--text);
 }
-.enemy-tile:hover { border-color: var(--accent); text-decoration: none; }
-.enemy-tile-id { font-weight: 600; }
-.enemy-tile-attr { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+.enemy-tile {
+  transition: border-color 0.12s ease, transform 0.12s ease, background 0.12s ease;
+}
+.enemy-tile:hover {
+  border-color: var(--accent);
+  background: var(--panel2);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+.enemy-tile-id {
+  font-weight: 700;
+  display: flex; align-items: center; gap: 6px;
+}
+.enemy-tile-attr { color: var(--muted); font-size: 12px; margin-bottom: 2px; }
 
 /* detail */
 .detail .back { display: inline-block; margin-bottom: 8px; }
@@ -371,3 +397,85 @@ section h3 { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 
 .stage-links { list-style: none; padding-left: 0; columns: 2; }
 .stage-links li { padding: 2px 0; break-inside: avoid; }
+
+/* enemy tile body + pager */
+.enemy-tile-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.enemy-tile-body > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 18px 0 6px;
+}
+.pager button {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.pager button:hover:not(:disabled) { border-color: var(--accent); }
+.pager button:disabled { opacity: 0.4; cursor: default; }
+
+/* ============================ polish ============================ */
+/* the 8-column enemy stat table can be wide; let it scroll rather than
+   overflow the card on narrow screens. wrap it in a scroll container. */
+.enemy-stat-table { display: table; }
+.enemy-main { overflow-x: auto; }
+.global-link {
+  font-size: 12px;
+  color: var(--muted);
+  border-bottom: 1px dotted var(--muted);
+}
+.global-link:hover { color: var(--accent); border-bottom-color: var(--accent); text-decoration: none; }
+.enemy-card { transition: border-color 0.12s ease; }
+.enemy-card:hover { border-color: #3c4350; }
+.trigger-badge, .badge, .cat-badge { white-space: nowrap; }
+/* nicer focus ring for keyboard users */
+a:focus-visible, input:focus-visible, select:focus-visible,
+summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ===================== responsive (tablet) ===================== */
+@media (max-width: 768px) {
+  main { padding: 14px 12px; }
+  .topbar { gap: 12px; padding: 10px 14px; flex-wrap: wrap; }
+  .topbar .note { margin-left: 0; flex-basis: 100%; }
+  .toolbar { flex-wrap: wrap; }
+  .toolbar input { width: 100%; }
+
+  /* one-column lists instead of two */
+  .stage-row, .stage-links, .effects { columns: 1; }
+
+  /* enemy card: sprite above the stats, not beside */
+  .enemy-row { flex-direction: column; gap: 10px; }
+  .enemy-sprite-cell { width: 96px; height: 96px; }
+  .enemy-stat-table { font-size: 12px; }
+  .enemy-stat-table th, .enemy-stat-table td { padding: 4px 6px; }
+  .enemy-stat-table td.num { font-size: 14px; }
+
+  /* event banner block stacks */
+  .event-head { flex-wrap: wrap; }
+  .event-banner { width: 96px; height: 56px; }
+}
+
+/* ===================== responsive (phone) ====================== */
+@media (max-width: 480px) {
+  main { padding: 10px 8px; }
+  .topbar h1 { font-size: 16px; }
+  .topbar nav { gap: 10px; font-size: 14px; }
+  .meta { gap: 8px 12px; font-size: 12px; }
+
+  /* the stat table: collapse the lower-priority columns (speed/support
+     are noisy on a phone); the effect text wraps below full-width. */
+  .enemy-stat-table .c-speed,
+  .enemy-stat-table .c-support,
+  .enemy-stat-table th.col-speed,
+  .enemy-stat-table th.col-support { display: none; }
+  .enemy-stat-table { font-size: 11px; }
+  .enemy-name { font-size: 13px; line-height: 1.5; }
+
+  .cat-title { top: 44px; font-size: 15px; }
+  .sprite { max-width: 100%; }
+}
