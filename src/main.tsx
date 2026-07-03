@@ -6,6 +6,9 @@ import StageList from "./pages/StageList";
 import StageDetail from "./pages/StageDetail";
 import EnemyList from "./pages/EnemyList";
 import EnemyDetail from "./pages/EnemyDetail";
+import UnitList from "./pages/UnitList";
+import UnitDetail from "./pages/UnitDetail";
+import Admin from "./pages/Admin";
 import "./styles.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -18,6 +21,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="stages/:questId" element={<StageDetail />} />
           <Route path="enemies" element={<EnemyList />} />
           <Route path="enemies/:id" element={<EnemyDetail />} />
+          <Route path="units" element={<UnitList />} />
+          <Route path="units/:id" element={<UnitDetail />} />
+          <Route path="admin" element={<Admin />} />
         </Route>
       </Routes>
     </HashRouter>

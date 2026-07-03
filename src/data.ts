@@ -9,14 +9,23 @@ import type {
   SpecialtyConfig,
   EnemyStages,
   DamageType,
+  Unit,
+  UnitIndexEntry,
+  UnitImageKind,
+  UnitInfluenceLabels,
 } from "./types";
 
 const cache: Record<string, unknown> = {};
 
 async function loadJSON<T>(name: string): Promise<T> {
   if (cache[name]) return cache[name] as T;
-  const res = await fetch(`${import.meta.env.BASE_URL}data/${name}.json`);
-  if (!res.ok) throw new Error(`failed to load ${name}.json`);
+  const url = `${import.meta.env.BASE_URL}data/${name}.json`;
+  let res = await fetch(url);
+  if (!res.ok) {
+    // transient failures (dev-server restart, flaky network) get one retry
+    res = await fetch(url);
+  }
+  if (!res.ok) throw new Error(`failed to load ${name}.json (${res.status})`);
   const data = (await res.json()) as T;
   cache[name] = data;
   return data;
@@ -106,8 +115,63 @@ export function useRaceLabels(): RaceLabels | null {
   return labels;
 }
 
+// The unit LIST: loads only the slim index (one file, ~2800 entries).
+export function useUnits() {
+  const [state, set] = useState<{
+    loading: boolean;
+    units: UnitIndexEntry[] | null;
+    byId: Map<number, UnitIndexEntry> | null;
+  }>({ loading: true, units: null, byId: null });
+  useEffect(() => {
+    loadJSON<UnitIndexEntry[]>("units").then((units) => {
+      const byId = new Map(units.map((u) => [u.id, u]));
+      set({ loading: false, units, byId });
+    });
+  }, []);
+  return state;
+}
+
+// One unit's FULL data, loaded on demand (per-unit file).
+export function useUnitDetail(id: number) {
+  const [state, set] = useState<{ loading: boolean; unit: Unit | null }>({
+    loading: true,
+    unit: null,
+  });
+  useEffect(() => {
+    let alive = true;
+    set({ loading: true, unit: null });
+    loadJSON<Unit>(`unit/${id}`)
+      .then((unit) => { if (alive) set({ loading: false, unit }); })
+      .catch(() => { if (alive) set({ loading: false, unit: null }); });
+    return () => { alive = false; };
+  }, [id]);
+  return state;
+}
+
 export function spriteUrl(patternId: number): string {
   return `${import.meta.env.BASE_URL}sprites/${patternId}.png`;
+}
+
+export function useUnitInfluenceLabels(): UnitInfluenceLabels | null {
+  const [labels, set] = useState<UnitInfluenceLabels | null>(null);
+  useEffect(() => {
+    loadJSON<UnitInfluenceLabels>("unit_influence_labels")
+      .then(set)
+      .catch(() => set({ skill: {}, ability: {} }));
+  }, []);
+  return labels;
+}
+
+// Unit images. ICONS are published with the site (public/unit-icon, ~108 MB).
+// ART and battle SPRITES are several GB and stay local-only: they live in
+// ../unit_images (outside web/public) and are served ONLY by vite.config.js's
+// dev middleware at /unit-img/* -- the published site has no art/sprites.
+export function unitImageUrl(kind: UnitImageKind, id: number, tier = 0): string {
+  const suffix = kind === "sprite" || tier === 0 ? "" : `_aw${tier}`;
+  if (kind === "icon") {
+    return `${import.meta.env.BASE_URL}unit-icon/${id}${suffix}.png`;
+  }
+  return `${import.meta.env.BASE_URL}unit-img/${kind}/${id}${suffix}.png`;
 }
 
 export const DMG_COLORS: Record<DamageType, string> = {

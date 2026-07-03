@@ -1,7 +1,94 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { spriteUrl, DMG_COLORS, useInfluenceLabels } from "./data";
-import type { Effect, DamageType } from "./types";
+import { spriteUrl, unitImageUrl, DMG_COLORS, useInfluenceLabels } from "./data";
+import type { Effect, DamageType, UnitImageKind, MissileOnHit } from "./types";
+
+// Humanize a missile's on-hit status effect (decoded from the Property field).
+// Shared by enemy (StageDetail) and unit skill (UnitDetail) missile displays.
+export function missileOnHitText(h?: MissileOnHit | null): string {
+  if (!h) return "";
+  const KIND: Record<string, string> = {
+    "DOT": "poison",
+    "スタック式DOT": "stacking poison",
+    "攻撃遅延": "attack-delay (slow)",
+    "ステータス低下": "stat down",
+  };
+  const label = KIND[h.kind] || h.kind;
+  // damage description (percent of max HP, and/or fixed), with the per-second rate.
+  const parts: string[] = [];
+  const iv = h.interval_f || 0;
+  if (h.pct_hp) {
+    const perSec = iv ? ` (${Math.round((h.pct_hp * 60) / iv)}%/sec)` : "";
+    parts.push(`${h.pct_hp}% max HP/tick${perSec}`);
+  }
+  if (h.flat) {
+    const perSec = iv ? ` (${Math.round((h.flat * 60) / iv)}/sec)` : "";
+    parts.push(`${h.flat} dmg/tick${perSec}`);
+  }
+  if (h.attack_interval_f) {
+    // 攻撃遅延's raw 攻撃間隔 frame count -- shown raw, semantics unverified.
+    parts.push(`攻撃間隔 ${h.attack_interval_f}f (raw)`);
+  }
+  if (h.stat_down) {
+    const sd = Object.entries(h.stat_down)
+      .map(([k, v]) => `${k.toUpperCase()} 低下 ${v}`)
+      .join(", ");
+    parts.push(`${sd} (raw %, to/by unverified)`);
+  }
+  const dur = h.duration_f ? ` for ${(h.duration_f / 60).toFixed(1)}s` : "";
+  const dmg = parts.length ? `: ${parts.join(", ")}` : "";
+  const extra: string[] = [];
+  if (h.relief) extra.push("症状緩和");
+  if (h.expire_duration_only) extra.push("expires by duration only");
+  if (h.other) extra.push(...Object.entries(h.other).map(([k, v]) => `${k}=${v}`));
+  const tail = extra.length ? ` [${extra.join(", ")}]` : "";
+  return `on hit: ${label}${dmg}${dur}${tail}`;
+}
+
+// Unit image (art/icon/sprite; icons are published, art/sprite dev-only).
+// Not every unit has AW2A/AW2B (or even AW) art -- on load failure, step DOWN
+// through lower tiers (AW2B -> AW2A -> AW -> base). When every tier of the
+// requested kind fails (e.g. art on the published site, which has no art at
+// all), optionally fall back to another kind (fallbackKind, retried from the
+// originally requested tier) before giving up and showing a blank box.
+export function UnitImage({
+  kind,
+  id,
+  tier = 0,
+  fallbackKind,
+  className,
+  alt = "",
+}: {
+  kind: UnitImageKind;
+  id: number;
+  tier?: number;
+  fallbackKind?: UnitImageKind;
+  className?: string;
+  alt?: string;
+}) {
+  const [tried, setTried] = useState({ kind, tier });
+  useEffect(() => setTried({ kind, tier }), [tier, id, kind]);
+
+  if (tried.tier < 0) {
+    return <div className={`unit-img unit-img--missing ${className || ""}`} />;
+  }
+  const onError = () => {
+    setTried((t) => {
+      if (t.tier > 0) return { ...t, tier: t.tier - 1 };
+      if (fallbackKind && t.kind !== fallbackKind) return { kind: fallbackKind, tier };
+      return { ...t, tier: -1 };
+    });
+  };
+  return (
+    <img
+      className={`unit-img ${className || ""}${tried.kind !== kind ? " unit-img--fallback" : ""}`}
+      src={unitImageUrl(tried.kind, id, tried.tier)}
+      alt={alt}
+      loading="lazy"
+      onError={onError}
+    />
+  );
+}
 
 export function Sprite({
   patternId,
@@ -65,27 +152,32 @@ export function fillLabel(tpl: string, params?: number[]): string {
 
 // DoT influences: 16 = self-DoT, 19 = aura DoT. dmg in Param_2, interval in
 // Param_3 (60fps engine frames; display 30fps). dmg/sec = dmg*60/interval.
+// Periodic HP effects -> per-second number. Param_2 = amount/tick, Param_3 =
+// interval (engine frames @60fps). per-sec = amount * 60 / interval. The label
+// stays descriptive; this adds the concrete rate. DoTs vs heals labelled.
+//   16 = self-DoT, 19 = aura DoT (interval on the paired id 18 Param_3),
+//   17 = self-heal, 32 = heals all enemies.
 const DOT_IDS = new Set([16, 19]);
+const HEAL_IDS = new Set([17, 32]);
 
-// DoT damage/sec. id 16 (self-DoT) carries dmg AND interval in its own params.
-// id 19 (aura DoT) carries the dmg in Param_2 but the INTERVAL lives on the
-// paired influence 18 (Param_3) -- verified: Wererat 18[1,70,6]+19[0,45] ->
-// 45*60/6 = 450/sec; Beelzebub 18[..,10]+19[0,10] -> 60/sec. Engine 60fps,
-// display 30fps so display frames = interval/2.
-function dotBreakdown(e: Effect, all: Effect[]): string | null {
-  if (e.kind !== "specialty" || !DOT_IDS.has(e.influence)) return null;
-  const dmg = e.params?.[1] || 0;
-  if (!dmg) return null;
+export function periodicRate(e: Effect, all: Effect[]): string | null {
+  if (e.kind !== "specialty") return null;
+  const isDot = DOT_IDS.has(e.influence);
+  const isHeal = HEAL_IDS.has(e.influence);
+  if (!isDot && !isHeal) return null;
+  const amount = e.params?.[1] || 0;
+  if (!amount) return null;
   let interval = e.params?.[2] || 0;
   if (e.influence === 19) {
-    // pull the interval from the paired aura (influence 18, Param_3).
+    // aura DoT: interval lives on the paired influence 18 (Param_3). Verified:
+    // Wererat 18[1,70,6]+19[0,45] -> 45*60/6 = 450/sec.
     const aura = all.find((x) => x.influence === 18);
     interval = aura?.params?.[2] || interval;
   }
   if (!interval) interval = 10;
-  const displayFrames = interval / 2;
-  const perSec = Math.round((dmg * 60) / interval);
-  return `${dmg} dmg / ${displayFrames}f (${perSec}/sec)`;
+  const perSec = Math.round((amount * 60) / interval);
+  const word = isHeal ? "heal" : "dmg";
+  return `${amount} ${word} every ${(interval / 60).toFixed(2)}s (${perSec}/sec)`;
 }
 
 // Aura range (influence 18): in-game radius = raw Param_2 * 2. Verified by
@@ -100,10 +192,11 @@ export function auraRadius(e: Effect): string | null {
 }
 
 // Render influences. Meanings resolved from the label table keyed by kind+id.
-export function Effects({ effects }: { effects?: Effect[] }) {
+// Long lists fold behind a toggle (raw rows are reference material).
+export function Effects({ effects, foldAt = 5 }: { effects?: Effect[]; foldAt?: number }) {
   const labels = useInfluenceLabels();
   if (!effects || effects.length === 0) return <span className="muted">none</span>;
-  return (
+  const list = (
     <ul className="effects">
       {effects.map((e, i) => {
         let meaning =
@@ -111,7 +204,7 @@ export function Effects({ effects }: { effects?: Effect[] }) {
             ? labels[e.kind][String(e.influence)]
             : null;
         if (meaning) meaning = fillLabel(meaning, e.params);
-        const dot = dotBreakdown(e, effects);
+        const dot = periodicRate(e, effects);
         const aura = auraRadius(e);
         return (
           <li key={i}>
@@ -134,6 +227,15 @@ export function Effects({ effects }: { effects?: Effect[] }) {
       })}
     </ul>
   );
+  if (effects.length > foldAt) {
+    return (
+      <details className="inf-toggle">
+        <summary>{effects.length} effects</summary>
+        {list}
+      </details>
+    );
+  }
+  return list;
 }
 
 // _Attribute element/property tags (Undead, Armor, Stealth, ...).

@@ -5,7 +5,7 @@ import {
   useRaceLabels,
   useSpecialtyConfig,
 } from "../data";
-import { Sprite, DamageBadge, Effects, Tags, auraRadius } from "../components";
+import { Sprite, DamageBadge, Effects, Tags, auraRadius, periodicRate, missileOnHitText } from "../components";
 import type {
   StageEnemy,
   StageEnemyForm,
@@ -84,6 +84,7 @@ interface EffectLine {
   meaning: string | null;
   ext?: string;
   aura: string | null;
+  rate: string | null;
   expr?: string;
   exprRaw?: string;
 }
@@ -107,6 +108,7 @@ function effectLines(effects: Effect[], labels: InfluenceLabels | null): EffectL
       meaning: m,
       ext: e.ext,
       aura: auraRadius(e),
+      rate: periodicRate(e, effects),
       expr: e.expression_human || e.expression,
       exprRaw: e.expression,
     };
@@ -148,6 +150,11 @@ function StatRow({
         {d.missile?.deflectable && (
           <div className="muted small" title="can be deflected by deflect units">
             deflectable
+          </div>
+        )}
+        {d.missile?.on_hit && (
+          <div className="muted small dot-calc" title="on-hit status effect from the missile">
+            {missileOnHitText(d.missile.on_hit)}
           </div>
         )}
       </td>
@@ -196,6 +203,7 @@ function StatRow({
             <code className="eff-id">{f.id}</code>
             {f.meaning && <span className="eff-meaning"> {f.meaning}</span>}
             {f.aura && <span className="eff-meaning"> ({f.aura})</span>}
+            {f.rate && <span className="dot-calc"> {f.rate}</span>}
             {f.expr && <span className="eff-cond" title={f.exprRaw}> if {f.expr}</span>}
             {f.ext && <span className="eff-cond"> {f.ext}</span>}
           </div>

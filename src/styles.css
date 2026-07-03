@@ -138,12 +138,12 @@ main { padding: 18px 20px; max-width: 1100px; margin: 0 auto; }
 .enemy-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 .enemy-tile {
   display: flex;
-  gap: 10px;
-  padding: 10px;
+  gap: 8px;
+  padding: 8px;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -169,7 +169,8 @@ main { padding: 18px 20px; max-width: 1100px; margin: 0 auto; }
 .detail h2 { margin: 6px 0; }
 .meta { display: flex; flex-wrap: wrap; gap: 12px; color: var(--muted); margin-bottom: 8px; }
 .meta span { white-space: nowrap; }
-section { margin-top: 18px; }
+section { margin-top: 14px; }
+section h3 { margin: 8px 0 6px; }
 section h3 { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 
 .enemy-hero { display: flex; gap: 18px; align-items: center; }
@@ -198,10 +199,10 @@ section h3 { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
   border-radius: 8px;
   padding: 12px;
 }
-.enemy-row { display: flex; gap: 16px; align-items: flex-start; }
+.enemy-row { display: flex; gap: 12px; align-items: flex-start; }
 .enemy-sprite-cell {
-  width: 140px;
-  height: 140px;
+  width: 100px;
+  height: 100px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -230,7 +231,7 @@ section h3 { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 .enemy-stat-table th:first-child,
 .enemy-stat-table th:last-child { text-align: left; }
 .enemy-stat-table td {
-  padding: 6px 10px;
+  padding: 4px 8px;
   border-bottom: 1px solid var(--line);
   vertical-align: top;
 }
@@ -368,6 +369,7 @@ section h3 { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 }
 .effects .params { color: #b0c0e8; }
 .effects .meaning { color: #9ece6a; }
+.effects .meaning.unverified { color: #cfa15a; font-style: italic; }
 .effects .dot-calc { color: #e0af68; font-weight: 600; }
 
 .commands { margin-top: 8px; font-size: 12px; }
@@ -436,6 +438,212 @@ section h3 { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 /* nicer focus ring for keyboard users */
 a:focus-visible, input:focus-visible, select:focus-visible,
 summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* units */
+.unit-page { position: relative; }
+.unit-infobox {
+  float: right;
+  width: 230px;
+  margin: 0 0 12px 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 10px;
+}
+.unit-infobox-banner {
+  width: 100%;
+  text-align: center;
+  font-weight: 700;
+  padding: 8px 6px;
+  color: #11131a;
+  background: #9fb0c9; /* Iron default */
+}
+.unit-infobox-banner.rarity-1 { background: #c98a4b; }  /* Bronze */
+.unit-infobox-banner.rarity-2 { background: #b9c2cc; }  /* Silver */
+.unit-infobox-banner.rarity-3 { background: #e0b341; }  /* Gold */
+.unit-infobox-banner.rarity-4 { background: #7fd8e8; }  /* Platinum */
+.unit-infobox-banner.rarity-5 { background: #6f6fa8; color: #fff; } /* Black */
+.unit-infobox-banner.rarity-7 { background: #5aa9e6; }  /* Sapphire */
+.unit-infobox .unit-art-img { width: 100%; border: none; border-radius: 0; margin-top: 8px; }
+.unit-infobox .unit-img--missing { width: 100%; height: 260px; border-radius: 0; margin-top: 8px; }
+/* icon shown in place of splash art (the published site has no art files) */
+.unit-infobox .unit-img--fallback { width: auto; max-width: 106px; margin: 12px auto 4px; display: block; }
+.unit-infobox-meta {
+  display: flex; flex-wrap: wrap; gap: 6px 10px;
+  justify-content: center;
+  color: var(--muted); font-size: 12px;
+  margin-top: 8px;
+}
+.unit-icon-thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--panel2);
+  flex-shrink: 0;
+}
+.unit-img--missing {
+  width: 56px;
+  height: 56px;
+  border-radius: 6px;
+  background: var(--panel2);
+}
+.unit-hero { display: flex; gap: 20px; align-items: flex-start; }
+.unit-hero-art { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.unit-art-img {
+  width: 220px;
+  max-height: 320px;
+  object-fit: contain;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.unit-hero-art .unit-img--missing { width: 220px; height: 260px; border-radius: 8px; }
+.unit-tier-tabs { display: flex; gap: 4px; }
+.unit-tier-tabs button {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.unit-tier-tabs button.active { color: #fff; background: var(--accent); border-color: var(--accent); }
+.unit-stat-table { margin-top: 8px; border: 1px solid var(--line); }
+.unit-stat-table th, .unit-stat-table td { border-right: 1px solid var(--line); }
+.unit-stat-table th:last-child, .unit-stat-table td:last-child { border-right: none; }
+.unit-class-name-cell { text-align: left; white-space: nowrap; vertical-align: top; }
+.unit-token-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.unit-token-stat-table { margin-top: 8px; max-width: 320px; border: 1px solid var(--line); }
+.skill-text { white-space: pre-line; color: var(--text); font-size: 13px; }
+
+/* skill/ability/class-attribute tables */
+.unit-detail-table { margin-top: 8px; border: 1px solid var(--line); }
+.unit-detail-table th, .unit-detail-table td {
+  border-right: 1px solid var(--line);
+  vertical-align: top;
+}
+.unit-detail-table th:last-child, .unit-detail-table td:last-child { border-right: none; }
+.unit-detail-table .effects { margin: 0; }
+
+/* substituted skill-text placeholder (derived value, token in tooltip) */
+.ph-sub {
+  color: #e0af68;
+  font-weight: 600;
+  border-bottom: 1px dotted #e0af68;
+  cursor: help;
+}
+
+/* influence-row toggle (raw config rows folded away by default) */
+.inf-toggle { margin-top: 6px; }
+.inf-toggle > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+}
+.inf-toggle > summary:hover { color: var(--accent); }
+
+/* skill-stage badges: how a later stage is reached (swap vs charge step) */
+.via-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: #2e3a4a;
+  color: #8fc7ff;
+  border: 1px solid #3d5a7a;
+  white-space: nowrap;
+}
+.via-badge--charge { background: #3a3350; color: #d6bcff; border-color: #5a4a72; }
+
+/* collapsed run of intermediate charge steps */
+.stage-gap-row td { text-align: center; }
+.stage-gap-btn {
+  background: none;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 4px 14px;
+  cursor: pointer;
+  font-size: 12px;
+  width: 100%;
+}
+.stage-gap-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* admin influence-audit page */
+.admin-list { display: flex; flex-direction: column; gap: 6px; }
+.admin-entry {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.admin-entry summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.admin-id { font-size: 14px; font-weight: 700; min-width: 34px; }
+.admin-count { color: var(--muted); font-size: 12px; min-width: 52px; }
+.admin-label { color: #9ece6a; }
+.admin-status {
+  font-size: 10px;
+  text-transform: uppercase;
+  border-radius: 3px;
+  padding: 0 6px;
+  font-weight: 700;
+}
+.admin-status--unlabeled { background: #4a3535; color: #e0a0a0; }
+.admin-status--unverified { background: #4a4235; color: #e0c78a; }
+.admin-status--verified { background: #2e4235; color: #9ece6a; }
+.admin-note { margin: 6px 0 0; }
+.admin-sig {
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: var(--panel2);
+  border-radius: 6px;
+}
+.admin-examples { list-style: none; padding-left: 12px; margin: 4px 0 0; font-size: 12px; }
+.admin-examples li { padding: 1px 0; }
+.admin-has-note { font-size: 12px; }
+.admin-note-input {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  margin-top: 8px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 6px 8px;
+  font: 12px/1.4 inherit;
+  resize: vertical;
+}
+.admin-dl-btn {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  padding: 7px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.admin-dl-btn:hover { border-color: var(--accent); }
 
 /* ===================== responsive (tablet) ===================== */
 @media (max-width: 768px) {

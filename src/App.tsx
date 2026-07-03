@@ -8,6 +8,8 @@ export default function App() {
         <nav>
           <NavLink to="/stages">Stages</NavLink>
           <NavLink to="/enemies">Enemies</NavLink>
+          <NavLink to="/units">Units</NavLink>
+          <NavLink to="/admin">Admin</NavLink>
         </nav>
         <span className="note">
           unverified attributes are shown raw, not explained

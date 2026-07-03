@@ -17,12 +17,30 @@ export interface Effect {
 // SpEff id (string) -> its influence rows.
 export type SpecialtyConfig = Record<string, Effect[]>;
 
-// missile splash / slow / deflect (only present when noteworthy).
+// decoded on-hit status from the missile Property field.
+export interface MissileOnHit {
+  kind: string;        // DOT / スタック式DOT / 攻撃遅延 / ステータス低下
+  duration_f?: number;
+  interval_f?: number;
+  pct_hp?: number;     // percent of MAX HP per tick
+  flat?: number;       // fixed damage per tick
+  uses_atk?: boolean;
+  attack_interval_f?: number;              // 攻撃遅延: raw frame count (unverified semantics)
+  stat_down?: { atk?: number; def?: number; mr?: number }; // ステータス低下: raw % (TO vs BY unverified)
+  priority?: number;                       // 上書き優先度
+  expire_duration_only?: boolean;          // 効果時間のみで消滅
+  relief?: boolean;                        // 症状緩和
+  effect_name?: string;                    // 演出 (visual)
+  other?: Record<string, string>;          // unrecognized Property keys, verbatim
+}
+
+// missile splash / slow / deflect / on-hit status (only present when noteworthy).
 export interface Missile {
   speed?: number;
   splash?: number | null;
   slow?: [number, number] | null;
   deflectable?: boolean | null;
+  on_hit?: MissileOnHit | null;
 }
 
 // per-spawn EntryCommand scripts.
@@ -177,3 +195,217 @@ export type RaceLabels = Record<string, { name?: string; en?: string }>;
 
 // global enemy id -> quest ids it appears in.
 export type EnemyStages = Record<string, number[]>;
+
+// ---- units (playable cards) ----------------------------------------------
+export type UnitImageKind = "art" | "icon" | "sprite";
+// Raw influence row (SkillInfluenceConfig / AbilityConfig). Meanings are NOT
+// yet resolved (no label table ported for these ids) -- ids/params shown raw.
+// Extra key=value data from the row's ExtendProperty column (e.g. a buff's
+// duration/percent/stack-cap that doesn't fit the fixed Param1-4 slots).
+export type InfluenceExtend = Record<string, string | number>;
+
+export interface SkillInfluence {
+  influence_type?: number;
+  target?: string | number;
+  mul?: number;
+  mul2?: number;
+  mul3?: number;
+  // this row's cap at max skill level, from _HoldRatioUpperLimit
+  // (e.g. mul3=450 base, cap=500 -> "5x at max level", user-confirmed).
+  mul3_cap?: number;
+  // computed hint, NOT a confirmed field: the skill's own Power/PowerMax,
+  // shown only on rows whose own mul3 is unset (see aigis.unit._skill_influences).
+  power_mul3?: number;
+  power_mul3_max?: number;
+  // influence types 173/177 ("Scaling Attack"/"Scaling no. Targets",
+  // user-confirmed formula) decoded: per_tick amount every interval_frames
+  // (@60fps), capped at `cap`, direction +1 increasing / -1 decreasing.
+  tick_scale?: {
+    per_tick?: number; interval_frames?: number; per_sec?: number;
+    cap?: number; direction?: number;
+  };
+  // influence type 21 "Missile": `add` is a Missile.atb id, resolved into
+  // its splash/slow/deflect/on-hit facts the same way enemy missiles are.
+  missile?: Missile;
+  add?: number;
+  collision?: number;
+  collision_state?: number;
+  change_function?: number;
+  expression?: string;
+  expression_human?: string;
+  // this row's own gating condition (many SkillTypes are shared templates,
+  // e.g. by a card's own AW2A/AW2B paths -- NOT filtered/evaluated, every
+  // row is kept and shown with its raw condition so nothing is hidden).
+  activate_if?: string;
+  activate_if_human?: string;
+  extend?: InfluenceExtend;
+}
+
+export interface AbilityInfluence {
+  influence_type?: number;
+  invoke?: string | number;
+  target?: string | number;
+  params?: number[];
+  command?: string;
+  command_human?: string;
+  activate_command?: string;
+  activate_command_human?: string;
+  extend?: InfluenceExtend;
+}
+
+export interface SkillStage {
+  id: number;
+  name?: string;
+  type?: number;
+  text?: string;
+  power?: number;
+  power_max?: number;
+  duration?: number;
+  duration_max?: number;
+  cooldown?: number;
+  level_max?: number;
+  influences?: SkillInfluence[];
+  // from influence type 122 "Add ability config" rows -- the skill also
+  // grants these (different id space, kept separate from `influences`).
+  linked_ability_influences?: AbilityInfluence[];
+  // set on every stage AFTER the first: how this stage was reached --
+  // "swap" (influence type 49, permanent replacement after use) or
+  // "charge" (influence type 267, charges into a stronger tier, which
+  // typically swaps back via its own type-49 row).
+  via?: "swap" | "charge";
+}
+
+// stages[0] is the skill itself; further stages are what it SWAPS TO after
+// use (influence type 49 "Skill swap" chain), e.g. Double Shot -> Triple Shot.
+export interface UnitSkill {
+  id: number;
+  name?: string;
+  stages: SkillStage[];
+}
+
+export interface UnitAbility {
+  id: number;
+  name?: string;
+  type?: number;
+  text?: string;
+  power?: number;
+  config_id?: number | null;
+  influences?: AbilityInfluence[];
+}
+
+export interface UnitToken {
+  unit: number;
+  unit_name?: string | null;
+  cost?: number;
+  count?: number;
+  deploy_max?: number;
+  recast?: number;
+  stats?: UnitClassStat[];
+}
+
+export interface UnitClassStat {
+  level: number;
+  hp: number;
+  atk: number;
+  def: number;
+}
+
+export interface UnitClass {
+  class_id: number;
+  cc: number; // 0 base, 1 CC, 2 AW, 3/4 2nd-AW A/B
+  name?: string;
+  description?: string;
+  ranged: boolean;
+  range?: number | null;
+  block?: number | null;
+  max_target?: number;
+  attack_attribute?: string | number;
+  cost_max?: number;
+  cost_min?: number;
+  max_level?: number;
+  missile_id?: number | null;
+  class_ability_id?: number | null;
+  class_ability_influences?: AbilityInfluence[];
+  // base card MR + this tier's own "MR mod" class-ability bonus (NOT constant
+  // across tiers -- see aigis.unit._mr_bonus).
+  magic_resistance?: number;
+  attack_wait?: number | null;
+  // engine frames @60fps (Attack.aod length + attack_wait + 2); null if the
+  // PlayerDot archive/animation couldn't be resolved.
+  attack_interval?: number | null;
+  stats: UnitClassStat[];
+  tokens: UnitToken[];
+  materials: string[];
+}
+
+export interface UnitSpecial {
+  type?: number;
+  value?: number;
+  params?: number[];
+  command?: string | null;
+}
+
+// full unit (per-unit file).
+export interface Unit {
+  id: number;
+  name?: string | null;
+  rarity: string;
+  rarity_id: number;
+  gender?: string | number;
+  magic_resistance?: number;
+  sell_price?: number;
+  trade_point?: number;
+  build_exp?: number;
+  race?: string | null;
+  race_id?: number | null;
+  big_race?: string | null;
+  big_race_id?: number | null;
+  identity_tags?: string[];
+  faction?: string | null;
+  genus?: string | null;
+  affection_bonuses?: string[];
+  classes: UnitClass[];
+  skills: {
+    base?: UnitSkill | null;
+    class_evolved?: UnitSkill | null;
+    awakened?: UnitSkill | null;
+  };
+  abilities: {
+    default?: UnitAbility | null;
+    awakened?: UnitAbility | null;
+    awaken_ability_level?: number | null;
+  };
+  specials?: UnitSpecial[];
+  dot_id: number;
+}
+
+// influence_type id -> label (skill/ability namespaces are separate).
+export interface UnitInfluenceLabel {
+  name: string;
+  verified?: boolean;
+  note?: string;
+  // user-confirmed: no known player-facing effect (internal mechanism, or
+  // no observed effect) -- hide the row from the UI by default.
+  hidden?: boolean;
+}
+export interface UnitInfluenceLabels {
+  skill: Record<string, UnitInfluenceLabel>;
+  ability: Record<string, UnitInfluenceLabel>;
+}
+
+// slim units-list index entry.
+export interface UnitIndexEntry {
+  id: number;
+  name?: string | null;
+  rarity: string;
+  rarity_id: number;
+  gender?: string | number;
+  race?: string | null;
+  class?: string | null;
+  ranged?: boolean | null;
+  cost_min?: number | null;
+  hp?: number | null;
+  atk?: number | null;
+  def?: number | null;
+  dot_id: number;
+}

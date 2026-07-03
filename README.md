@@ -1,23 +1,34 @@
-# Aigis Web (enemy & stage viewer)
+# Aigis Web (stage / enemy / unit viewer)
 
-A simple React (Vite) frontend that reads locally-exported game data and sprite
-icons. It links **stages → their enemies** and **enemies → the stages they
-appear in**. Unverified attributes (effect influence ids) are shown raw, never
-invented.
+A React (Vite) frontend that reads locally-exported game data. It links
+**stages → their enemies**, **enemies → the stages they appear in**, and shows
+every playable **unit** (stats, skills, abilities, tokens). Unverified
+attributes (effect influence ids) are shown raw, never invented.
 
 ## Data
 
 All data lives under `public/`:
 
 - `public/data/enemies.json` — every global enemy
-- `public/data/stages.json` — missions with their enemies + modifiers
-- `public/sprites/<patternId>.png` — Stand-pose enemy icons
+- `public/data/stages_index.json` — slim stage list; `public/data/stage/<quest_id>.json` — one full stage, loaded on demand
+- `public/data/units.json` — slim unit list; `public/data/unit/<id>.json` — one full unit, loaded on demand
+- `public/data/influence_labels.json` / `unit_influence_labels.json` — hand-verified influence label tables
+- `public/data/race_labels.json`, `specialty_config.json`, `enemy_stages.json`
+- `public/data/influence_audit.json` — the `/admin` page's worklist (every
+  influence id in use, label status, param signatures, example carriers);
+  built by `python export_influence_audit.py`
+- `public/unit-icon/<id>[_awN].png` — unit face icons (published, ~108 MB)
+- `public/sprites/<patternId>.png` — Stand-pose enemy icons (gitignored)
+- `../unit_images/` — unit splash art + battle sprites, **local only** (several
+  GB, never built/published; served in dev by the `/unit-img` middleware in
+  `vite.config.js`; the published unit page falls back to the icon)
 
-Regenerate it from the game data (requires `../list.har` and the Python tools):
+Regenerate from the game data (uses `../Data/root.pkl`, falls back to `../list.har`):
 
 ```sh
 cd ../python
 python export_site.py --out ../web/public
+python export_units.py --out ../web/public
 ```
 
 ## Run
