@@ -13,6 +13,8 @@ import type {
   UnitIndexEntry,
   UnitImageKind,
   UnitInfluenceLabels,
+  Localisation,
+  PrinceTitle,
 } from "./types";
 
 const cache: Record<string, unknown> = {};
@@ -146,6 +148,26 @@ export function useUnitDetail(id: number) {
     return () => { alive = false; };
   }, [id]);
   return state;
+}
+
+// JP -> EN class/race maps.
+export function useLocalisation(): Localisation | null {
+  const [loc, set] = useState<Localisation | null>(null);
+  useEffect(() => {
+    loadJSON<Localisation>("localisation")
+      .then(set)
+      .catch(() => set({ classes: {}, races: {}, tags: {}, skills: {}, abilities: {} }));
+  }, []);
+  return loc;
+}
+
+// the Prince title group (empty until the export has produced it).
+export function usePrinceTitles(): PrinceTitle[] | null {
+  const [titles, set] = useState<PrinceTitle[] | null>(null);
+  useEffect(() => {
+    loadJSON<PrinceTitle[]>("prince_titles").then(set).catch(() => set([]));
+  }, []);
+  return titles;
 }
 
 export function spriteUrl(patternId: number): string {

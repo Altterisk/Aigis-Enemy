@@ -142,6 +142,11 @@ function StatRow({
             splash {d.missile.splash}
           </div>
         )}
+        {d.missile?.penetrate && (
+          <div className="muted small" title="travelling projectile that hits every enemy it passes through">
+            penetrates all in path{d.missile.width ? ` (width ${d.missile.width})` : ""}
+          </div>
+        )}
         {d.missile?.slow && (
           <div className="muted small" title="slows hit units">
             slow {d.missile.slow[0]}% / {d.missile.slow[1]}f

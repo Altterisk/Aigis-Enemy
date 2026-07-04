@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { spriteUrl, unitImageUrl, DMG_COLORS, useInfluenceLabels } from "./data";
-import type { Effect, DamageType, UnitImageKind, MissileOnHit } from "./types";
+import type { Effect, DamageType, UnitImageKind, Missile, MissileOnHit } from "./types";
 
 // Humanize a missile's on-hit status effect (decoded from the Property field).
 // Shared by enemy (StageDetail) and unit skill (UnitDetail) missile displays.
@@ -14,12 +14,17 @@ export function missileOnHitText(h?: MissileOnHit | null): string {
     "ステータス低下": "stat down",
   };
   const label = KIND[h.kind] || h.kind;
-  // damage description (percent of max HP, and/or fixed), with the per-second rate.
+  // damage description with the per-second rate. The percent's BASE depends
+  // on 攻撃力を使う (uses_atk): set -> % of the attacker's own ATK per tick
+  // (the normal unit-skill poison, user-confirmed on Roselne #2621);
+  // unset -> % of the target's max HP (the rarer enemy style, e.g. Acid
+  // Slime missile 753).
   const parts: string[] = [];
   const iv = h.interval_f || 0;
   if (h.pct_hp) {
+    const base = h.uses_atk ? "of ATK" : "of max HP";
     const perSec = iv ? ` (${Math.round((h.pct_hp * 60) / iv)}%/sec)` : "";
-    parts.push(`${h.pct_hp}% max HP/tick${perSec}`);
+    parts.push(`${h.pct_hp}% ${base}/tick${perSec}`);
   }
   if (h.flat) {
     const perSec = iv ? ` (${Math.round((h.flat * 60) / iv)}/sec)` : "";
@@ -43,6 +48,30 @@ export function missileOnHitText(h?: MissileOnHit | null): string {
   if (h.other) extra.push(...Object.entries(h.other).map(([k, v]) => `${k}=${v}`));
   const tail = extra.length ? ` [${extra.join(", ")}]` : "";
   return `on hit: ${label}${dmg}${dur}${tail}`;
+}
+
+// All of a missile's noteworthy facts on one line (shared by unit skill rows
+// and enemy displays).
+export function missileText(m: Missile): string {
+  const parts: string[] = [];
+  if (m.splash) parts.push(`splash ${m.splash}`);
+  if (m.penetrate) {
+    // travelling projectile that hits every enemy it passes through; the AoE
+    // is the projectile's own collision size in pixels (these missiles have
+    // no DamageArea), user-confirmed.
+    parts.push(`penetrates all in path${m.width ? ` (width ${m.width}px)` : ""}`);
+  }
+  if (m.slow) parts.push(`slow ${m.slow[0]}%/${m.slow[1]}f`);
+  if (m.deflectable) parts.push("deflectable");
+  if (m.heal) parts.push("heal");
+  if (m.blast_residue) {
+    // the blast area lingers as a DAMAGE FIELD re-hitting on an interval
+    // (area = the splash radius above), user-confirmed on missile 1498.
+    const [t, iv] = m.blast_residue;
+    parts.push(`creates a damage field for ${(t / 60).toFixed(1)}s (ticks every ${iv}f)`);
+  }
+  if (m.on_hit) parts.push(missileOnHitText(m.on_hit));
+  return parts.join(", ");
 }
 
 // Unit image (art/icon/sprite; icons are published, art/sprite dev-only).

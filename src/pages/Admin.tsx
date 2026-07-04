@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 // The influence-audit worklist (data/influence_audit.json, built by
@@ -23,8 +23,11 @@ interface AuditSignature {
   examples: AuditExample[];
 }
 interface AuditLabel {
-  name?: string;
+  name?: string | null;
   verified?: boolean;
+  // user-marked (test unit / synthesis fodder / NPC-only / token-only /
+  // no data): deliberately not labeled.
+  marker?: boolean;
   note?: string;
   hidden?: boolean;
 }
@@ -49,9 +52,10 @@ const SIG_HELP: Record<Namespace, string> = {
   term: "signature keys = which of Data_Param1..4 are set; values are the params array",
 };
 
-type Status = "unlabeled" | "unverified" | "verified";
+type Status = "unlabeled" | "marked" | "unverified" | "verified";
 function statusOf(e: AuditEntry): Status {
-  if (!e.label) return "unlabeled";
+  if (e.label?.marker) return "marked";
+  if (!e.label || !e.label.name) return "unlabeled";
   return e.label.verified ? "verified" : "unverified";
 }
 
@@ -95,12 +99,7 @@ function EntryRow({
         </span>
       </summary>
       {entry.label?.note && <p className="muted small admin-note">{entry.label.note}</p>}
-      <textarea
-        className="admin-note-input"
-        placeholder="your test notes for this id… (saved in this browser as you type)"
-        value={note}
-        onChange={(e) => onNote(e.target.value)}
-      />
+      <NoteInput note={note} onNote={onNote} />
       {entry.signatures.map((s) => (
         <div className="admin-sig" key={s.sig}>
           <div>
@@ -119,6 +118,55 @@ function EntryRow({
         </div>
       ))}
     </details>
+  );
+}
+
+// keeps the textarea locally responsive and only pushes the value up to the
+// (localStorage-persisting, whole-list-rerendering) parent state after a
+// pause in typing, since committing on every keystroke was what made typing
+// laggy once the list has thousands of rows.
+const NOTE_DEBOUNCE_MS = 400;
+function NoteInput({ note, onNote }: { note: string; onNote: (text: string) => void }) {
+  const [text, setText] = useState(note);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // tracks the last value *we* committed, so the prop-sync effect below can
+  // tell "parent echoed our own commit back" (ignore, keep typing) apart from
+  // "note changed for some other reason" (e.g. switched rows) — otherwise a
+  // slow round-trip after the debounce fires can clobber keystrokes typed
+  // in the meantime.
+  const lastSent = useRef(note);
+
+  useEffect(() => {
+    if (note !== lastSent.current) {
+      setText(note);
+      lastSent.current = note;
+    }
+  }, [note]);
+
+  const commit = (value: string) => {
+    lastSent.current = value;
+    onNote(value);
+  };
+
+  const handleChange = (value: string) => {
+    setText(value);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => commit(value), NOTE_DEBOUNCE_MS);
+  };
+
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  return (
+    <textarea
+      className="admin-note-input"
+      placeholder="your test notes for this id… (saved in this browser as you type)"
+      value={text}
+      onChange={(e) => handleChange(e.target.value)}
+      onBlur={() => {
+        clearTimeout(timer.current);
+        if (text !== lastSent.current) commit(text);
+      }}
+    />
   );
 }
 
@@ -193,7 +241,7 @@ export default function Admin() {
   }
   if (!audit) return <p className="loading">Loading audit…</p>;
 
-  const counts = { all: 0, unlabeled: 0, unverified: 0, verified: 0 };
+  const counts = { all: 0, unlabeled: 0, marked: 0, unverified: 0, verified: 0 };
   for (const e of Object.values(audit.namespaces?.[ns] || {})) {
     counts.all++;
     counts[statusOf(e)]++;
@@ -216,6 +264,7 @@ export default function Admin() {
         <select value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
           <option value="all">all ({counts.all})</option>
           <option value="unlabeled">unlabeled ({counts.unlabeled})</option>
+          <option value="marked">marked ({counts.marked})</option>
           <option value="unverified">labeled, unverified ({counts.unverified})</option>
           <option value="verified">verified ({counts.verified})</option>
         </select>

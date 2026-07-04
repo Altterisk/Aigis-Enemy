@@ -40,6 +40,12 @@ export interface Missile {
   splash?: number | null;
   slow?: [number, number] | null;
   deflectable?: boolean | null;
+  // PenetrateType != 0: travelling projectile that hits every enemy it
+  // passes through (user-confirmed); width = ColDiameter collision width.
+  penetrate?: number | null;
+  width?: number | null;
+  heal?: boolean | null;
+  blast_residue?: [number, number] | null; // lingering blast [time, interval] frames (raw)
   on_hit?: MissileOnHit | null;
 }
 
@@ -193,6 +199,25 @@ export interface InfluenceLabels {
 // race id -> { name (JP), en (clean English) }.
 export type RaceLabels = Record<string, { name?: string; en?: string }>;
 
+// JP -> EN maps (data/localisation.json, from the txt lists + the
+// fandom-wiki crawl; regenerated reuse lists live in
+// Data/localisation/generated/).
+export interface Localisation {
+  classes: Record<string, string>;
+  races: Record<string, string>;
+  tags: Record<string, string>;      // identity + genus
+  skills: Record<string, string>;
+  abilities: Record<string, string>;
+}
+
+// one Prince title card (data/prince_titles.json).
+export interface PrinceTitle {
+  id: number;
+  name: string;
+  name_en?: string | null;
+  level?: number; // repeated identical titles = successive upgrade levels
+}
+
 // global enemy id -> quest ids it appears in.
 export type EnemyStages = Record<string, number[]>;
 
@@ -213,10 +238,12 @@ export interface SkillInfluence {
   // this row's cap at max skill level, from _HoldRatioUpperLimit
   // (e.g. mul3=450 base, cap=500 -> "5x at max level", user-confirmed).
   mul3_cap?: number;
-  // computed hint, NOT a confirmed field: the skill's own Power/PowerMax,
-  // shown only on rows whose own mul3 is unset (see aigis.unit._skill_influences).
-  power_mul3?: number;
-  power_mul3_max?: number;
+  // mul3/mul3_cap were filled from the skill's Power/PowerMax (the row's own
+  // mul3 was unset -- Power integrated at export, see aigis.unit).
+  power_filled?: boolean;
+  // the exact skill-text placeholder token this row fills, from the row's
+  // Tag0/TagDiff ExtendProperty (e.g. "[ATK]" or "<DEF>").
+  tag?: string;
   // influence types 173/177 ("Scaling Attack"/"Scaling no. Targets",
   // user-confirmed formula) decoded: per_tick amount every interval_frames
   // (@60fps), capped at `cap`, direction +1 increasing / -1 decreasing.
@@ -246,6 +273,9 @@ export interface AbilityInfluence {
   invoke?: string | number;
   target?: string | number;
   params?: number[];
+  // Missile.atb ids referenced by extend keys (ミサイルID / ミサイルID1/2 /
+  // counter missile), resolved like skill influence 21: id -> facts.
+  missiles?: Record<string, Missile>;
   command?: string;
   command_human?: string;
   activate_command?: string;
@@ -256,6 +286,11 @@ export interface AbilityInfluence {
 export interface SkillStage {
   id: number;
   name?: string;
+  name_en?: string;
+  // target skill ids of this stage's own swap/charge row -- recorded even
+  // when the target is NOT inlined (e.g. an AW skill swapping back to the
+  // base skill, or the cycle at the end of a charge chain).
+  swaps_to?: number[];
   type?: number;
   text?: string;
   power?: number;
@@ -280,12 +315,20 @@ export interface SkillStage {
 export interface UnitSkill {
   id: number;
   name?: string;
+  name_en?: string;
   stages: SkillStage[];
+}
+
+export interface UnitSkills {
+  base?: UnitSkill | null;
+  class_evolved?: UnitSkill | null;
+  awakened?: UnitSkill | null;
 }
 
 export interface UnitAbility {
   id: number;
   name?: string;
+  name_en?: string;
   type?: number;
   text?: string;
   power?: number;
@@ -301,6 +344,9 @@ export interface UnitToken {
   deploy_max?: number;
   recast?: number;
   stats?: UnitClassStat[];
+  // combat tokens can have their own skill + abilities (mini unit record)
+  skills?: UnitSkills;
+  abilities?: { default?: UnitAbility | null; awakened?: UnitAbility | null };
 }
 
 export interface UnitClassStat {
@@ -349,6 +395,11 @@ export interface UnitSpecial {
 export interface Unit {
   id: number;
   name?: string | null;
+  name_en?: string | null;      // wiki short name (page title)
+  name_full_en?: string | null; // full in-game title, EN
+  npc?: boolean;        // NPC / test / fodder card (not a real playable unit)
+  prince?: boolean;     // member of the Prince title group
+  art_tiers?: number[]; // which awakening art tiers have a local art file
   rarity: string;
   rarity_id: number;
   gender?: string | number;
@@ -381,8 +432,14 @@ export interface Unit {
 
 // influence_type id -> label (skill/ability namespaces are separate).
 export interface UnitInfluenceLabel {
-  name: string;
+  name?: string | null;
   verified?: boolean;
+  // user-marked (test unit / synthesis fodder / NPC-only / token-only /
+  // no data): deliberately not labeled, note carries the user's mark text.
+  marker?: boolean;
+  // value template derived from the user's notes ({pN} = ParamN, filled by
+  // fillLabel): "+{p1}%" = increase by, "→ {p1}%" = set/raise/reduce TO.
+  tpl?: string;
   note?: string;
   // user-confirmed: no known player-facing effect (internal mechanism, or
   // no observed effect) -- hide the row from the UI by default.
@@ -397,6 +454,12 @@ export interface UnitInfluenceLabels {
 export interface UnitIndexEntry {
   id: number;
   name?: string | null;
+  name_en?: string | null;
+  classes?: string[];   // every class-tier JP name (for class filtering)
+  tags?: string[];      // identity + genus + faction (for tag filtering)
+  npc?: boolean;
+  prince?: boolean;
+  art_tiers?: number[];
   rarity: string;
   rarity_id: number;
   gender?: string | number;
@@ -408,4 +471,8 @@ export interface UnitIndexEntry {
   atk?: number | null;
   def?: number | null;
   dot_id: number;
+  // distinct skill / ability influence-type ids the unit carries anywhere
+  // (skill stages, linked/default/awakened abilities, class attributes).
+  s_inf?: number[];
+  a_inf?: number[];
 }
