@@ -729,6 +729,11 @@ function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, 
                       {" "}· range {range188}
                     </span>
                   )}
+                  {cl.missile && (
+                    <div className="muted small" title="the class's own missile">
+                      {missileText(cl.missile)}
+                    </div>
+                  )}
                 </td>
                 <td className="num">{cl.max_target ?? "-"}</td>
                 <td>{cl.attack_attribute ?? "-"}</td>
@@ -964,24 +969,56 @@ export default function UnitDetail() {
                 <span>cost {t.cost}</span>
                 <span>count {t.count}</span>
                 <span>max deployed {t.deploy_max}</span>
+                {t.total_max != null && <span>total max {t.total_max}</span>}
                 <span>recast {t.recast}</span>
               </div>
               {t.stats && t.stats.length > 0 && (
                 <table className="grid unit-token-stat-table">
                   <thead>
-                    <tr><th>Lv</th><th>HP</th><th>ATK</th><th>DEF</th></tr>
+                    <tr>
+                      <th>Lv</th><th>HP</th><th>ATK</th><th>DEF</th><th>MR</th>
+                      <th>Range/Block</th><th>Targets</th><th>Atk attr</th>
+                    </tr>
                   </thead>
                   <tbody>
-                    {t.stats.map((s) => (
+                    {t.stats.map((s, si) => (
                       <tr key={s.level}>
                         <td>{s.level}</td>
                         <td className="num">{s.hp.toLocaleString()}</td>
                         <td className="num">{s.atk.toLocaleString()}</td>
                         <td className="num">{s.def.toLocaleString()}</td>
+                        {si === 0 && (
+                          <>
+                            <td className="num" rowSpan={t.stats!.length}>{t.magic_resistance ?? 0}</td>
+                            <td rowSpan={t.stats!.length}>
+                              {t.ranged
+                                ? t.range ?? "?"
+                                : `${t.range ?? "melee"} (block ${t.block ?? "-"})`}
+                            </td>
+                            <td className="num" rowSpan={t.stats!.length}>{t.max_target ?? "-"}</td>
+                            <td rowSpan={t.stats!.length}>{t.attack_attribute ?? "-"}</td>
+                          </>
+                        )}
                       </tr>
                     ))}
                   </tbody>
                 </table>
+              )}
+              {t.missile && (
+                <div className="muted small">missile: {missileText(t.missile)}</div>
+              )}
+              {t.description && <div className="skill-text">{t.description}</div>}
+              {t.class_ability_influences && t.class_ability_influences.length > 0 && (
+                <InfluenceToggle count={t.class_ability_influences.length}>
+                  <ul className="effects">
+                    {t.class_ability_influences.map((inf, j) => (
+                      <AbilityInfluenceRow
+                        inf={inf} i={j} key={j}
+                        label={inf.influence_type != null ? abilityLabels[String(inf.influence_type)] : undefined}
+                      />
+                    ))}
+                  </ul>
+                </InfluenceToggle>
               )}
               {t.skills?.base && (
                 <SkillBlock label="Token skill" skill={t.skills.base}

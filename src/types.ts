@@ -343,7 +343,19 @@ export interface UnitToken {
   cost?: number;
   count?: number;
   deploy_max?: number;
+  total_max?: number;   // max deployed across ALL the owner's token types
   recast?: number;
+  ranged?: boolean;
+  range?: number | null;
+  block?: number | null;
+  max_target?: number | null;
+  attack_attribute?: string | number;
+  magic_resistance?: number | null;
+  missile?: Missile | null;
+  description?: string | null;
+  // real token effects usually live here (the token class's ClassAbility1:
+  // conqueror buffs, placed-on-ally flag 301, transforms...).
+  class_ability_influences?: AbilityInfluence[];
   stats?: UnitClassStat[];
   // combat tokens can have their own skill + abilities (mini unit record)
   skills?: UnitSkills;
@@ -371,6 +383,8 @@ export interface UnitClass {
   cost_min?: number;
   max_level?: number;
   missile_id?: number | null;
+  // the class's own missile facts (Mage AoE splash etc.)
+  missile?: Missile | null;
   class_ability_id?: number | null;
   class_ability_influences?: AbilityInfluence[];
   // base card MR + this tier's own "MR mod" class-ability bonus (NOT constant
@@ -431,20 +445,26 @@ export interface Unit {
   dot_id: number;
 }
 
-// JP term -> units whose skill/ability conditions mention it.
-export type TagMentions = Record<
-  string,
-  { unit: number; name?: string | null; slot: string; kind: string }[]
->;
+// JP term -> units whose skill/ability conditions mention it, split by
+// whether the mention is an ally condition ("unit") or inside an IsEnemy*
+// predicate ("enemy" -- same word, enemy race/element namespace).
+export interface TagMention {
+  unit: number;
+  name?: string | null;
+  slot: string;
+  kind: string;
+}
+export type TagMentions = Record<string, { unit?: TagMention[]; enemy?: TagMention[] }>;
 
 // one row of data/buff_index.json (units' valued influence rows, for /buffs).
 export interface BuffRow {
   u: number;            // unit id
   n?: string | null;    // unit name
+  stat: "HP" | "ATK" | "DEF" | "MR";
   ns: "skill" | "ability";
   t: number;            // influence type id
-  v: number;            // value (skill mul3 / ability param 1)
-  s: string;            // slot description
+  v: number;            // value (skill mul3 / ability param, raw)
+  s: string;            // slot → target description
 }
 
 // influence_type id -> label (skill/ability namespaces are separate).

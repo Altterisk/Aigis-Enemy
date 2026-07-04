@@ -223,22 +223,29 @@ export default function UnitList() {
         </div>
       )}
 
-      {tagFilter && mentions && (mentions[tagFilter] || []).length > 0 && (
-        <details className="tag-mentions">
-          <summary>
-            {(mentions[tagFilter] || []).length} skills / abilities mention{" "}
-            {loc?.tags[tagFilter] || loc?.races[tagFilter] || tagFilter} in their conditions
-          </summary>
-          <ul className="admin-examples">
-            {(mentions[tagFilter] || []).map((m, i) => (
-              <li key={i}>
-                <Link to={`/units/${m.unit}`}>#{m.unit} {m.name}</Link>
-                <span className="muted"> — {m.slot} ({m.kind})</span>
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
+      {tagFilter && mentions && (["unit", "enemy"] as const).map((bucket) => {
+        const list = mentions[tagFilter]?.[bucket] || [];
+        if (list.length === 0) return null;
+        const tagEn = loc?.tags[tagFilter] || loc?.races[tagFilter] || tagFilter;
+        return (
+          <details className="tag-mentions" key={bucket}>
+            <summary>
+              {list.length} skills / abilities{" "}
+              {bucket === "unit"
+                ? `condition on ally/unit tag ${tagEn}`
+                : `target ENEMIES tagged ${tagEn} (enemy race/element namespace)`}
+            </summary>
+            <ul className="admin-examples">
+              {list.map((m, i) => (
+                <li key={i}>
+                  <Link to={`/units/${m.unit}`}>#{m.unit} {m.name}</Link>
+                  <span className="muted"> — {m.slot} ({m.kind})</span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        );
+      })}
 
       <Pager page={page} pages={pages} setPage={setPage} />
 
