@@ -19,6 +19,8 @@ import type {
 
 const cache: Record<string, unknown> = {};
 
+export { loadJSON as loadJSONFile };
+
 async function loadJSON<T>(name: string): Promise<T> {
   if (cache[name]) return cache[name] as T;
   const url = `${import.meta.env.BASE_URL}data/${name}.json`;

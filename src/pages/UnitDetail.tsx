@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useUnitDetail, useUnitInfluenceLabels, useLocalisation, usePrinceTitles } from "../data";
-import { UnitImage, missileText, fillLabel } from "../components";
+import { UnitImage, missileText, fillLabel, HumanText } from "../components";
 import type {
   Unit,
   UnitClass,
@@ -179,11 +179,27 @@ function ExtendProps({ extend }: { extend?: InfluenceExtend }) {
 // 21 missile (resolved into `missile`), 173/177 tick-scale direction.
 const SKILL_ADD_REF = new Set([21, 49, 121, 122, 173, 177]);
 
-function skillRowValue(inf: SkillInfluence): string | null {
+const fmtX = (v: number) => `x${(v / 100).toFixed(2).replace(/\.?0+$/, "")}`;
+
+function skillRowValue(inf: SkillInfluence, label?: UnitInfluenceLabel): string | null {
+  // per-type template ({mul3}/{add} raw, {x} = mul3/100): flat-valued types
+  // like 32 "generates 10 UP" instead of a bogus x0.1. "" = suppress (flags).
+  if (label?.tpl != null) {
+    if (label.tpl === "") return null;
+    return label.tpl
+      .replace(/\{mul3\}/g, String(inf.mul3 ?? "?"))
+      .replace(/\{add\}/g, String(inf.add ?? "?"))
+      .replace(/\{x\}/g, inf.mul3 != null ? fmtX(inf.mul3) : "?");
+  }
+  if (inf.influence_type === 49) {
+    // swap target 0 / absent = LIMITED USE: no skill remains after this one
+    // finishes (user-confirmed). Non-zero targets render via the chain UI.
+    return inf.add ? null : "limited use — no skill after this finishes";
+  }
   if (inf.mul3 != null) {
-    const base = `x${(inf.mul3 / 100).toFixed(2).replace(/\.?0+$/, "")}`;
+    const base = fmtX(inf.mul3);
     const capped = inf.mul3_cap != null && inf.mul3_cap !== inf.mul3
-      ? `${base} → x${(inf.mul3_cap / 100).toFixed(2).replace(/\.?0+$/, "")} at max level`
+      ? `${base} → ${fmtX(inf.mul3_cap)} at max level`
       : base;
     return inf.power_filled ? `${capped} (Power)` : capped;
   }
@@ -210,7 +226,7 @@ function SkillInfluenceRow({
     inf.add != null ? `add ${inf.add}` : null,
   ].filter(Boolean);
   const ts = inf.tick_scale;
-  const value = skillRowValue(inf);
+  const value = skillRowValue(inf, label);
   return (
     <li key={i}>
       <code>{parts.join(" · ")}</code>
@@ -231,12 +247,12 @@ function SkillInfluenceRow({
       <ExtendProps extend={inf.extend} />
       {(inf.expression_human || inf.expression) && (
         <span className="expr" title={inf.expression}>
-          {" "}if {inf.expression_human || inf.expression}
+          {" "}if <HumanText text={inf.expression_human || inf.expression || ""} />
         </span>
       )}
       {(inf.activate_if_human || inf.activate_if) && (
         <span className="expr" title={inf.activate_if}>
-          {" "}(applies when {inf.activate_if_human || inf.activate_if})
+          {" "}(applies when <HumanText text={inf.activate_if_human || inf.activate_if || ""} />)
         </span>
       )}
     </li>
@@ -286,12 +302,12 @@ function AbilityInfluenceRow({
       <ExtendProps extend={inf.extend} />
       {(inf.command_human || inf.command) && (
         <span className="expr" title={inf.command}>
-          {" "}if {inf.command_human || inf.command}
+          {" "}if <HumanText text={inf.command_human || inf.command || ""} />
         </span>
       )}
       {(inf.activate_command_human || inf.activate_command) && (
         <span className="expr" title={inf.activate_command}>
-          {" "}on {inf.activate_command_human || inf.activate_command}
+          {" "}on <HumanText text={inf.activate_command_human || inf.activate_command || ""} />
         </span>
       )}
     </li>
@@ -847,18 +863,24 @@ export default function UnitDetail() {
           </div>
         )}
         <div className="unit-infobox-meta">
-          <span className="meta-chip">{unit.rarity}</span>
-          <span className="meta-chip">{unit.gender}</span>
+          <Link className="meta-chip" to={`/units?tag=${encodeURIComponent(unit.rarity)}`}>{unit.rarity}</Link>
+          {unit.gender && (
+            <Link className="meta-chip" to={`/units?tag=${encodeURIComponent(String(unit.gender))}`}>{unit.gender}</Link>
+          )}
           {unit.faction && (
             <Link className="meta-chip" to={`/units?tag=${encodeURIComponent(unit.faction)}`} title={unit.faction}>
               {loc?.races[unit.faction] || unit.faction}
             </Link>
           )}
           {unit.race && (
-            <span className="meta-chip" title={unit.race}>{loc?.races[unit.race] || unit.race}</span>
+            <Link className="meta-chip" to={`/units?tag=${encodeURIComponent(unit.race)}`} title={unit.race}>
+              {loc?.races[unit.race] || unit.race}
+            </Link>
           )}
           {unit.big_race && (
-            <span className="meta-chip" title={unit.big_race}>{loc?.races[unit.big_race] || unit.big_race}</span>
+            <Link className="meta-chip" to={`/units?tag=${encodeURIComponent(unit.big_race)}`} title={unit.big_race}>
+              {loc?.races[unit.big_race] || unit.big_race}
+            </Link>
           )}
           {(unit.identity_tags || []).map((t) => (
             <Link className="meta-chip" to={`/units?tag=${encodeURIComponent(t)}`} key={t} title={t}>
@@ -934,6 +956,11 @@ export default function UnitDetail() {
               <div className="meta token-head">
                 <UnitImage kind="icon" id={t.unit} className="unit-icon-thumb" alt={String(t.unit)} />
                 <strong>{t.unit_name || `unit ${t.unit}`}</strong>
+                {t.class_name && (
+                  <span className="muted" title={t.class_name}>
+                    {loc?.classes[t.class_name] || t.class_name}
+                  </span>
+                )}
                 <span>cost {t.cost}</span>
                 <span>count {t.count}</span>
                 <span>max deployed {t.deploy_max}</span>

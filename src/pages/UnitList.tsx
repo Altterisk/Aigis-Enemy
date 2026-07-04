@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useUnits, useUnitInfluenceLabels, useLocalisation } from "../data";
+import { useUnits, useUnitInfluenceLabels, useLocalisation, loadJSONFile } from "../data";
 import { UnitImage } from "../components";
-import type { UnitIndexEntry, UnitInfluenceLabel } from "../types";
+import type { UnitIndexEntry, UnitInfluenceLabel, TagMentions } from "../types";
 
 const PAGE = 60;
 
@@ -62,8 +62,18 @@ export default function UnitList() {
   const [ranged, setRanged] = useState("all");
   const [sInf, setSInf] = useState("all");
   const [aInf, setAInf] = useState("all");
+  const [cls, setCls] = useState("all");
+  const [faction, setFaction] = useState("all");
   const [showNpc, setShowNpc] = useState(false);
   const [page, setPage] = useState(0);
+  const [mentions, setMentions] = useState<TagMentions | null>(null);
+
+  // "skills/abilities that mention this tag" list (tag-filtered view only)
+  useEffect(() => {
+    if (tagFilter && !mentions) {
+      loadJSONFile<TagMentions>("tag_mentions").then(setMentions).catch(() => setMentions({}));
+    }
+  }, [tagFilter, mentions]);
 
   const princeCount = useMemo(
     () => (units || []).filter((u) => u.prince && u.id !== 1).length,
@@ -88,6 +98,19 @@ export default function UnitList() {
     return { sInfOpts: [...s].sort(num), aInfOpts: [...a].sort(num) };
   }, [units]);
 
+  // base classes + factions in use (dropdown filters)
+  const { classOpts, factionOpts } = useMemo(() => {
+    const c = new Set<string>();
+    const f = new Set<string>();
+    (units || []).forEach((u) => {
+      if (!u.npc) {
+        if (u.classes?.[0]) c.add(u.classes[0]);
+        if (u.faction) f.add(u.faction);
+      }
+    });
+    return { classOpts: [...c].sort(), factionOpts: [...f].sort() };
+  }, [units]);
+
   const filtered = useMemo(() => {
     if (!units) return [] as UnitIndexEntry[];
     const term = q.trim().toLowerCase();
@@ -101,6 +124,8 @@ export default function UnitList() {
       if (u.prince && u.id !== 1 && !anyExplicit) return false;
       if (classFilter && !(u.classes || []).includes(classFilter)) return false;
       if (tagFilter && !(u.tags || []).includes(tagFilter)) return false;
+      if (cls !== "all" && !(u.classes || []).includes(cls)) return false;
+      if (faction !== "all" && u.faction !== faction) return false;
       if (rarity !== "all" && u.rarity !== rarity) return false;
       if (ranged !== "all" && String(u.ranged) !== ranged) return false;
       if (sInfN != null && !(u.s_inf || []).includes(sInfN)) return false;
@@ -113,7 +138,7 @@ export default function UnitList() {
       }
       return true;
     });
-  }, [units, q, rarity, ranged, sInf, aInf, showNpc, classFilter, tagFilter]);
+  }, [units, q, rarity, ranged, sInf, aInf, cls, faction, showNpc, classFilter, tagFilter]);
 
   const resetPage =
     <T,>(fn: (v: T) => void) =>
@@ -145,6 +170,18 @@ export default function UnitList() {
           <option value="all">melee + ranged</option>
           <option value="true">ranged</option>
           <option value="false">melee</option>
+        </select>
+        <select value={cls} onChange={(e) => resetPage(setCls)(e.target.value)}>
+          <option value="all">all classes</option>
+          {classOpts.map((c) => (
+            <option key={c} value={c}>{loc?.classes[c] || c}</option>
+          ))}
+        </select>
+        <select value={faction} onChange={(e) => resetPage(setFaction)(e.target.value)}>
+          <option value="all">all factions</option>
+          {factionOpts.map((f) => (
+            <option key={f} value={f}>{loc?.races[f] || f}</option>
+          ))}
         </select>
         <select value={sInf} onChange={(e) => resetPage(setSInf)(e.target.value)}>
           <option value="all">all skill influences</option>
@@ -184,6 +221,23 @@ export default function UnitList() {
             </span>
           )}
         </div>
+      )}
+
+      {tagFilter && mentions && (mentions[tagFilter] || []).length > 0 && (
+        <details className="tag-mentions">
+          <summary>
+            {(mentions[tagFilter] || []).length} skills / abilities mention{" "}
+            {loc?.tags[tagFilter] || loc?.races[tagFilter] || tagFilter} in their conditions
+          </summary>
+          <ul className="admin-examples">
+            {(mentions[tagFilter] || []).map((m, i) => (
+              <li key={i}>
+                <Link to={`/units/${m.unit}`}>#{m.unit} {m.name}</Link>
+                <span className="muted"> — {m.slot} ({m.kind})</span>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
 
       <Pager page={page} pages={pages} setPage={setPage} />

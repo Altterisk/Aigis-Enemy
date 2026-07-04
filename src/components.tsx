@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { spriteUrl, unitImageUrl, DMG_COLORS, useInfluenceLabels } from "./data";
-import type { Effect, DamageType, UnitImageKind, Missile, MissileOnHit } from "./types";
+import { Link } from "react-router-dom";
+import { spriteUrl, unitImageUrl, DMG_COLORS, useInfluenceLabels, useLocalisation } from "./data";
+import type {
+  Effect, DamageType, UnitImageKind, Missile, MissileOnHit,
+  Localisation as LocalisationT,
+} from "./types";
 
 // Humanize a missile's on-hit status effect (decoded from the Property field).
 // Shared by enemy (StageDetail) and unit skill (UnitDetail) missile displays.
@@ -48,6 +52,31 @@ export function missileOnHitText(h?: MissileOnHit | null): string {
   if (h.other) extra.push(...Object.entries(h.other).map(([k, v]) => `${k}=${v}`));
   const tail = extra.length ? ` [${extra.join(", ")}]` : "";
   return `on hit: ${label}${dmg}${dur}${tail}`;
+}
+
+// Humanized condition text with [[class:NAME]] / [[tag:NAME]] filter-link
+// markers (emitted by aigis/expr.py) rendered as clickable unit-list filters,
+// displayed with their EN translation where one exists.
+export function HumanText({ text }: { text: string }) {
+  const loc: LocalisationT | null = useLocalisation();
+  const parts = text.split(/(\[\[(?:class|tag):[^\]]+\]\])/g);
+  return (
+    <>
+      {parts.map((part, i) => {
+        const m = part.match(/^\[\[(class|tag):([^\]]+)\]\]$/);
+        if (!m) return part;
+        const [, kind, name] = m;
+        const en = kind === "class"
+          ? loc?.classes[name]
+          : loc?.tags[name] || loc?.races[name];
+        return (
+          <Link key={i} to={`/units?${kind}=${encodeURIComponent(name)}`} title={name}>
+            {en || name}
+          </Link>
+        );
+      })}
+    </>
+  );
 }
 
 // All of a missile's noteworthy facts on one line (shared by unit skill rows

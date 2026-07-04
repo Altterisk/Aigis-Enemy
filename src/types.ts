@@ -339,6 +339,7 @@ export interface UnitAbility {
 export interface UnitToken {
   unit: number;
   unit_name?: string | null;
+  class_name?: string | null;
   cost?: number;
   count?: number;
   deploy_max?: number;
@@ -430,6 +431,22 @@ export interface Unit {
   dot_id: number;
 }
 
+// JP term -> units whose skill/ability conditions mention it.
+export type TagMentions = Record<
+  string,
+  { unit: number; name?: string | null; slot: string; kind: string }[]
+>;
+
+// one row of data/buff_index.json (units' valued influence rows, for /buffs).
+export interface BuffRow {
+  u: number;            // unit id
+  n?: string | null;    // unit name
+  ns: "skill" | "ability";
+  t: number;            // influence type id
+  v: number;            // value (skill mul3 / ability param 1)
+  s: string;            // slot description
+}
+
 // influence_type id -> label (skill/ability namespaces are separate).
 export interface UnitInfluenceLabel {
   name?: string | null;
@@ -456,7 +473,8 @@ export interface UnitIndexEntry {
   name?: string | null;
   name_en?: string | null;
   classes?: string[];   // every class-tier JP name (for class filtering)
-  tags?: string[];      // identity + genus + faction (for tag filtering)
+  tags?: string[];      // identity + genus + faction + race + gender + rarity
+  faction?: string | null;
   npc?: boolean;
   prince?: boolean;
   art_tiers?: number[];
