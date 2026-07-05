@@ -17,11 +17,25 @@ type StatKey = (typeof STATS)[number]["k"];
 
 const GROUP_PREVIEW = 10; // rows shown per type before "show all"
 
-// skill mul3 values are "percent of base" multipliers (130 = x1.3);
-// ability percent buffs are "+X%". Flat rows carry fl=1.
+// skill mul3 values are normally "percent of base" TOTAL multipliers (130 =
+// x1.3) -- EXCEPT 204/205 (UP-Consuming ATK/DEF buff), whose own note says
+// "value is percent to ADD" (user-confirmed 2026-07-05: cap 80 = +80% =
+// x1.8, not x0.8).
+const SKILL_ADDITIVE_PCT = new Set([204, 205]);
+// ability percent buffs are normally "+X%" ADDITIVE (stacks on top of
+// 100%) -- EXCEPT ids whose own template is "→ {p1}%" (already a TOTAL
+// percent-of-base multiplier, not a delta): Deployment Spot 134/135/136,
+// Placement 207, Conqueror-type 197/198/199, Bard 304-307 (user 2026-07-05:
+// "these should be x1.6 for example, not +... same with conqueror type atk
+// buff"; bard modifier "is based on base, so 200% of base 50% is 100%").
+const ABILITY_MULTIPLIER_PCT = new Set([134, 135, 136, 197, 198, 199, 207, 304, 305, 306, 307]);
+
 function fmtValue(r: BuffRow): string {
   if (r.fl) return `+${r.v.toLocaleString()} flat`;
-  if (r.ns === "skill" && !r.stat.endsWith("_DEBUFF")) {
+  const asMultiplier =
+    (r.ns === "skill" && !SKILL_ADDITIVE_PCT.has(r.t)) ||
+    (r.ns === "ability" && ABILITY_MULTIPLIER_PCT.has(r.t));
+  if (asMultiplier && !r.stat.endsWith("_DEBUFF")) {
     return `x${(r.v / 100).toFixed(2).replace(/\.?0+$/, "")}`;
   }
   return r.stat.endsWith("_DEBUFF") ? `-${r.v}%` : `+${r.v}%`;

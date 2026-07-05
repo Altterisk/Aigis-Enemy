@@ -264,10 +264,11 @@ export default function UnitList() {
                 {u.rarity} · {(u.class && loc?.classes[u.class]) || u.class || "?"} {u.ranged ? "(ranged)" : ""}
                 {u.id === 1 && princeCount > 0 && ` · +${princeCount} titles`}
               </div>
-              <div className="muted small">
-                HP {(u.hp ?? 0).toLocaleString()} · ATK {(u.atk ?? 0).toLocaleString()} ·
-                {" "}DEF {(u.def ?? 0).toLocaleString()}
-              </div>
+              {u.tags && u.tags.length > 0 && (
+                <div className="muted small unit-tile-tags">
+                  {u.tags.map((t) => loc?.tags[t] || t).join(", ")}
+                </div>
+              )}
             </div>
           </Link>
         ))}

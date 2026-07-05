@@ -15,7 +15,7 @@ import type {
   SkillStage,
 } from "../types";
 
-function InfluenceLabel({ label }: { label?: UnitInfluenceLabel }) {
+function InfluenceLabel({ label, nameOverride }: { label?: UnitInfluenceLabel; nameOverride?: string }) {
   if (!label) return null;
   if (label.marker || !label.name) {
     // user-marked (test unit / fodder / NPC-only / ...) or note-only: no
@@ -26,9 +26,27 @@ function InfluenceLabel({ label }: { label?: UnitInfluenceLabel }) {
   }
   return (
     <span className={`meaning${label.verified ? "" : " unverified"}`} title={label.note}>
-      {" "}{label.name}{!label.verified && " (unverified)"}
+      {" "}{nameOverride ?? label.name}{!label.verified && " (unverified)"}
     </span>
   );
+}
+
+// skill ids 2/3/4/5/89/90 (ATK/DEF buffs, Type-A/B/C): the static "Type-A/
+// B/C" name only describes rows that target OTHER units -- a target=self
+// row on these same ids is the unit's own self-buff, not a Type-anything
+// (user 2026-07-05: "Type A is only if skill influence 2 is not target
+// self... same is true for other buffs that target self and is of low
+// number"). Override the displayed name in that case; the note/tooltip
+// still explains the distinction.
+const SELF_BUFF_NAME: Record<number, string> = {
+  2: "Self ATK buff", 3: "Self ATK buff", 89: "Self ATK buff",
+  4: "Self DEF buff", 5: "Self DEF buff", 90: "Self DEF buff",
+};
+function skillLabelName(inf: SkillInfluence): string | undefined {
+  if (inf.target === "self" && inf.influence_type != null) {
+    return SELF_BUFF_NAME[inf.influence_type];
+  }
+  return undefined;
 }
 
 // ---- ExtendProperty decoding ----------------------------------------------
@@ -189,8 +207,10 @@ function ExtendProps({ extend, influenceType }: { extend?: InfluenceExtend; infl
 // per-id meaning invented -- the label name supplies the "what".
 // ids whose `add` is a reference/flag handled elsewhere, not a plain value:
 // 49 skill swap (chain UI), 122 linked ability, 121 (ability config ref),
-// 21 missile (resolved into `missile`), 173/177 tick-scale direction.
-const SKILL_ADD_REF = new Set([21, 49, 121, 122, 173, 177]);
+// 21 missile (resolved into `missile`), 173/177 tick-scale direction, 47
+// animation change (add = an animation index, not a meaningful count --
+// user 2026-07-05: "type 47 ... add 2 value 2 Animation change" is noise).
+const SKILL_ADD_REF = new Set([21, 47, 49, 121, 122, 173, 177]);
 
 const fmtX = (v: number) => `x${(v / 100).toFixed(2).replace(/\.?0+$/, "")}`;
 
@@ -231,6 +251,14 @@ function skillRowValue(inf: SkillInfluence, label?: UnitInfluenceLabel): string 
   if (inf.influence_type === 122 && inf.add != null) {
     return `grants the linked ability effects below (config #${inf.add})`;
   }
+  // a bare "add=1, mul=0, no mul2" row is a pure boolean toggle (the id's
+  // NAME already says what's toggled on) -- "value 1" is noise, not
+  // information (user 2026-07-05, re: skill 41 Paralyze on skill end and
+  // others in the same shape). Real counts/values (add varies across
+  // carriers, e.g. skill 22 target count) still fall through below.
+  if (inf.add === 1 && (inf.mul ?? 0) === 0 && inf.mul2 == null) {
+    return null;
+  }
   if (inf.add != null && inf.influence_type != null && !SKILL_ADD_REF.has(inf.influence_type)) {
     return `value ${inf.add}`;
   }
@@ -268,7 +296,7 @@ function SkillInfluenceRow({
       {inf.missile && (
         <span className="meaning"> missile: {missileText(inf.missile)}</span>
       )}
-      <InfluenceLabel label={label} />
+      <InfluenceLabel label={label} nameOverride={skillLabelName(inf)} />
       <ExtendProps extend={inf.extend} influenceType={inf.influence_type ?? undefined} />
       {(inf.expression_human || inf.expression) && (
         <span className="expr" title={inf.expression}>
@@ -302,6 +330,19 @@ function abilityRate(inf: AbilityInfluence): string | null {
   return `≈${Math.round((amount * 60) / frames)}/s`;
 }
 
+// ability 70/71/82 (ATK/DEF/HP "buff"): the static "Sortie/Deployment"
+// name doesn't say which one a given row actually is -- its OWN `invoke`
+// field ("sortie" or "deployed") already says so directly (user 2026-07-05:
+// "base it on Invoke, don't just say Sortie/Deployment, it does not help").
+const INVOKE_STAT_NAME: Record<number, string> = { 70: "ATK Buff", 71: "DEF Buff", 82: "HP Buff" };
+function abilityLabelName(inf: AbilityInfluence): string | undefined {
+  const base = inf.influence_type != null ? INVOKE_STAT_NAME[inf.influence_type] : undefined;
+  if (!base) return undefined;
+  const invoke = String(inf.invoke ?? "");
+  const prefix = invoke === "sortie" ? "Sortie" : invoke === "deployed" ? "Deployment" : invoke;
+  return `${prefix} ${base}`;
+}
+
 function AbilityInfluenceRow({
   inf, i, label, labelsMap,
 }: {
@@ -321,7 +362,7 @@ function AbilityInfluenceRow({
   return (
     <li key={i}>
       <code>{parts.join(" · ")}</code>
-      <InfluenceLabel label={label} />
+      <InfluenceLabel label={label} nameOverride={abilityLabelName(inf)} />
       {filled && <span className="meaning"> {filled}</span>}
       {rate && <span className="dot-calc"> {rate}</span>}
       {inf.missiles && Object.entries(inf.missiles).map(([mid, m]) => (
@@ -723,12 +764,61 @@ function inherentRange(rows?: { influence_type?: number; invoke?: string | numbe
   return null;
 }
 
+// user 2026-07-05: "pure stat buff that target only self" (invoke=inherent,
+// target=self) should surface in the stat box the same way ability 188
+// already does for Range -- generalized to HP/ATK/DEF/MR/Cost. Ids mirror
+// export_units.py's STAT_ABILITY/FLAT_ABILITY buff-page grouping (13/14/12/
+// 82/76 are percent of base; 15/21/10/81 are flat). Shown as a badge next
+// to the base value (non-destructive -- the base stat columns already come
+// straight from the stat formula and don't know about this ability layer).
+type InherentStatKind = "hp" | "atk" | "def" | "mr" | "range" | "cost";
+const INHERENT_STAT_ABILITY: Record<InherentStatKind, [number, "pct" | "flat"][]> = {
+  hp: [[12, "pct"], [82, "pct"]],
+  atk: [[13, "pct"], [70, "pct"]],
+  def: [[14, "pct"], [71, "pct"]],
+  mr: [[15, "flat"], [76, "pct"]],
+  range: [[21, "flat"]],
+  cost: [[10, "flat"], [81, "flat"]],
+};
+
+function inherentStatMod(
+  rows: { influence_type?: number; invoke?: string | number; target?: string | number; params?: number[] }[] | null | undefined,
+  kind: InherentStatKind
+): { id: number; pct?: number; flat?: number } | null {
+  const ids = INHERENT_STAT_ABILITY[kind];
+  for (const r of rows || []) {
+    if (r.invoke !== "inherent" || r.target !== "self") continue;
+    const spec = ids.find(([id]) => id === r.influence_type);
+    let v = r.params?.[0];
+    if (!spec || !v) continue;
+    // cost abilities (10/81) are always REDUCTIONS ("Cost reduction"), not
+    // increases -- their raw param is a positive magnitude to subtract.
+    if (kind === "cost") v = -v;
+    return { id: r.influence_type as number, [spec[1]]: v } as { id: number; pct?: number; flat?: number };
+  }
+  return null;
+}
+
+function StatModBadge({ mod }: { mod: { id: number; pct?: number; flat?: number } | null }) {
+  if (!mod) return null;
+  const sign = (n: number) => (n < 0 ? String(n) : `+${n}`);
+  const text = mod.pct != null ? `${sign(mod.pct)}%` : sign(mod.flat ?? 0);
+  return (
+    <span className="meaning" title={`inherent self buff: ability ${mod.id}`}>
+      {" "}({text})
+    </span>
+  );
+}
+
 function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, string> }) {
   const classes = unit.classes;
   if (classes.length === 0) return null;
   const unitRange188 =
     inherentRange(unit.abilities.default?.influences) ??
     inherentRange(unit.abilities.awakened?.influences);
+  const unitStatMod = (kind: InherentStatKind) =>
+    inherentStatMod(unit.abilities.default?.influences, kind) ??
+    inherentStatMod(unit.abilities.awakened?.influences, kind);
   return (
     <>
       <table className="grid unit-stat-table">
@@ -745,6 +835,8 @@ function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, 
             const first = cl.stats[0];
             const last = cl.stats[cl.stats.length - 1];
             const range188 = inherentRange(cl.class_ability_influences) ?? unitRange188;
+            const statMod = (kind: InherentStatKind) =>
+              inherentStatMod(cl.class_ability_influences, kind) ?? unitStatMod(kind);
             return (
               <tr key={cl.class_id}>
                 <td>
@@ -761,10 +853,10 @@ function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, 
                 <td className="num">
                   {first && last ? (first.level === last.level ? first.level : `${first.level}–${last.level}`) : "-"}
                 </td>
-                <td className="num">{statRange(cl.stats.map((s) => s.hp))}</td>
-                <td className="num">{statRange(cl.stats.map((s) => s.atk))}</td>
-                <td className="num">{statRange(cl.stats.map((s) => s.def))}</td>
-                <td className="num">{cl.magic_resistance ?? unit.magic_resistance ?? 0}</td>
+                <td className="num">{statRange(cl.stats.map((s) => s.hp))}<StatModBadge mod={statMod("hp")} /></td>
+                <td className="num">{statRange(cl.stats.map((s) => s.atk))}<StatModBadge mod={statMod("atk")} /></td>
+                <td className="num">{statRange(cl.stats.map((s) => s.def))}<StatModBadge mod={statMod("def")} /></td>
+                <td className="num">{cl.magic_resistance ?? unit.magic_resistance ?? 0}<StatModBadge mod={statMod("mr")} /></td>
                 <td>
                   {cl.ranged
                     ? cl.range ?? "?"
@@ -774,9 +866,15 @@ function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, 
                       {" "}· range {range188}
                     </span>
                   )}
+                  <StatModBadge mod={statMod("range")} />
                   {cl.missile && (
                     <div className="muted small" title="the class's own missile">
                       {missileText(cl.missile)}
+                    </div>
+                  )}
+                  {cl.deploy_slot === "melee or ranged" && (
+                    <div className="muted small" title="ClassData.PlaceAttribute: deployable in either spot">
+                      deployable: melee or ranged
                     </div>
                   )}
                 </td>
@@ -787,7 +885,7 @@ function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, 
                     ? `${cl.attack_interval}f (${(cl.attack_interval / 60).toFixed(2)}s)`
                     : "?"}
                 </td>
-                <td>{cl.cost_min} → {cl.cost_max}</td>
+                <td>{cl.cost_min} → {cl.cost_max}<StatModBadge mod={statMod("cost")} /></td>
                 {ci === 0 && (
                   <td rowSpan={classes.length} className="aff-cell">
                     {unit.affection_bonuses && unit.affection_bonuses.length > 0
@@ -1098,6 +1196,7 @@ export default function UnitDetail() {
                 {s.params && s.params.length > 0 && (
                   <span className="params"> [{s.params.join(", ")}]</span>
                 )}
+                {s.name && <span className="meaning"> {s.name}</span>}
                 {s.command && <span className="expr" title={s.command}> {s.command}</span>}
               </li>
             ))}

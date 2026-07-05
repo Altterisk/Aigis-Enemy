@@ -383,6 +383,10 @@ export interface UnitClass {
   name?: string;
   description?: string;
   ranged: boolean;
+  // ClassData.PlaceAttribute, decoded (user 2026-07-05): which deploy spot(s)
+  // this class can be placed in -- almost always matches `ranged`, but a
+  // handful of units (e.g. #1313 Miriam) are deployable in either spot.
+  deploy_slot?: string | null;
   range?: number | null;
   block?: number | null;
   max_target?: number;
@@ -409,6 +413,9 @@ export interface UnitClass {
 
 export interface UnitSpecial {
   type?: number;
+  // resolved label for confirmed Type_Specialty ids only (see
+  // aigis.unit.UNIT_SPECIALTY); null = unconfirmed, shown as raw type/value.
+  name?: string | null;
   value?: number;
   params?: number[];
   command?: string | null;
