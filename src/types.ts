@@ -485,6 +485,12 @@ export interface BuffRow {
   tgt?: string | number | null; // resolved target
   fl?: 1;               // flat value (not percent)
   mod?: string[];       // same-unit modifier ids folded into v
+  // functional group override (user 2026-07-05): ability 13/70 (ATK) and
+  // 14/71 (DEF) split by their OWN invoke into "sortie_atk"/"deploy_atk" /
+  // "sortie_def"/"deploy_def"; 223/224 always force into the sortie group
+  // regardless of their own invoke ("it functions in the sortie buff
+  // calculation"). Rows without this stay grouped by ns:t as before.
+  grp?: string;
 }
 
 // influence_type id -> label (skill/ability namespaces are separate).

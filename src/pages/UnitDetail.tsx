@@ -227,12 +227,26 @@ function skillRowValue(inf: SkillInfluence, label?: UnitInfluenceLabel): string 
   }
   // per-type template ({mul3}/{add} raw, {x} = mul3/100): flat-valued types
   // like 32 "generates 10 UP" instead of a bogus x0.1. "" = suppress (flags).
+  // {mul3pct} = mul3 as a literal percent (NOT a x-multiplier), with the
+  // level-up cap folded in when present -- for ids whose own name/note says
+  // "%" (31/33/34/35/40/42/86/95/103/108/178/204/205/214/215/216): their
+  // mul3 (or mul/add per id) IS the percent value directly, e.g. Kaoru's
+  // skill 214 mul3=40 with text "40%軽減" -- NOT x0.40 (user-confirmed
+  // 2026-07-05, caught via the same generic-mul3-as-multiplier bug on 214/
+  // 216 first, then surveyed every "%"-named id for the same shape).
   if (label?.tpl != null) {
     if (label.tpl === "") return null;
+    const mul3pct = inf.mul3 != null
+      ? (inf.mul3_cap != null && inf.mul3_cap !== inf.mul3
+        ? `${inf.mul3}% → ${inf.mul3_cap}% at max level`
+        : `${inf.mul3}%`)
+      : "?%";
     return label.tpl
+      .replace(/\{mul3pct\}/g, mul3pct)
       .replace(/\{mul3\}/g, String(inf.mul3 ?? "?"))
       .replace(/\{mul2\}/g, String(inf.mul2 ?? "?"))
       .replace(/\{mul2s\}/g, inf.mul2 != null ? `${(inf.mul2 / 60).toFixed(1).replace(/\.0$/, "")}s` : "?")
+      .replace(/\{mul\}/g, String(inf.mul ?? "?"))
       .replace(/\{add\}/g, String(inf.add ?? "?"))
       .replace(/\{x\}/g, inf.mul3 != null ? fmtX(inf.mul3) : "?");
   }
@@ -250,14 +264,6 @@ function skillRowValue(inf: SkillInfluence, label?: UnitInfluenceLabel): string 
   }
   if (inf.influence_type === 122 && inf.add != null) {
     return `grants the linked ability effects below (config #${inf.add})`;
-  }
-  // a bare "add=1, mul=0, no mul2" row is a pure boolean toggle (the id's
-  // NAME already says what's toggled on) -- "value 1" is noise, not
-  // information (user 2026-07-05, re: skill 41 Paralyze on skill end and
-  // others in the same shape). Real counts/values (add varies across
-  // carriers, e.g. skill 22 target count) still fall through below.
-  if (inf.add === 1 && (inf.mul ?? 0) === 0 && inf.mul2 == null) {
-    return null;
   }
   if (inf.add != null && inf.influence_type != null && !SKILL_ADD_REF.has(inf.influence_type)) {
     return `value ${inf.add}`;

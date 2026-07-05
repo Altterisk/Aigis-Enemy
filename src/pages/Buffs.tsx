@@ -25,10 +25,17 @@ const SKILL_ADDITIVE_PCT = new Set([204, 205]);
 // ability percent buffs are normally "+X%" ADDITIVE (stacks on top of
 // 100%) -- EXCEPT ids whose own template is "→ {p1}%" (already a TOTAL
 // percent-of-base multiplier, not a delta): Deployment Spot 134/135/136,
-// Placement 207, Conqueror-type 197/198/199, Bard 304-307 (user 2026-07-05:
-// "these should be x1.6 for example, not +... same with conqueror type atk
-// buff"; bard modifier "is based on base, so 200% of base 50% is 100%").
-const ABILITY_MULTIPLIER_PCT = new Set([134, 135, 136, 197, 198, 199, 207, 304, 305, 306, 307]);
+// Placement 207, Conqueror-type 197/198/199 (user 2026-07-05: "these should
+// be x1.6 for example, not +... same with conqueror type atk buff").
+// Bard 304-307 do NOT belong here -- reverted 2026-07-05: their raw MulMax
+// is additive (+X%) same as Sortie/Deployment; the "200% of base 50% is
+// 100%" comment was about the skill 248-251 BOOST arithmetic (fixed in
+// export_units.py's _ability_value, not a display-format signal). Putting
+// them here made a bare, unboosted MulMax (e.g. Yasaka's 25, no boost skill
+// at all) render as a bogus "x0.25 debuff" instead of "+25%".
+// Lukifer Death HP/ATK/DEF/MR buff (155/156/157/158): user 2026-07-05 --
+// "this is multiplier" (displayed as x-notation, not +X%).
+const ABILITY_MULTIPLIER_PCT = new Set([134, 135, 136, 155, 156, 157, 158, 197, 198, 199, 207]);
 
 function fmtValue(r: BuffRow): string {
   if (r.fl) return `+${r.v.toLocaleString()} flat`;
@@ -67,6 +74,15 @@ export default function Buffs() {
   const labelOf = (nsK: string, t: number): UnitInfluenceLabel | undefined =>
     (nsK === "skill" ? labels?.skill : labels?.ability)?.[String(t)];
 
+  // synthetic group names for rows carrying a `grp` override (user
+  // 2026-07-05: Sortie buff and Deployment buff are different functional
+  // groups, not the same thing under one type id).
+  const GRP_NAME: Record<string, string> = {
+    sortie_atk: "Sortie ATK Buff", deploy_atk: "Deployment ATK Buff",
+    sortie_def: "Sortie DEF Buff", deploy_def: "Deployment DEF Buff",
+  };
+  const groupKey = (r: BuffRow) => r.grp ?? `${r.ns}:${r.t}`;
+
   // per-type groups for the selected stat, each ranked by cap value,
   // one row per unit (its best), biggest groups first.
   const groups = useMemo(() => {
@@ -74,7 +90,7 @@ export default function Buffs() {
     (rows || []).forEach((r) => {
       if (r.stat !== stat) return;
       if (ns !== "all" && r.ns !== ns) return;
-      const k = `${r.ns}:${r.t}`;
+      const k = groupKey(r);
       if (type !== "all" && k !== type) return;
       let list = by.get(k);
       if (!list) by.set(k, (list = []));
@@ -82,7 +98,9 @@ export default function Buffs() {
     });
     return [...by.entries()]
       .map(([k, list]) => {
-        const [nsK, t] = k.split(":");
+        const grp = list[0].grp;
+        const nsK = list[0].ns;
+        const t = list[0].t;
         const seen = new Set<number>();
         const ranked = list
           .sort((a, b) => b.v - a.v)
@@ -91,24 +109,23 @@ export default function Buffs() {
             seen.add(r.u);
             return true;
           });
-        return { k, nsK, t: Number(t), ranked };
+        return { k, grp, nsK, t, ranked };
       })
       .sort((a, b) => b.ranked.length - a.ranked.length);
   }, [rows, stat, ns, type]);
 
   const typeOpts = useMemo(() => {
-    const seen = new Map<string, number>();
+    const seen = new Map<string, { c: number; nsK: string; t: number; grp?: string }>();
     (rows || []).forEach((r) => {
       if (r.stat !== stat) return;
       if (ns !== "all" && r.ns !== ns) return;
-      const k = `${r.ns}:${r.t}`;
-      seen.set(k, (seen.get(k) || 0) + 1);
+      const k = groupKey(r);
+      const e = seen.get(k);
+      if (e) e.c++;
+      else seen.set(k, { c: 1, nsK: r.ns, t: r.t, grp: r.grp });
     });
     return [...seen.entries()]
-      .map(([k, c]) => {
-        const [nsK, t] = k.split(":");
-        return { k, c, nsK, t: Number(t) };
-      })
+      .map(([k, e]) => ({ k, ...e }))
       .sort((a, b) => b.c - a.c);
   }, [rows, stat, ns]);
 
@@ -147,7 +164,7 @@ export default function Buffs() {
           <option value="all">all effect types</option>
           {typeOpts.map((o) => (
             <option key={o.k} value={o.k}>
-              {o.nsK} {o.t} — {labelOf(o.nsK, o.t)?.name || "?"} ({o.c})
+              {o.grp ? GRP_NAME[o.grp] || o.grp : `${o.nsK} ${o.t} — ${labelOf(o.nsK, o.t)?.name || "?"}`} ({o.c})
             </option>
           ))}
         </select>
@@ -155,16 +172,16 @@ export default function Buffs() {
       </div>
       <div className="buff-groups">
         {groups.map((g) => {
-          const lab = labelOf(g.nsK, g.t);
+          const lab = g.grp ? undefined : labelOf(g.nsK, g.t);
           const shown = single ? g.ranked : g.ranked.slice(0, GROUP_PREVIEW);
           return (
             <section key={g.k} className="buff-group">
               <header className="buff-group-head">
                 <span className="buff-group-title">
-                  {lab?.name || `type ${g.t}`}
+                  {g.grp ? GRP_NAME[g.grp] || g.grp : lab?.name || `type ${g.t}`}
                 </span>
                 <span className="buff-group-meta">
-                  {g.nsK} {g.t} · {g.ranked.length} units
+                  {g.grp ? g.nsK : `${g.nsK} ${g.t}`} · {g.ranked.length} units
                   {lab && !lab.verified && <em className="unverified"> unverified</em>}
                 </span>
               </header>
