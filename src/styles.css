@@ -770,3 +770,59 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   .cat-title { top: 44px; font-size: 15px; }
   .sprite { max-width: 100%; }
 }
+
+/* ---- /buffs page ---------------------------------------------------- */
+.buff-toolbar { flex-wrap: wrap; }
+.stat-tab {
+  padding: 5px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel2);
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+}
+.stat-tab:hover { color: var(--text); border-color: var(--accent); }
+.stat-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.stat-tab.debuff-tab.active { background: #f7768e; border-color: #f7768e; }
+
+.buff-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.buff-group {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  overflow-x: auto;
+}
+.buff-group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.buff-group-title { font-weight: 700; }
+.buff-group-meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.buff-group-meta .unverified { color: #e0af68; font-style: normal; }
+.buff-table th, .buff-table td { padding: 4px 8px; }
+.buff-table td.buff-val { white-space: nowrap; }
+.buff-mod { color: #e0af68; margin-left: 2px; cursor: help; }
+.buff-more {
+  margin-top: 8px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel2);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+}
+.buff-more:hover { color: var(--text); border-color: var(--accent); }
+@media (max-width: 700px) {
+  .buff-groups { grid-template-columns: 1fr; }
+}

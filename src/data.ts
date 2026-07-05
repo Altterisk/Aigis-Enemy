@@ -187,13 +187,24 @@ export function useUnitInfluenceLabels(): UnitInfluenceLabels | null {
 }
 
 // Unit images. ICONS are published with the site (public/unit-icon, ~108 MB).
-// ART and battle SPRITES are several GB and stay local-only: they live in
-// ../unit_images (outside web/public) and are served ONLY by vite.config.js's
-// dev middleware at /unit-img/* -- the published site has no art/sprites.
+// ART and battle SPRITES are several GB and stay out of this repo: in dev
+// they live in ../unit_images served by vite.config.js's middleware at
+// /unit-img/*. For the published site, set VITE_IMG_CDN to a static base
+// hosting the same art/<id>.png + sprite/<id>.png layout — e.g. a dedicated
+// image repo via jsDelivr: https://cdn.jsdelivr.net/gh/<user>/<repo>@<tag>
+// (jsDelivr serves files up to 20 MB from public GitHub repos; keep each
+// image repo under ~1 GB, split if needed). Without it, production falls
+// back to icons (UnitImage fallbackKind).
+const IMG_CDN: string =
+  (import.meta.env.VITE_IMG_CDN as string | undefined)?.replace(/\/$/, "") || "";
+
 export function unitImageUrl(kind: UnitImageKind, id: number, tier = 0): string {
   const suffix = kind === "sprite" || tier === 0 ? "" : `_aw${tier}`;
   if (kind === "icon") {
     return `${import.meta.env.BASE_URL}unit-icon/${id}${suffix}.png`;
+  }
+  if (IMG_CDN && !import.meta.env.DEV) {
+    return `${IMG_CDN}/${kind}/${id}${suffix}.png`;
   }
   return `${import.meta.env.BASE_URL}unit-img/${kind}/${id}${suffix}.png`;
 }

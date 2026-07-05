@@ -281,6 +281,14 @@ export interface AbilityInfluence {
   activate_command?: string;
   activate_command_human?: string;
   extend?: InfluenceExtend;
+  // type 189 "Grant ability": the granted AbilityList entry, resolved
+  // (p1 = ability id).
+  granted_ability?: {
+    id: number;
+    name?: string | null;
+    text?: string | null;
+    influences: AbilityInfluence[];
+  };
 }
 
 export interface SkillStage {
@@ -460,11 +468,16 @@ export type TagMentions = Record<string, { unit?: TagMention[]; enemy?: TagMenti
 export interface BuffRow {
   u: number;            // unit id
   n?: string | null;    // unit name
-  stat: "HP" | "ATK" | "DEF" | "MR";
+  stat: "HP" | "ATK" | "DEF" | "MR" | "RNG"
+      | "ATK_DEBUFF" | "DEF_DEBUFF" | "MR_DEBUFF";
   ns: "skill" | "ability";
   t: number;            // influence type id
-  v: number;            // value (skill mul3 / ability param, raw)
-  s: string;            // slot → target description
+  v: number;            // ranking value = the buff's CAP (max achievable)
+  p?: (number | null)[] | null; // raw params (skill: mul/mul2/mul3/add)
+  s: string;            // slot description
+  tgt?: string | number | null; // resolved target
+  fl?: 1;               // flat value (not percent)
+  mod?: string[];       // same-unit modifier ids folded into v
 }
 
 // influence_type id -> label (skill/ability namespaces are separate).

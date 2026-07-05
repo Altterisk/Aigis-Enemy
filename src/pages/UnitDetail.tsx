@@ -57,7 +57,17 @@ function counterText(v: string): string {
     .replace(/GetDefeatsCountOfPlayer\(\)/g, "allied units defeated");
 }
 
-function extendText(k: string, v: string | number): string {
+// ids whose "mulLim" extend key holds a FRAME count, not a percent (the
+// generic mulLim case below assumes percent, which is right almost
+// everywhere else): 212 Conditional skill duration increase caps the
+// duration GAIN in frames (user-confirmed 2026-07-05: mulLim=600 -> 10s,
+// not 600%).
+const FRAME_MULLIM_IDS = new Set([212]);
+
+function extendText(k: string, v: string | number, influenceType?: number): string {
+  if (k === "mulLim" && influenceType != null && FRAME_MULLIM_IDS.has(influenceType)) {
+    return `cap ${frames(v)}`;
+  }
   switch (k) {
     // durations / intervals (frames @60fps)
     case "効果時間": case "持続時間": return `for ${frames(v)}`;
@@ -103,7 +113,10 @@ function extendText(k: string, v: string | number): string {
     case "重複番号": return `stack-id ${v}`;
     case "永続": return Number(v) ? "permanent" : `${k}=${v}`;
     case "射程範囲内のみ": return "within range only";
-    case "増減反転": return "inverted (decreases)";
+    // user 2026-07-05 (via 191 gradual-ATK-when-not-attacking): inverted
+    // flips the trigger direction — the stat increases with each attack
+    // instead of over time.
+    case "増減反転": return "inverted (gains per attack instead)";
     case "IgnoreSelf": return "ignores self";
     case "位置入れ替え": return "swaps position";
     case "条件一致のみ": return "only while condition met";
@@ -162,11 +175,11 @@ function extendText(k: string, v: string | number): string {
   }
 }
 
-function ExtendProps({ extend }: { extend?: InfluenceExtend }) {
+function ExtendProps({ extend, influenceType }: { extend?: InfluenceExtend; influenceType?: number }) {
   if (!extend) return null;
   return (
     <span className="params">
-      {" "}{Object.entries(extend).map(([k, v]) => extendText(k, v)).join(", ")}
+      {" "}{Object.entries(extend).map(([k, v]) => extendText(k, v, influenceType)).join(", ")}
     </span>
   );
 }
@@ -182,12 +195,24 @@ const SKILL_ADD_REF = new Set([21, 49, 121, 122, 173, 177]);
 const fmtX = (v: number) => `x${(v / 100).toFixed(2).replace(/\.?0+$/, "")}`;
 
 function skillRowValue(inf: SkillInfluence, label?: UnitInfluenceLabel): string | null {
+  // id 56 (Time stop): mul is the scope, not a value -- 1000 = all enemies
+  // (global sentinel), -1 = enemies within range only (user-confirmed
+  // 2026-07-05). Prefix the duration template with the resolved scope.
+  if (inf.influence_type === 56 && label?.tpl != null) {
+    const scope = inf.mul === 1000 ? "all enemies" : inf.mul === -1 ? "enemies within range" : `mul ${inf.mul}`;
+    const rest = label.tpl
+      .replace(/\{mul2\}/g, String(inf.mul2 ?? "?"))
+      .replace(/\{mul2s\}/g, inf.mul2 != null ? `${(inf.mul2 / 60).toFixed(1).replace(/\.0$/, "")}s` : "?");
+    return `${scope}, ${rest}`;
+  }
   // per-type template ({mul3}/{add} raw, {x} = mul3/100): flat-valued types
   // like 32 "generates 10 UP" instead of a bogus x0.1. "" = suppress (flags).
   if (label?.tpl != null) {
     if (label.tpl === "") return null;
     return label.tpl
       .replace(/\{mul3\}/g, String(inf.mul3 ?? "?"))
+      .replace(/\{mul2\}/g, String(inf.mul2 ?? "?"))
+      .replace(/\{mul2s\}/g, inf.mul2 != null ? `${(inf.mul2 / 60).toFixed(1).replace(/\.0$/, "")}s` : "?")
       .replace(/\{add\}/g, String(inf.add ?? "?"))
       .replace(/\{x\}/g, inf.mul3 != null ? fmtX(inf.mul3) : "?");
   }
@@ -244,7 +269,7 @@ function SkillInfluenceRow({
         <span className="meaning"> missile: {missileText(inf.missile)}</span>
       )}
       <InfluenceLabel label={label} />
-      <ExtendProps extend={inf.extend} />
+      <ExtendProps extend={inf.extend} influenceType={inf.influence_type ?? undefined} />
       {(inf.expression_human || inf.expression) && (
         <span className="expr" title={inf.expression}>
           {" "}if <HumanText text={inf.expression_human || inf.expression || ""} />
@@ -278,8 +303,11 @@ function abilityRate(inf: AbilityInfluence): string | null {
 }
 
 function AbilityInfluenceRow({
-  inf, i, label,
-}: { inf: AbilityInfluence; i: number; label?: UnitInfluenceLabel }) {
+  inf, i, label, labelsMap,
+}: {
+  inf: AbilityInfluence; i: number; label?: UnitInfluenceLabel;
+  labelsMap?: Record<string, UnitInfluenceLabel>;
+}) {
   if (label?.hidden) return null;
   const parts = [
     `type ${inf.influence_type}`,
@@ -299,7 +327,7 @@ function AbilityInfluenceRow({
       {inf.missiles && Object.entries(inf.missiles).map(([mid, m]) => (
         <span className="meaning" key={mid}> missile {mid}: {missileText(m)}</span>
       ))}
-      <ExtendProps extend={inf.extend} />
+      <ExtendProps extend={inf.extend} influenceType={inf.influence_type ?? undefined} />
       {(inf.command_human || inf.command) && (
         <span className="expr" title={inf.command}>
           {" "}if <HumanText text={inf.command_human || inf.command || ""} />
@@ -309,6 +337,22 @@ function AbilityInfluenceRow({
         <span className="expr" title={inf.activate_command}>
           {" "}on <HumanText text={inf.activate_command_human || inf.activate_command || ""} />
         </span>
+      )}
+      {inf.granted_ability && (
+        <>
+          <div className="muted small linked-ability-head">
+            grants ability #{inf.granted_ability.id}
+            {inf.granted_ability.name ? ` ${inf.granted_ability.name}` : ""}:
+          </div>
+          <ul className="effects">
+            {inf.granted_ability.influences.map((g, j) => (
+              <AbilityInfluenceRow
+                inf={g} i={j} key={j} labelsMap={labelsMap}
+                label={g.influence_type != null ? labelsMap?.[String(g.influence_type)] : undefined}
+              />
+            ))}
+          </ul>
+        </>
       )}
     </li>
   );
@@ -330,12 +374,13 @@ const TOKEN_INFLUENCES: Record<string, { types: number[]; field: "mul3" | "add" 
   AREA: { types: [8], field: "mul3" },
   POW_R: { types: [8], field: "mul3" },
   NUM_TRG: { types: [22, 13], field: "add" },
+  NUM_TARGET: { types: [22, 13], field: "add" },
   NUM_ATK: { types: [13], field: "add" },
   NUM_SHOT: { types: [7], field: "add" },
   NUM_BLOCK: { types: [12], field: "add" },
 };
 // tokens whose value is a count taken from `add` -- never power-filled.
-const COUNT_TOKENS = new Set(["NUM_TRG", "NUM_ATK", "NUM_SHOT", "NUM_BLOCK"]);
+const COUNT_TOKENS = new Set(["NUM_TRG", "NUM_TARGET", "NUM_ATK", "NUM_SHOT", "NUM_BLOCK"]);
 
 // `token` is the full token INCLUDING its brackets ("<ATK>" or "[ATK]").
 function resolveToken(
@@ -505,7 +550,7 @@ function SkillStageRow({
               <ul className="effects">
                 {s.linked_ability_influences.map((inf, j) => (
                   <AbilityInfluenceRow
-                    inf={inf} i={j} key={j}
+                    inf={inf} i={j} key={j} labelsMap={abilityLabels}
                     label={inf.influence_type != null ? abilityLabels[String(inf.influence_type)] : undefined}
                   />
                 ))}
@@ -643,7 +688,7 @@ function AbilityBlock({
                 <ul className="effects">
                   {(ability.influences || []).map((inf, j) => (
                     <AbilityInfluenceRow
-                      inf={inf} i={j} key={j}
+                      inf={inf} i={j} key={j} labelsMap={labels}
                       label={inf.influence_type != null ? labels[String(inf.influence_type)] : undefined}
                     />
                   ))}
@@ -797,7 +842,7 @@ function ClassAttributes({
                   <ul className="effects">
                     {(cl.class_ability_influences || []).map((inf, j) => (
                       <AbilityInfluenceRow
-                        inf={inf} i={j} key={j}
+                        inf={inf} i={j} key={j} labelsMap={labels}
                         label={inf.influence_type != null ? labels[String(inf.influence_type)] : undefined}
                       />
                     ))}
@@ -1013,7 +1058,7 @@ export default function UnitDetail() {
                   <ul className="effects">
                     {t.class_ability_influences.map((inf, j) => (
                       <AbilityInfluenceRow
-                        inf={inf} i={j} key={j}
+                        inf={inf} i={j} key={j} labelsMap={abilityLabels}
                         label={inf.influence_type != null ? abilityLabels[String(inf.influence_type)] : undefined}
                       />
                     ))}
