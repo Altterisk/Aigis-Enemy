@@ -1021,3 +1021,24 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   .cg-tooltip { left: 8px; top: 8px; max-width: calc(100% - 16px); }
   .cg-facts { gap: 3px 8px; }
 }
+
+/* costgen toolbar controls */
+.cg-ctl-group {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; padding: 6px 10px;
+}
+.cg-ctl { font-size: 12px; }
+.cg-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--panel2);
+  color: var(--muted); font-size: 12px; font-weight: 600;
+  user-select: none; transition: background .12s, color .12s, border-color .12s;
+}
+.cg-pill:hover { border-color: var(--accent); color: var(--text); }
+.cg-pill.on { background: var(--accent); border-color: var(--accent); color: #15171c; }
+.cg-pill input { position: absolute; opacity: 0; pointer-events: none; }
+@media (max-width: 700px) {
+  .cg-ctl-group { width: 100%; }
+}

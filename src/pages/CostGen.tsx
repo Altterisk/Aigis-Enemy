@@ -6,8 +6,9 @@
 //  * ability 170 ticks ONLY while the unit's own skill is active; ability 262
 //    ticks at all times. When several gradual rows apply at once, the LOWEST
 //    interval (fastest) wins.
-//  * initial skill timer: Platinum = base CD / 3, Black = flat 5s; heroes
-//    follow their color. External CDR never shortens the initial timer.
+//  * initial skill timer: Platinum = base CD / 2; Black = flat 1s on a normal
+//    skill, 5s on the AW skill; heroes follow their color. External CDR never
+//    shortens the initial timer.
 //  * only affection bonuses modify the skill at base (type 8 = CD -%, which
 //    DOES shrink the Platinum initial timer; type 7 = duration +%). Affection
 //    is always assumed maxed.
@@ -190,7 +191,7 @@ interface Prepared {
   killsPer: number; // frames per kill
 }
 
-function prepare(u: CGUnit, sel: Sel, globalCdr: number): Prepared | null {
+function prepare(u: CGUnit, sel: Sel, globalCdr: number, ignoreCosts: boolean, ignoreInitial: boolean): Prepared | null {
   const tier = u.tiers[sel.tier] ?? u.tiers[u.tiers.length - 1];
   const sk = u.skills[sel.slot] ?? u.skills.awakened ?? u.skills.class_evolved ?? u.skills.base;
   if (!tier || !sk || !sk.stages.length) return null;
@@ -234,11 +235,14 @@ function prepare(u: CGUnit, sel: Sel, globalCdr: number): Prepared | null {
   if (sel.costOverride.trim() !== "" && !isNaN(Number(sel.costOverride))) {
     cost = Math.max(0, Number(sel.costOverride));
   }
-
-  // initial timer: plat = affection-reduced base CD / 3, black = flat 5s;
-  // ability 62 multiplies it down to p1 %
-  let initialSec =
-    u.rarity === "black" ? 5 : (sk.stages[0].cooldown * affCd) / 3;
+  if (ignoreCosts) cost = 0;
+  // initial timer: plat = affection-reduced base CD / 2; black = flat 1s on
+  // a normal skill, 5s on the AW skill; ability 62 multiplies it down to p1 %
+  let initialSec = ignoreInitial
+    ? 0
+    : u.rarity === "black"
+      ? sel.slot === "awakened" ? 5 : 1
+      : (sk.stages[0].cooldown * affCd) / 2;
   if (block && block.init_pct !== null && evalCond(block.init_cond ?? undefined, ctx0)) {
     initialSec = (initialSec * block.init_pct) / 100;
   }
@@ -270,8 +274,13 @@ function simulate(p: Prepared, sel: Sel, seconds: number): number[] {
 
   const cdFrames = (st: StageRec) =>
     Math.max(1, Math.round(st.cooldown * affCd * (1 - p.cdrPct / 100) * 60));
+  // zero-official-duration skills still occupy ~2s of skill animation
   const durFrames = (st: StageRec) =>
-    st.permanent ? Infinity : Math.max(1, Math.round(st.duration * affDur * durPct * 60) + killFrames);
+    st.permanent
+      ? Infinity
+      : st.duration === 0
+        ? 120
+        : Math.max(1, Math.round(st.duration * affDur * durPct * 60) + killFrames);
 
   const nextStage = (st: StageRec): StageRec =>
     (st.swaps_to !== undefined ? p.allStages.get(st.swaps_to) : undefined) ?? st;
@@ -572,6 +581,8 @@ export default function CostGen() {
   const [data, setData] = useState<{ units: CGUnit[] } | null>(null);
   const [sels, setSels] = useState<Sel[]>([]);
   const [cdr, setCdr] = useState(0);
+  const [ignoreCosts, setIgnoreCosts] = useState(false);
+  const [ignoreInitial, setIgnoreInitial] = useState(false);
   const [seconds, setSeconds] = useState(180);
   const [query, setQuery] = useState("");
   const [dropOpen, setDropOpen] = useState(false);
@@ -614,12 +625,12 @@ export default function CostGen() {
     for (const sel of sels) {
       const u = byId.get(sel.id);
       if (!u) continue;
-      const p = prepare(u, sel, cdr);
+      const p = prepare(u, sel, cdr, ignoreCosts, ignoreInitial);
       if (!p) continue;
       out.push({ id: u.id, name: u.name, color: PALETTE[sel.color % PALETTE.length], samples: simulate(p, sel, seconds) });
     }
     return out;
-  }, [sels, byId, cdr, seconds]);
+  }, [sels, byId, cdr, seconds, ignoreCosts, ignoreInitial]);
 
   if (!data) return <div className="loading">loading…</div>;
 
@@ -651,26 +662,36 @@ export default function CostGen() {
             </div>
           )}
         </div>
-        <label className="cg-ctl">
-          CDR
-          <select value={cdr} onChange={(e) => setCdr(Number(e.target.value))}>
-            {Array.from({ length: 15 }, (_, i) => i * 5).map((v) => (
-              <option key={v} value={v}>
-                {v}%
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="cg-ctl">
-          Window
-          <select value={seconds} onChange={(e) => setSeconds(Number(e.target.value))}>
-            {[120, 180, 300, 600].map((v) => (
-              <option key={v} value={v}>
-                {v}s
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="cg-ctl-group">
+          <label className="cg-ctl">
+            CDR
+            <select value={cdr} onChange={(e) => setCdr(Number(e.target.value))}>
+              {Array.from({ length: 15 }, (_, i) => i * 5).map((v) => (
+                <option key={v} value={v}>
+                  {v}%
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="cg-ctl">
+            Window
+            <select value={seconds} onChange={(e) => setSeconds(Number(e.target.value))}>
+              {[30, 60, 90, 120, 180, 300, 600].map((v) => (
+                <option key={v} value={v}>
+                  {v}s
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={`cg-pill${ignoreCosts ? " on" : ""}`}>
+            <input type="checkbox" checked={ignoreCosts} onChange={(e) => setIgnoreCosts(e.target.checked)} />
+            Ignore Costs
+          </label>
+          <label className={`cg-pill${ignoreInitial ? " on" : ""}`}>
+            <input type="checkbox" checked={ignoreInitial} onChange={(e) => setIgnoreInitial(e.target.checked)} />
+            Ignore Initial
+          </label>
+        </div>
         <span className="count">
           {sels.length}/{MAX_SEL} selected · {data.units.length} UP-gen units above Gold
         </span>
@@ -680,10 +701,9 @@ export default function CostGen() {
         <summary>Model assumptions</summary>
         <ul>
           <li>Skills at max level (duration_max), units at max level (cost_min), affection maxed.</li>
-          <li>Initial skill timer: Platinum = base CD ÷ 3, Black = 5s (heroes follow their color). Only the affection CD bonus shrinks it; the CDR selector affects cooldowns only.</li>
+          <li>Initial skill timer: Platinum = base CD ÷ 2; Black = 1s on a normal skill, 5s on the AW skill (heroes follow their color). Only the affection CD bonus shrinks it; the CDR selector affects cooldowns only.</li>
           <li>Of all in-battle CDR sources (selector, own ability) only the highest single one applies.</li>
-          <li>Skills re-activate the instant they are ready; swap chains follow their in-game order; permanent skills (∞ duration) stay on.</li>
-          <li>Gradual UP tied to a skill (ability 170) only ticks while that skill is active; class-wide gradual UP (ability 262) ticks constantly — when several rates apply, the fastest wins.</li>
+          <li>Skills re-activate the instant they are ready; swap chains follow their in-game order; permanent skills (∞ duration) stay on. Skills with no official duration still occupy 2s of skill animation.</li>
           <li>Deploy cost is subtracted at t=0 (floored at 0); percent cost mods apply before flat ones. Use the override field if the rounding disagrees with in-game.</li>
           <li>Team-wide starting UP (merchant +2) is shown as a badge but not added to the curve.</li>
         </ul>
@@ -700,7 +720,7 @@ export default function CostGen() {
         {sels.map((sel) => {
           const u = byId.get(sel.id);
           if (!u) return null;
-          const p = prepare(u, sel, cdr);
+          const p = prepare(u, sel, cdr, ignoreCosts, ignoreInitial);
           const ctl = controlsFor(u, sel);
           const tier = u.tiers[sel.tier] ?? u.tiers[u.tiers.length - 1];
           return (
@@ -783,7 +803,11 @@ export default function CostGen() {
                   {p.stages.map((st) => (
                     <span key={st.id}>
                       {st.name ?? st.id}:{" "}
-                      {st.permanent ? "∞" : `${(st.duration * (1 + (u.aff_dur ?? 0) / 100) * ((tier.dur_pct ?? 100) / 100)).toFixed(0)}s`}
+                      {st.permanent
+                        ? "∞"
+                        : st.duration === 0
+                          ? "2s (anim)"
+                          : `${(st.duration * (1 + (u.aff_dur ?? 0) / 100) * ((tier.dur_pct ?? 100) / 100)).toFixed(0)}s`}
                       {" / "}
                       {(st.cooldown * (1 - (u.aff_cd ?? 0) / 100) * (1 - p.cdrPct / 100)).toFixed(0)}s cd
                       {st.flat ? ` · +${st.flat} UP` : ""}
