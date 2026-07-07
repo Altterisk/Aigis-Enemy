@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { loadJSONFile, useUnitInfluenceLabels, useLocalisation } from "../data";
-import { HumanText } from "../components";
+import { HumanText, fmtFrames } from "../components";
 import type { BuffRow, UnitInfluenceLabel } from "../types";
 
 const STATS = [
@@ -10,6 +10,8 @@ const STATS = [
   { k: "HP", label: "HP" },
   { k: "MR", label: "MR" },
   { k: "RNG", label: "Range" },
+  { k: "PAD_REDUCTION", label: "PAD Reduction" },
+  { k: "CDR", label: "Skill CD Reduction" },
   { k: "ATK_DEBUFF", label: "ATK debuff" },
   { k: "DEF_DEBUFF", label: "DEF debuff" },
   { k: "MR_DEBUFF", label: "MR debuff" },
@@ -32,15 +34,26 @@ const SKILL_ADDITIVE_PCT = new Set([204, 205]);
 // render as a bogus "x0.25 debuff" instead of "+25%".
 const ABILITY_MULTIPLIER_PCT = new Set([134, 135, 136, 155, 156, 157, 158, 197, 198, 199, 207]);
 
+// skill 14 (Set PAD): sets PAD to a flat frame count, lower is better --
+// the opposite direction/shape of every other group on this page.
+const isSetPad = (r: BuffRow) => r.ns === "skill" && r.t === 14;
+
+// "_DEBUFF" stats are enemy-facing reductions; PAD_REDUCTION/CDR are ALLY
+// buffs but still phrased as a reduction -- none of these are ever shown
+// as a multiplier, always a plain "-X%".
+const isReduction = (r: BuffRow) =>
+  r.stat.endsWith("_DEBUFF") || r.stat === "PAD_REDUCTION" || r.stat === "CDR";
+
 function fmtValue(r: BuffRow): string {
+  if (isSetPad(r)) return `→ ${fmtFrames(r.v)}`;
   if (r.fl) return `+${r.v.toLocaleString()} flat`;
   const asMultiplier =
     (r.ns === "skill" && !SKILL_ADDITIVE_PCT.has(r.t)) ||
     (r.ns === "ability" && ABILITY_MULTIPLIER_PCT.has(r.t));
-  if (asMultiplier && !r.stat.endsWith("_DEBUFF")) {
+  if (asMultiplier && !isReduction(r)) {
     return `x${(r.v / 100).toFixed(2).replace(/\.?0+$/, "")}`;
   }
-  return r.stat.endsWith("_DEBUFF") ? `-${r.v}%` : `+${r.v}%`;
+  return isReduction(r) ? `-${r.v}%` : `+${r.v}%`;
 }
 
 function rawTitle(r: BuffRow): string | undefined {
@@ -95,7 +108,7 @@ export default function Buffs() {
         const t = list[0].t;
         const seen = new Set<number>();
         const ranked = list
-          .sort((a, b) => b.v - a.v)
+          .sort((a, b) => (isSetPad(a) ? a.v - b.v : b.v - a.v))
           .filter((r) => {
             if (seen.has(r.u)) return false;
             seen.add(r.u);

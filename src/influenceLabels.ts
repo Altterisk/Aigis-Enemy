@@ -2341,9 +2341,9 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "tpl": "+{p1}%"
     },
     "145": {
-      "name": "Can be placed anywhere (non deployment spot)",
+      "name": "Select All Targets in Area",
       "verified": true,
-      "note": "user-tested: Can be placed anywhere (non deployment spot)"
+      "note": "user-tested: Select All Targets in Area"
     },
     "155": {
       "name": "Lukifer Death HP buff",
@@ -2563,10 +2563,10 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "note": "user-tested: 184 185 186 order is probably similar to Makai order"
     },
     "270": {
-      "name": "Chronosia token Post Attack Delay Reduction",
+      "name": "Chronosia token PAD Reduction",
       "verified": true,
-      "note": "user-tested: p1 is reduction value (percent), p2 is duration",
-      "tpl": "-{p1}%, duration {p2}"
+      "note": "p1 is the reduction percent, p2 is the duration in frames.",
+      "tpl": "-{p1}% for {p2f}"
     },
     "300": {
       "name": "Create projectile",

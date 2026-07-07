@@ -474,7 +474,7 @@ export type TagMentions = Record<string, { unit?: TagMention[]; enemy?: TagMenti
 export interface BuffRow {
   u: number;            // unit id
   n?: string | null;    // unit name
-  stat: "HP" | "ATK" | "DEF" | "MR" | "RNG"
+  stat: "HP" | "ATK" | "DEF" | "MR" | "RNG" | "PAD_REDUCTION" | "CDR"
       | "ATK_DEBUFF" | "DEF_DEBUFF" | "MR_DEBUFF";
   ns: "skill" | "ability";
   t: number;            // influence type id
