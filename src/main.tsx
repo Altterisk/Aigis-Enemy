@@ -9,6 +9,7 @@ import EnemyDetail from "./pages/EnemyDetail";
 import UnitList from "./pages/UnitList";
 import UnitDetail from "./pages/UnitDetail";
 import Buffs from "./pages/Buffs";
+import CostGen from "./pages/CostGen";
 import "./styles.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -24,6 +25,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="units" element={<UnitList />} />
           <Route path="units/:id" element={<UnitDetail />} />
           <Route path="buffs" element={<Buffs />} />
+          <Route path="costgen" element={<CostGen />} />
         </Route>
       </Routes>
     </HashRouter>

@@ -10,6 +10,7 @@ export default function App() {
           <NavLink to="/enemies">Enemies</NavLink>
           <NavLink to="/units">Units</NavLink>
           <NavLink to="/buffs">Buffs</NavLink>
+          <NavLink to="/costgen">Cost Gen</NavLink>
         </nav>
         <span className="note">
           unverified attributes are shown raw, not explained

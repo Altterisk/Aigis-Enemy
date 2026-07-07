@@ -1211,37 +1211,27 @@ function inherentRange(rows?: { influence_type?: number; invoke?: string | numbe
   return null;
 }
 
-// a pure stat buff targeting only self (invoke=inherent, target=self)
-// surfaces in the stat box the same way ability 188 does for Range --
-// generalized to HP/ATK/DEF/MR/Cost. Ids mirror export_units.py's
-// STAT_ABILITY/FLAT_ABILITY buff-page grouping (13/14/12/82/76 are percent
-// of base; 15/21/10/81 are flat). Shown as a badge next to the base value
-// (non-destructive -- the base stat columns already come straight from the
-// stat formula and don't know about this ability layer).
-type InherentStatKind = "hp" | "atk" | "def" | "mr" | "range" | "cost";
-const INHERENT_STAT_ABILITY: Record<InherentStatKind, [number, "pct" | "flat"][]> = {
-  hp: [[12, "pct"], [82, "pct"]],
-  atk: [[13, "pct"], [70, "pct"]],
-  def: [[14, "pct"], [71, "pct"]],
-  mr: [[15, "flat"], [76, "pct"]],
-  range: [[21, "flat"]],
-  cost: [[10, "flat"], [81, "flat"]],
-};
-
-function inherentStatMod(
+// MR mod (15) and Cost reduction (10), invoke=inherent target=self: a flat
+// number wired directly into the displayed stat (same treatment as HP/ATK/DEF
+// below), not a side badge. Range (21) also has an inherent+self shape, added
+// directly to the displayed range/block number.
+// ids 70/71/76/82/81 (surveyed across every unit's real data) are NEVER
+// invoke=inherent+target=self -- they're always sortie/deployed buffs to
+// OTHER units ("all"), so they don't belong in this self-stat-mod table at
+// all; they render as ordinary buff rows in the ability list instead.
+const FLAT_MOD_ID: Record<"mr" | "range" | "cost", number> = { mr: 15, range: 21, cost: 10 };
+function flatMod(
   rows: { influence_type?: number; invoke?: string | number; target?: string | number; params?: number[] }[] | null | undefined,
-  kind: InherentStatKind
-): { id: number; pct?: number; flat?: number } | null {
-  const ids = INHERENT_STAT_ABILITY[kind];
+  kind: "mr" | "range" | "cost"
+): number | null {
+  const id = FLAT_MOD_ID[kind];
   for (const r of rows || []) {
-    if (r.invoke !== "inherent" || r.target !== "self") continue;
-    const spec = ids.find(([id]) => id === r.influence_type);
-    let v = r.params?.[0];
-    if (!spec || !v) continue;
-    // cost abilities (10/81) are always REDUCTIONS ("Cost reduction"), not
-    // increases -- their raw param is a positive magnitude to subtract.
-    if (kind === "cost") v = -v;
-    return { id: r.influence_type as number, [spec[1]]: v } as { id: number; pct?: number; flat?: number };
+    if (r.invoke === "inherent" && r.target === "self" && r.influence_type === id) {
+      const v = r.params?.[0] ?? 0;
+      // cost's ability is always a REDUCTION ("Cost reduction"): its raw
+      // param is a positive magnitude to subtract, not add.
+      return kind === "cost" ? -v : v;
+    }
   }
   return null;
 }
@@ -1264,13 +1254,25 @@ function hpAtkDefPct(
   }
   return null;
 }
-// lib/unit.lua affbonus BonusType enum.
+// lib/unit.lua affbonus BonusType enum (stat bonuses).
 const AFFBONUS_LABELS: Record<number, string> = { 1: "HP", 2: "ATK", 3: "DEF", 4: "Range", 6: "Speed" };
 const AFFBONUS_KIND: Record<number, "hp" | "atk" | "def"> = { 1: "hp", 2: "atk", 3: "def" };
+// special-attribute bonus types: applied at the raw value, no bloom scaling,
+// no stat mod. 7/8 modify the skill itself at base (they shift the Platinum
+// initial skill timer too -- see /costgen). Unknown types display raw.
+const AFFBONUS_SPECIAL: Record<number, (raw: number) => string> = {
+  5: (raw) => `MR +${raw}`,
+  7: (raw) => `Skill duration +${raw}%`,
+  8: (raw) => `Skill CD −${raw}%`,
+  9: (raw) => `Physical evasion +${raw}%`,
+  11: (raw) => `True Damage Chance +${raw}%`,
+  13: (raw) => `Cost -${raw}`,
+};
 
-// affection bonus is exported raw (BonusType/BonusNum): full-bloom
-// (max level > 50) scales it *1.2, half-bloom *0.5, then the unit's own
-// HP/ATK/DEF mod (12/13/14) applies on top, same as the stat box.
+// affection bonus is exported raw (BonusType/BonusNum). Stat bonuses:
+// full-bloom (max level > 50) scales *1.2, half-bloom *0.5, then the unit's
+// own HP/ATK/DEF mod (12/13/14) applies on top, same as the stat box.
+// Special-attribute types (5/7/8/9) bypass all of that.
 function affBonusText(
   bonuses: AffectionBonus[] | undefined,
   full: boolean,
@@ -1279,7 +1281,10 @@ function affBonusText(
   if (!bonuses || bonuses.length === 0) return "-";
   return bonuses
     .map((b) => {
-      const label = AFFBONUS_LABELS[b.type] ?? `type${b.type}`;
+      const special = AFFBONUS_SPECIAL[b.type];
+      if (special) return special(b.raw);
+      const label = AFFBONUS_LABELS[b.type];
+      if (!label) return `type${b.type} +${b.raw}`;
       let v = Math.floor(b.raw * (full ? 1.2 : 0.5) + 0.5);
       const kind = AFFBONUS_KIND[b.type];
       const pct = kind ? pctFor(kind) : null;
@@ -1292,17 +1297,6 @@ function affBonusText(
 function applyPct(vals: number[], pct: number | null): number[] {
   // in-game stat display rounds down, not to nearest.
   return pct == null ? vals : vals.map((v) => Math.floor((v * pct) / 100));
-}
-
-function StatModBadge({ mod }: { mod: { id: number; pct?: number; flat?: number } | null }) {
-  if (!mod) return null;
-  const sign = (n: number) => (n < 0 ? String(n) : `+${n}`);
-  const text = mod.pct != null ? `${sign(mod.pct)}%` : sign(mod.flat ?? 0);
-  return (
-    <span className="meaning" title={`inherent self buff: ability ${mod.id}`}>
-      {" "}({text})
-    </span>
-  );
 }
 
 function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, string> }) {
@@ -1319,25 +1313,18 @@ function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, 
   const baseFull = fullBloom(baseGroup);
   const awFull = fullBloom(awGroup);
   // tier 0 (cc0/cc1) uses the base (non-awakened) ability; tier 2+ (cc>=2)
-  // uses the awakened ability -- promoting past cc1 requires awaken.
+  // uses the awakened ability -- promoting past cc1 requires awaken. No
+  // cross-variant fallback: awakening REPLACES the active ability rather
+  // than layering on it, so a class in one state must never borrow the
+  // other variant's mod (e.g. #63 Barbastroff has no default ability at
+  // all -- its cc0 Mage tier must show no range mod, not fall back to the
+  // awakened-only ability's +40 flat range).
   const unitRange188 = (cc: number) =>
-    cc >= 2
-      ? inherentRange(unit.abilities.awakened?.influences) ??
-        inherentRange(unit.abilities.default?.influences)
-      : inherentRange(unit.abilities.default?.influences) ??
-        inherentRange(unit.abilities.awakened?.influences);
-  const unitStatMod = (kind: InherentStatKind, cc: number) =>
-    cc >= 2
-      ? inherentStatMod(unit.abilities.awakened?.influences, kind) ??
-        inherentStatMod(unit.abilities.default?.influences, kind)
-      : inherentStatMod(unit.abilities.default?.influences, kind) ??
-        inherentStatMod(unit.abilities.awakened?.influences, kind);
+    inherentRange((cc >= 2 ? unit.abilities.awakened : unit.abilities.default)?.influences);
+  const unitFlatMod = (kind: "mr" | "range" | "cost", cc: number) =>
+    flatMod((cc >= 2 ? unit.abilities.awakened : unit.abilities.default)?.influences, kind);
   const unitHpAtkDefPct = (kind: "hp" | "atk" | "def", cc: number) =>
-    cc >= 2
-      ? hpAtkDefPct(unit.abilities.awakened?.influences, kind) ??
-        hpAtkDefPct(unit.abilities.default?.influences, kind)
-      : hpAtkDefPct(unit.abilities.default?.influences, kind) ??
-        hpAtkDefPct(unit.abilities.awakened?.influences, kind);
+    hpAtkDefPct((cc >= 2 ? unit.abilities.awakened : unit.abilities.default)?.influences, kind);
   return (
     <>
       <table className="grid unit-stat-table">
@@ -1354,8 +1341,8 @@ function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, 
             const first = cl.stats[0];
             const last = cl.stats[cl.stats.length - 1];
             const range188 = inherentRange(cl.class_ability_influences) ?? unitRange188(cl.cc);
-            const statMod = (kind: InherentStatKind) =>
-              inherentStatMod(cl.class_ability_influences, kind) ?? unitStatMod(kind, cl.cc);
+            const clFlatMod = (kind: "mr" | "range" | "cost") =>
+              flatMod(cl.class_ability_influences, kind) ?? unitFlatMod(kind, cl.cc);
             const clHpAtkDefPct = (kind: "hp" | "atk" | "def") =>
               hpAtkDefPct(cl.class_ability_influences, kind) ?? unitHpAtkDefPct(kind, cl.cc);
             return (
@@ -1377,17 +1364,16 @@ function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, 
                 <td className="num">{statRange(applyPct(cl.stats.map((s) => s.hp), clHpAtkDefPct("hp")))}</td>
                 <td className="num">{statRange(applyPct(cl.stats.map((s) => s.atk), clHpAtkDefPct("atk")))}</td>
                 <td className="num">{statRange(applyPct(cl.stats.map((s) => s.def), clHpAtkDefPct("def")))}</td>
-                <td className="num">{cl.magic_resistance ?? unit.magic_resistance ?? 0}<StatModBadge mod={statMod("mr")} /></td>
+                <td className="num">{(cl.magic_resistance ?? unit.magic_resistance ?? 0) + (clFlatMod("mr") ?? 0)}</td>
                 <td>
                   {cl.ranged
-                    ? cl.range ?? "?"
-                    : `${cl.range ?? "melee"} (block ${cl.block ?? "-"})`}
+                    ? cl.range != null ? cl.range + (clFlatMod("range") ?? 0) : "?"
+                    : `${cl.range != null ? cl.range + (clFlatMod("range") ?? 0) : "melee"} (block ${cl.block ?? "-"})`}
                   {!cl.ranged && range188 != null && (
                     <span className="meaning" title="attacks at range: ability 188 (Gain ranged atk, inherent · self)">
                       {" "}· range {range188}
                     </span>
                   )}
-                  <StatModBadge mod={statMod("range")} />
                   {cl.missile && (
                     <div className="muted small" title="the class's own missile">
                       {missileText(cl.missile)}
@@ -1406,7 +1392,7 @@ function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, 
                     ? `${cl.attack_interval}f (${(cl.attack_interval / 60).toFixed(2)}s)`
                     : "?"}
                 </td>
-                <td>{cl.cost_max} → {cl.cost_min}<StatModBadge mod={statMod("cost")} /></td>
+                <td>{(cl.cost_max ?? 0) + (clFlatMod("cost") ?? 0)} → {(cl.cost_min ?? 0) + (clFlatMod("cost") ?? 0)}</td>
                 {ci === 0 && (
                   <td rowSpan={awakenIdx === -1 ? classes.length : awakenIdx} className="aff-cell">
                     {affBonusText(unit.affection_bonuses, baseFull, (kind) => unitHpAtkDefPct(kind, cl.cc))}

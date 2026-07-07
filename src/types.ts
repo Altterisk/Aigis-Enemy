@@ -5,8 +5,10 @@
 export type DamageType = "physical" | "magical" | "true";
 
 // raw affection-gift bonus: `type` is the game's BonusType enum (1=HP,
-// 2=ATK, 3=DEF, 4=Range, 6=Speed), `raw` is the unresolved BonusNum --
-// the frontend applies the full/half-bloom scaling and stat mods.
+// 2=ATK, 3=DEF, 4=Range, 6=Speed stat bonuses; 5=MR, 7=Skill duration +%,
+// 8=Skill CD -%, 9=Physical evasion special attributes; others unlabeled),
+// `raw` is the unresolved BonusNum -- the frontend applies full/half-bloom
+// scaling and stat mods to stat bonuses only; special types show raw.
 export interface AffectionBonus {
   type: number;
   raw: number;
