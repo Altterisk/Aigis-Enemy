@@ -1014,19 +1014,19 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
     "12": {
       "name": "HP mod",
       "verified": true,
-      "note": "p1 is percent OF NORMAL, not a raw delta -- p1=80 means -20% HP, not +80%. invoke=inherent, target=self is the unit's own innate stat change, shown in the stat box; a separate row with invoke=1st barrack is a barrack-wide buff for other units instead, not shown in the stat box (distinguished by invoke, not by a 4th param).",
+      "note": "invoke=inherent, target=self: p1 is percent OF NORMAL (p1=80 means -20% HP, shown in the stat box); a MISSING p1 on this invoke/target shape is still p1=0 (export compaction drops all-zero params), a real \"set to 0x\" effect, not \"no modification\". Every OTHER invoke (1st barrack, sortie, deployed, ...) is a buff row instead, where the SAME p1 slot is an additive buff percent for other units (p1=7 means +7%, not -93%). Rendered in AbilityInfluenceRow to pick the right reading by invoke.",
       "tpl": "→ {p1}%"
     },
     "13": {
       "name": "ATK mod",
       "verified": true,
-      "note": "p1 is percent OF NORMAL, not a raw delta -- p1=110 means +10% ATK, not +110%. invoke=inherent, target=self is the unit's own innate stat change, shown in the stat box; a separate row with invoke=1st barrack is a barrack-wide buff for other units instead, not shown in the stat box (distinguished by invoke, not by a 4th param).",
+      "note": "invoke=inherent, target=self: p1 is percent OF NORMAL (p1=110 means +10% ATK, shown in the stat box); a MISSING p1 on this invoke/target shape is still p1=0 (export compaction drops all-zero params), a real \"set to 0x\" effect, not \"no modification\". Every OTHER invoke (1st barrack, sortie, deployed, ...) is a buff row instead, where the SAME p1 slot is an additive buff percent for other units. Rendered in AbilityInfluenceRow to pick the right reading by invoke.",
       "tpl": "→ {p1}%"
     },
     "14": {
       "name": "DEF mod",
       "verified": true,
-      "note": "same shape as ATK/HP mod: p1 is percent OF NORMAL, not a raw delta (Suiren (Bride)'s p1=150 means +50% DEF). A paramless row is just 0 getting removed.",
+      "note": "same shape as ATK/HP mod: invoke=inherent/self reads p1 as percent OF NORMAL (Suiren (Bride)'s p1=150 means +50% DEF); a MISSING p1 on this invoke/target shape is still p1=0 (export compaction drops all-zero params), a real \"set to 0x\" effect confirmed on Leona (Bedwear) and Chiyome (Steamy Kunoichi)'s DEF mod rows. Every OTHER invoke (1st barrack, sortie, deployed, ...) reads the same p1 as an additive buff percent instead. Rendered in AbilityInfluenceRow to pick the right reading by invoke.",
       "tpl": "→ {p1}%"
     },
     "15": {
@@ -1068,7 +1068,7 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
     "21": {
       "name": "Range",
       "verified": true,
-      "note": "user-tested: p1 is flat value\np2 + p4 is flat barrack buff\n",
+      "note": "p1 is the base flat range, p2 is a 1st-barrack flat bonus; either can be present alone. Rendered in AbilityInfluenceRow to avoid showing a spurious +0 flat when p1 is unset.",
       "tpl": "+{p1} flat[[?p2:, 1st barrack: +{p2} flat]]"
     },
     "22": {
@@ -1107,15 +1107,14 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "tpl": "-{p2}"
     },
     "28": {
-      "name": "Weather ATK mod",
+      "name": "Weather ATK Modifier",
       "verified": true,
-      "note": "p1 is a weather-type index (same shape as ability 27's p1), p2 is the percent to set ATK to.",
-      "tpl": "→ {p2}%"
+      "note": "p1 is a constant flag (always 1), not a weather-type index. p2=100 is plain resist (immune to the ATK cut from bad weather); p2>100 is a real ATK buff during bad weather; p2<100 is a real (lesser) reduction still applying. Rendered in AbilityInfluenceRow to word all three cases correctly."
     },
     "29": {
-      "name": "Weather Range Reduction Resist",
+      "name": "Weather Range Modifier",
       "verified": true,
-      "note": "Verified (renamed from 'Weather resist' to distinguish it from ability 27/28's weather cost/ATK mods; p2 still open)."
+      "note": "p1 is a constant flag (always 1). p2=100 is plain resist (immune to the range cut from bad weather); p2>100 is a real range buff during bad weather; p2<100 would be a real (lesser) reduction still applying (no real carrier seen yet, same shape as ability 28). Rendered in AbilityInfluenceRow to word all three cases correctly."
     },
     "30": {
       "name": "Regenerate HP",

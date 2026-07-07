@@ -2,7 +2,7 @@ import { useState, createContext, useContext } from "react";
 import type { ReactNode } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useUnitDetail, useUnitInfluenceLabels, useLocalisation, usePrinceTitles, useMissiles, useAbilityConfigs } from "../data";
-import { UnitImage, missileText, fillLabel, HumanText, fmtFrames } from "../components";
+import { UnitImage, missileText, fillLabel, HumanText, fmtFrames, ColorCodedText } from "../components";
 import type {
   Unit,
   UnitClass,
@@ -14,6 +14,7 @@ import type {
   InfluenceExtend,
   SkillStage,
   Missile,
+  AffectionBonus,
 } from "../types";
 
 // published missiles.json lookup, provided once at the page root so deeply
@@ -666,28 +667,67 @@ function AbilityInfluenceRow({
   const missiles = useContext(MissilesContext);
   const abilityConfigs = useContext(AbilityConfigsContext);
   if (label?.hidden) return null;
-  const parts = [
+  // "while in the 1st barrack" is a rare, notable invoke condition (the
+  // possession-item-gated War God Blessing family, plus a handful of real
+  // units) -- the whole type/invoke/name/value group is flagged in red
+  // (below, at render) so it stands out from ordinary rows.
+  const isBarrackInvoke = inf.invoke === "while in the 1st barrack";
+  const parts: ReactNode[] = [
     `type ${inf.influence_type}`,
     inf.invoke != null ? `invoke ${inf.invoke}` : null,
     inf.target != null ? `target ${inf.target}` : null,
     inf.params && inf.params.length ? `[${inf.params.join(", ")}]` : null,
-  ].filter(Boolean);
+  ].filter((p): p is NonNullable<typeof p> => p != null);
   // id 34 (Prevent status ailment): p1=100 is full immunity, any other
   // value is a reduction percent instead -- two different sentences, not
   // just a number substitution.
-  let filled: string | null;
+  let filled: ReactNode | null;
   if (inf.influence_type === 34 && inf.params?.[0] != null) {
     filled = inf.params[0] === 100 ? "Status Immunity" : `Status Effect Reduction ${inf.params[0]}%`;
+  } else if ((inf.influence_type === 28 || inf.influence_type === 29) && inf.params?.[1] != null) {
+    // ids 28/29 (Weather ATK/Range mod): p2=100 is plain resist (immune to
+    // the reduction from bad weather); p2>100 is a real buff during bad
+    // weather instead of just resisting it; p2<100 is a real (lesser)
+    // reduction still applying, not full immunity.
+    const stat = inf.influence_type === 28 ? "ATK" : "range";
+    const p2 = inf.params[1];
+    filled = p2 === 100
+      ? `immune to weather ${stat} reduction`
+      : p2 > 100
+        ? `${stat} +${p2 - 100}% during bad weather`
+        : `${stat} -${100 - p2}% during bad weather`;
   } else if (inf.influence_type === 39 && inf.params?.[0] != null) {
     // id 39 (Nullify attack restriction): p1 is an enum, only 3 ("while not
     // using skill") is confirmed so far -- other values show as raw numbers.
     filled = inf.params[0] === 3 ? "while not using skill" : String(inf.params[0]);
+  } else if ([12, 13, 14].includes(inf.influence_type ?? -1)) {
+    // ids 12/13/14 (HP/ATK/DEF mod): p1 is percent-of-normal ONLY for
+    // invoke=inherent, target=self (the unit's own stat, wired into the
+    // stat box). Every other invoke (1st barrack, sortie, deployed, ...)
+    // is a buff row instead, where the same p1 slot is an additive
+    // percent -- same param, different meaning, distinguished by invoke.
+    if (inf.invoke === "inherent" && inf.target === "self") {
+      // export compaction drops an all-zero params array entirely -- a
+      // MISSING p1 here is still a real p1=0 ("set to 0x"), not "no
+      // modification" to skip (found on real carriers, e.g. Leona
+      // (Bedwear)'s DEF mod row with no params at all).
+      filled = `→ ${inf.params?.[0] ?? 0}%`;
+    } else {
+      filled = inf.params?.[0] != null ? `+${inf.params[0]}%` : null;
+    }
   } else if (inf.influence_type === 76) {
     // id 76 (MR Buff, sortie/deployment family): unlike 70/71/82, the value
     // itself switches by invoke, not just the name -- p1 on sortie rows, p2
     // on deployed rows.
     const v = inf.invoke === "sortie" ? inf.params?.[0] : inf.invoke === "deployed" ? inf.params?.[1] : null;
     filled = v != null ? `+${v} flat` : null;
+  } else if (inf.influence_type === 21) {
+    // id 21 (Range): p1 (base flat range) and p2 (1st-barrack flat bonus)
+    // are independent -- don't show "+0 flat" when p1 is unset.
+    const parts: string[] = [];
+    if (inf.params?.[0]) parts.push(`+${inf.params[0]} flat`);
+    if (inf.params?.[1]) parts.push(`+${inf.params[1]} flat`);
+    filled = parts.length ? parts.join(", ") : null;
   } else if (inf.influence_type === 122) {
     // id 122 (Reduce enemy MR): p1 (percent) and p2 (flat) are independent --
     // a row can carry either or both, so don't show "-0%" when p1 is unset.
@@ -743,9 +783,15 @@ function AbilityInfluenceRow({
   const rate = abilityRate(inf);
   return (
     <li key={i}>
-      <code>{parts.join(" · ")}</code>
-      <InfluenceLabel label={label} nameOverride={abilityLabelName(inf)} />
-      {filled && <span className="meaning"> {filled}</span>}
+      <span className={isBarrackInvoke ? "barrack-invoke" : undefined}>
+        <code>
+          {parts.map((p, j) => (
+            <span key={j}>{j > 0 && " · "}{p}</span>
+          ))}
+        </code>
+        <InfluenceLabel label={label} nameOverride={abilityLabelName(inf)} />
+        {filled && <span className="meaning"> {filled}</span>}
+      </span>
       {rate && <span className="dot-calc"> {rate}</span>}
       {inf.missiles && Object.entries(inf.missiles).map(([mid, m]) => (
         <span className="meaning" key={mid}> missile {mid}: {missileText(m)}</span>
@@ -785,7 +831,7 @@ function AbilityInfluenceRow({
           <div className="muted small linked-ability-head">
             grants the ability effects below (config #{inf.params[0]}):
           </div>
-          <ul className="effects">
+          <ul className="effects effects--granted">
             {(abilityConfigs?.[String(inf.params[0])] ?? []).map((g, j) => (
               <AbilityInfluenceRow
                 inf={g} i={j} key={j} labelsMap={labelsMap}
@@ -989,7 +1035,7 @@ function SkillStageRow({
               <div className="muted small linked-ability-head">
                 linked ability effects (granted by the type-122 row):
               </div>
-              <ul className="effects">
+              <ul className="effects effects--granted">
                 {s.linked_ability_influences.map((inf, j) => (
                   <AbilityInfluenceRow
                     inf={inf} i={j} key={j} labelsMap={abilityLabels}
@@ -1125,7 +1171,7 @@ function AbilityBlock({
               <span className="muted small"> #{ability.id}</span>
             </td>
             <td className="skill-text">
-              {ability.text}
+              {ability.text && <ColorCodedText text={ability.text} />}
               <InfluenceToggle count={ability.influences?.length || 0}>
                 <ul className="effects">
                   {(ability.influences || []).map((inf, j) => (
@@ -1200,6 +1246,54 @@ function inherentStatMod(
   return null;
 }
 
+// HP/ATK/DEF mod (12/13/14), invoke=inherent, target=self: p1 is percent
+// OF NORMAL, wired directly into the displayed stat number (not a side
+// badge). A row that exists with no params is p1=0 (export compaction
+// drops all-zero params) -- a real "set stat to 0x", e.g. Leona
+// (Bedwear) and Chiyome (Steamy Kunoichi)'s DEF mod.
+const HP_ATK_DEF_MOD_ID: Record<"hp" | "atk" | "def", number> = { hp: 12, atk: 13, def: 14 };
+function hpAtkDefPct(
+  rows: { influence_type?: number; invoke?: string | number; target?: string | number; params?: number[] }[] | null | undefined,
+  kind: "hp" | "atk" | "def"
+): number | null {
+  const id = HP_ATK_DEF_MOD_ID[kind];
+  for (const r of rows || []) {
+    if (r.invoke === "inherent" && r.target === "self" && r.influence_type === id) {
+      return r.params?.[0] ?? 0;
+    }
+  }
+  return null;
+}
+// lib/unit.lua affbonus BonusType enum.
+const AFFBONUS_LABELS: Record<number, string> = { 1: "HP", 2: "ATK", 3: "DEF", 4: "Range", 6: "Speed" };
+const AFFBONUS_KIND: Record<number, "hp" | "atk" | "def"> = { 1: "hp", 2: "atk", 3: "def" };
+
+// affection bonus is exported raw (BonusType/BonusNum): full-bloom
+// (max level > 50) scales it *1.2, half-bloom *0.5, then the unit's own
+// HP/ATK/DEF mod (12/13/14) applies on top, same as the stat box.
+function affBonusText(
+  bonuses: AffectionBonus[] | undefined,
+  full: boolean,
+  pctFor: (kind: "hp" | "atk" | "def") => number | null
+): string {
+  if (!bonuses || bonuses.length === 0) return "-";
+  return bonuses
+    .map((b) => {
+      const label = AFFBONUS_LABELS[b.type] ?? `type${b.type}`;
+      let v = Math.floor(b.raw * (full ? 1.2 : 0.5) + 0.5);
+      const kind = AFFBONUS_KIND[b.type];
+      const pct = kind ? pctFor(kind) : null;
+      if (pct != null) v = Math.floor((v * pct) / 100);
+      return `${label} +${v}`;
+    })
+    .join(", ");
+}
+
+function applyPct(vals: number[], pct: number | null): number[] {
+  // in-game stat display rounds down, not to nearest.
+  return pct == null ? vals : vals.map((v) => Math.floor((v * pct) / 100));
+}
+
 function StatModBadge({ mod }: { mod: { id: number; pct?: number; flat?: number } | null }) {
   if (!mod) return null;
   const sign = (n: number) => (n < 0 ? String(n) : `+${n}`);
@@ -1214,12 +1308,36 @@ function StatModBadge({ mod }: { mod: { id: number; pct?: number; flat?: number 
 function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, string> }) {
   const classes = unit.classes;
   if (classes.length === 0) return null;
-  const unitRange188 =
-    inherentRange(unit.abilities.default?.influences) ??
-    inherentRange(unit.abilities.awakened?.influences);
-  const unitStatMod = (kind: InherentStatKind) =>
-    inherentStatMod(unit.abilities.default?.influences, kind) ??
-    inherentStatMod(unit.abilities.awakened?.influences, kind);
+  // AFF bonus splits into a base-form group (cc0/cc1) and an awakened-form
+  // group (cc>=2, when the unit has one) -- each uses its own full/half-bloom
+  // flag (own max level) and its own HP/ATK/DEF mod.
+  const awakenIdx = classes.findIndex((c) => c.cc >= 2);
+  const baseGroup = awakenIdx === -1 ? classes : classes.slice(0, awakenIdx);
+  const awGroup = awakenIdx === -1 ? [] : classes.slice(awakenIdx);
+  const fullBloom = (group: UnitClass[]) =>
+    group.length > 0 && Math.max(...group.map((c) => c.max_level ?? 0)) > 50;
+  const baseFull = fullBloom(baseGroup);
+  const awFull = fullBloom(awGroup);
+  // tier 0 (cc0/cc1) uses the base (non-awakened) ability; tier 2+ (cc>=2)
+  // uses the awakened ability -- promoting past cc1 requires awaken.
+  const unitRange188 = (cc: number) =>
+    cc >= 2
+      ? inherentRange(unit.abilities.awakened?.influences) ??
+        inherentRange(unit.abilities.default?.influences)
+      : inherentRange(unit.abilities.default?.influences) ??
+        inherentRange(unit.abilities.awakened?.influences);
+  const unitStatMod = (kind: InherentStatKind, cc: number) =>
+    cc >= 2
+      ? inherentStatMod(unit.abilities.awakened?.influences, kind) ??
+        inherentStatMod(unit.abilities.default?.influences, kind)
+      : inherentStatMod(unit.abilities.default?.influences, kind) ??
+        inherentStatMod(unit.abilities.awakened?.influences, kind);
+  const unitHpAtkDefPct = (kind: "hp" | "atk" | "def", cc: number) =>
+    cc >= 2
+      ? hpAtkDefPct(unit.abilities.awakened?.influences, kind) ??
+        hpAtkDefPct(unit.abilities.default?.influences, kind)
+      : hpAtkDefPct(unit.abilities.default?.influences, kind) ??
+        hpAtkDefPct(unit.abilities.awakened?.influences, kind);
   return (
     <>
       <table className="grid unit-stat-table">
@@ -1235,9 +1353,11 @@ function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, 
           {classes.map((cl, ci) => {
             const first = cl.stats[0];
             const last = cl.stats[cl.stats.length - 1];
-            const range188 = inherentRange(cl.class_ability_influences) ?? unitRange188;
+            const range188 = inherentRange(cl.class_ability_influences) ?? unitRange188(cl.cc);
             const statMod = (kind: InherentStatKind) =>
-              inherentStatMod(cl.class_ability_influences, kind) ?? unitStatMod(kind);
+              inherentStatMod(cl.class_ability_influences, kind) ?? unitStatMod(kind, cl.cc);
+            const clHpAtkDefPct = (kind: "hp" | "atk" | "def") =>
+              hpAtkDefPct(cl.class_ability_influences, kind) ?? unitHpAtkDefPct(kind, cl.cc);
             return (
               <tr key={cl.class_id}>
                 <td>
@@ -1254,9 +1374,9 @@ function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, 
                 <td className="num">
                   {first && last ? (first.level === last.level ? first.level : `${first.level}–${last.level}`) : "-"}
                 </td>
-                <td className="num">{statRange(cl.stats.map((s) => s.hp))}<StatModBadge mod={statMod("hp")} /></td>
-                <td className="num">{statRange(cl.stats.map((s) => s.atk))}<StatModBadge mod={statMod("atk")} /></td>
-                <td className="num">{statRange(cl.stats.map((s) => s.def))}<StatModBadge mod={statMod("def")} /></td>
+                <td className="num">{statRange(applyPct(cl.stats.map((s) => s.hp), clHpAtkDefPct("hp")))}</td>
+                <td className="num">{statRange(applyPct(cl.stats.map((s) => s.atk), clHpAtkDefPct("atk")))}</td>
+                <td className="num">{statRange(applyPct(cl.stats.map((s) => s.def), clHpAtkDefPct("def")))}</td>
                 <td className="num">{cl.magic_resistance ?? unit.magic_resistance ?? 0}<StatModBadge mod={statMod("mr")} /></td>
                 <td>
                   {cl.ranged
@@ -1286,12 +1406,15 @@ function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, 
                     ? `${cl.attack_interval}f (${(cl.attack_interval / 60).toFixed(2)}s)`
                     : "?"}
                 </td>
-                <td>{cl.cost_min} → {cl.cost_max}<StatModBadge mod={statMod("cost")} /></td>
+                <td>{cl.cost_max} → {cl.cost_min}<StatModBadge mod={statMod("cost")} /></td>
                 {ci === 0 && (
-                  <td rowSpan={classes.length} className="aff-cell">
-                    {unit.affection_bonuses && unit.affection_bonuses.length > 0
-                      ? unit.affection_bonuses.join(", ")
-                      : "-"}
+                  <td rowSpan={awakenIdx === -1 ? classes.length : awakenIdx} className="aff-cell">
+                    {affBonusText(unit.affection_bonuses, baseFull, (kind) => unitHpAtkDefPct(kind, cl.cc))}
+                  </td>
+                )}
+                {ci === awakenIdx && (
+                  <td rowSpan={classes.length - awakenIdx} className="aff-cell">
+                    {affBonusText(unit.affection_bonuses, awFull, (kind) => unitHpAtkDefPct(kind, cl.cc))}
                   </td>
                 )}
               </tr>

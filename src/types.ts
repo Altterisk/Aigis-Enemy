@@ -4,6 +4,14 @@
 
 export type DamageType = "physical" | "magical" | "true";
 
+// raw affection-gift bonus: `type` is the game's BonusType enum (1=HP,
+// 2=ATK, 3=DEF, 4=Range, 6=Speed), `raw` is the unresolved BonusNum --
+// the frontend applies the full/half-bloom scaling and stat mods.
+export interface AffectionBonus {
+  type: number;
+  raw: number;
+}
+
 // one resolved influence row of a SpEff / quest term.
 export interface Effect {
   kind?: "specialty" | "term";
@@ -443,7 +451,7 @@ export interface Unit {
   identity_tags?: string[];
   faction?: string | null;
   genus?: string | null;
-  affection_bonuses?: string[];
+  affection_bonuses?: AffectionBonus[];
   classes: UnitClass[];
   skills: {
     base?: UnitSkill | null;
@@ -548,7 +556,7 @@ export interface UnitIndexEntry {
   sell_price?: number | null;
   trade_point?: number | null;
   build_exp?: number | null;
-  affection_bonuses?: string[];
+  affection_bonuses?: AffectionBonus[];
   specials?: UnitSpecial[];
   class?: string | null;
   ranged?: boolean | null;

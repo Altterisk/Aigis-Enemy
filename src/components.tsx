@@ -65,6 +65,28 @@ export function missileOnHitText(h?: MissileOnHit | null): string {
   return `on hit: ${label}${dmg}${dur}${tail}`;
 }
 
+// Ability text's own in-game color markup: "%c[RRGGBB]...%c[RRGGBB]" (the
+// second code, usually ffffff, resets to default). Used on ~100 abilities
+// to flag a "【所持効果】" (possession-effect / 1st-barrack) buff clause in
+// red, matching the color-coded highlight already applied elsewhere to
+// invoke="while in the 1st barrack" influence rows.
+export function ColorCodedText({ text }: { text: string }) {
+  const parts = text.split(/(%c\[[0-9a-fA-F]{6}\])/g);
+  let color: string | null = null;
+  return (
+    <>
+      {parts.map((part, i) => {
+        const m = part.match(/^%c\[([0-9a-fA-F]{6})\]$/);
+        if (m) {
+          color = m[1].toLowerCase() === "ffffff" ? null : `#${m[1]}`;
+          return null;
+        }
+        return color ? <span key={i} style={{ color }}>{part}</span> : part;
+      })}
+    </>
+  );
+}
+
 // Humanized condition text with [[class:NAME]] / [[tag:NAME]] filter-link
 // markers (emitted by aigis/expr.py) rendered as clickable unit-list filters,
 // displayed with their EN translation where one exists.

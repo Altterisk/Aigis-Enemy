@@ -401,6 +401,14 @@ section h3 { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 .effects .params { color: #b0c0e8; }
 .effects .meaning { color: #9ece6a; }
 .effects .meaning.unverified { color: #cfa15a; font-style: italic; }
+/* "while in the 1st barrack" invoke rows: flag the whole type/name/value
+   group red, overriding the child elements' own colors (code/.meaning). */
+.effects .barrack-invoke,
+.effects .barrack-invoke code,
+.effects .barrack-invoke .meaning {
+  color: #f7768e;
+  font-weight: 600;
+}
 .effects .dot-calc { color: #e0af68; font-weight: 600; }
 
 .commands { margin-top: 8px; font-size: 12px; }
@@ -416,6 +424,20 @@ section h3 { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
   color: #b9c4da;
 }
 .effects .expr { color: var(--muted); font-style: italic; margin-left: 6px; }
+
+/* a granted/linked ability's effect rows (from a type-189 config or a
+   type-122 linked ability) -- indented and left-bordered so they read as
+   nested under their parent row, not as siblings of the normal effect list. */
+.linked-ability-head {
+  margin-top: 4px;
+  padding-left: 10px;
+  border-left: 2px solid var(--line);
+}
+.effects--granted {
+  margin-left: 10px;
+  padding-left: 10px;
+  border-left: 2px solid var(--line);
+}
 
 /* element / property tags */
 .tags { display: inline-flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
@@ -557,9 +579,18 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   cursor: pointer;
 }
 .unit-tier-tabs button.active { color: #fff; background: var(--accent); border-color: var(--accent); }
-.unit-stat-table { margin-top: 8px; border: 1px solid var(--line); }
+.unit-stat-table {
+  margin-top: 8px;
+  border: 1px solid var(--line);
+  /* collapse + a rowSpan cell (AFF bonus) can drop the row-divider border
+     segment next to the spanned cell in some browsers -- separate borders
+     draw each cell's own edge independently, avoiding that T-junction bug. */
+  border-collapse: separate;
+  border-spacing: 0;
+}
 .unit-stat-table th, .unit-stat-table td { border-right: 1px solid var(--line); }
 .unit-stat-table th:last-child, .unit-stat-table td:last-child { border-right: none; }
+.unit-stat-table tbody tr:last-child td { border-bottom: none; }
 .unit-class-name-cell { text-align: left; white-space: nowrap; vertical-align: top; }
 .unit-token-card {
   background: var(--panel);
