@@ -7,6 +7,16 @@ import type {
   Localisation as LocalisationT,
 } from "./types";
 
+// engine frames (@60fps) -> "Nf (X.Xs)" -- always show both the raw frame
+// count and its seconds conversion side by side, never seconds alone, since
+// the raw frame count is the verifiable source value.
+export function fmtFrames(f?: number | null): string {
+  if (f == null) return "?";
+  if (!f) return "0f";
+  const s = f / 60;
+  return `${f}f (${s.toFixed(s % 1 ? 1 : 0)}s)`;
+}
+
 // Humanize a missile's on-hit status effect (decoded from the Property field).
 // Shared by enemy (StageDetail) and unit skill (UnitDetail) missile displays.
 export function missileOnHitText(h?: MissileOnHit | null): string {
@@ -18,25 +28,26 @@ export function missileOnHitText(h?: MissileOnHit | null): string {
     "ステータス低下": "stat down",
   };
   const label = KIND[h.kind] || h.kind;
-  // damage description with the per-second rate. The percent's BASE depends
-  // on 攻撃力を使う (uses_atk): set -> % of the attacker's own ATK per tick
-  // (the normal unit-skill poison, user-confirmed on Roselne #2621);
-  // unset -> % of the target's max HP (the rarer enemy style, e.g. Acid
-  // Slime missile 753).
+  // damage description: raw amount/tick, the tick interval (frames+seconds),
+  // and the computed per-second rate together (e.g. "45HP/30f (0.5s)
+  // (90HP/s)"). The percent's BASE depends on 攻撃力を使う (uses_atk): set
+  // means % of the attacker's own ATK per tick (the normal unit-skill
+  // poison, e.g. Roselne #2621); unset means % of the target's max HP (the
+  // rarer enemy style, e.g. Acid Slime missile 753).
   const parts: string[] = [];
   const iv = h.interval_f || 0;
   if (h.pct_hp) {
     const base = h.uses_atk ? "of ATK" : "of max HP";
     const perSec = iv ? ` (${Math.round((h.pct_hp * 60) / iv)}%/sec)` : "";
-    parts.push(`${h.pct_hp}% ${base}/tick${perSec}`);
+    parts.push(`${h.pct_hp}% ${base} / ${fmtFrames(iv)}${perSec}`);
   }
   if (h.flat) {
     const perSec = iv ? ` (${Math.round((h.flat * 60) / iv)}/sec)` : "";
-    parts.push(`${h.flat} dmg/tick${perSec}`);
+    parts.push(`${h.flat} dmg / ${fmtFrames(iv)}${perSec}`);
   }
   if (h.attack_interval_f) {
     // 攻撃遅延's raw 攻撃間隔 frame count -- shown raw, semantics unverified.
-    parts.push(`攻撃間隔 ${h.attack_interval_f}f (raw)`);
+    parts.push(`攻撃間隔 ${fmtFrames(h.attack_interval_f)} (raw)`);
   }
   if (h.stat_down) {
     const sd = Object.entries(h.stat_down)
@@ -44,7 +55,7 @@ export function missileOnHitText(h?: MissileOnHit | null): string {
       .join(", ");
     parts.push(`${sd} (raw %, to/by unverified)`);
   }
-  const dur = h.duration_f ? ` for ${(h.duration_f / 60).toFixed(1)}s` : "";
+  const dur = h.duration_f ? ` for ${fmtFrames(h.duration_f)}` : "";
   const dmg = parts.length ? `: ${parts.join(", ")}` : "";
   const extra: string[] = [];
   if (h.relief) extra.push("症状緩和");
@@ -87,17 +98,17 @@ export function missileText(m: Missile): string {
   if (m.penetrate) {
     // travelling projectile that hits every enemy it passes through; the AoE
     // is the projectile's own collision size in pixels (these missiles have
-    // no DamageArea), user-confirmed.
+    // no DamageArea).
     parts.push(`penetrates all in path${m.width ? ` (width ${m.width}px)` : ""}`);
   }
-  if (m.slow) parts.push(`slow ${m.slow[0]}%/${m.slow[1]}f`);
+  if (m.slow) parts.push(`slow ${m.slow[0]}% / ${fmtFrames(m.slow[1])}`);
   if (m.deflectable) parts.push("deflectable");
   if (m.heal) parts.push("heal");
   if (m.blast_residue) {
     // the blast area lingers as a DAMAGE FIELD re-hitting on an interval
-    // (area = the splash radius above), user-confirmed on missile 1498.
+    // (area = the splash radius above; e.g. missile 1498).
     const [t, iv] = m.blast_residue;
-    parts.push(`creates a damage field for ${(t / 60).toFixed(1)}s (ticks every ${iv}f)`);
+    parts.push(`creates a damage field for ${fmtFrames(t)} (ticks every ${fmtFrames(iv)})`);
   }
   if (m.on_hit) parts.push(missileOnHitText(m.on_hit));
   return parts.join(", ");
@@ -192,8 +203,13 @@ export function DamageBadge({ type }: { type?: DamageType }) {
 
 // Fill a label template with param values.
 //  {pN}            -> the Nth param value (1-based).
+//  {pNf}           -> the Nth param as engine frames -> "Nf (X.Xs)" (always
+//                     shows both the raw frame count and its seconds
+//                     conversion, never seconds alone).
+//  {pNx}           -> the Nth param as a multiplier (value/100 -> "x1.90").
 //  [[?pN: text]]   -> include "text" only when param N is set (nonzero).
 //  [[?pN|A|B]]     -> A if param N set, else B.
+const fmtPX = (v: number) => `x${(v / 100).toFixed(2).replace(/\.?0+$/, "")}`;
 export function fillLabel(tpl: string, params?: number[]): string {
   const val = (n: string | number) => params?.[Number(n) - 1] ?? 0;
   let out = tpl;
@@ -204,6 +220,8 @@ export function fillLabel(tpl: string, params?: number[]): string {
   out = out.replace(/\[\[\?p([1-4]):([\s\S]*?)\]\]/g, (_m, n, text) =>
     val(n) ? text : ""
   );
+  out = out.replace(/\{p([1-4])f\}/g, (_m, n) => fmtFrames(val(n)));
+  out = out.replace(/\{p([1-4])x\}/g, (_m, n) => fmtPX(val(n)));
   out = out.replace(/\{p([1-4])\}/g, (_m, n) => String(val(n)));
   return out.trim();
 }
@@ -227,20 +245,18 @@ export function periodicRate(e: Effect, all: Effect[]): string | null {
   if (!amount) return null;
   let interval = e.params?.[2] || 0;
   if (e.influence === 19) {
-    // aura DoT: interval lives on the paired influence 18 (Param_3). Verified:
-    // Wererat 18[1,70,6]+19[0,45] -> 45*60/6 = 450/sec.
+    // aura DoT: interval lives on the paired influence 18 (Param_3).
     const aura = all.find((x) => x.influence === 18);
     interval = aura?.params?.[2] || interval;
   }
   if (!interval) interval = 10;
   const perSec = Math.round((amount * 60) / interval);
   const word = isHeal ? "heal" : "dmg";
-  return `${amount} ${word} every ${(interval / 60).toFixed(2)}s (${perSec}/sec)`;
+  return `${amount} ${word} / ${fmtFrames(interval)} (${perSec}/sec)`;
 }
 
-// Aura range (influence 18): in-game radius = raw Param_2 * 2. Verified by
-// Beelzebub's Servant (魔神討滅戦): raw 70 -> in-game 140. (Not *4/3 like splash,
-// nor *DotRate/1.5 like attack range.) Huge values = global.
+// Aura range (influence 18): in-game radius = raw Param_2 * 2. Huge values
+// mean global range.
 export function auraRadius(e: Effect): string | null {
   if (e.kind !== "specialty" || e.influence !== 18) return null;
   const raw = e.params?.[1] || 0;
@@ -276,7 +292,7 @@ export function Effects({ effects, foldAt = 5 }: { effects?: Effect[]; foldAt?: 
             {aura && <span className="dot-calc"> {aura}</span>}
             {(e.expression_human || e.expression) && (
               <span className="expr" title={e.expression}>
-                {" "}if {e.expression_human || e.expression}
+                {" "}if <HumanText text={e.expression_human || e.expression || ""} />
               </span>
             )}
             {e.ext && <span className="expr"> {e.ext}</span>}

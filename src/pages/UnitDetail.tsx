@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, createContext, useContext } from "react";
 import type { ReactNode } from "react";
-import { useParams, Link } from "react-router-dom";
-import { useUnitDetail, useUnitInfluenceLabels, useLocalisation, usePrinceTitles } from "../data";
-import { UnitImage, missileText, fillLabel, HumanText } from "../components";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { useUnitDetail, useUnitInfluenceLabels, useLocalisation, usePrinceTitles, useMissiles, useAbilityConfigs } from "../data";
+import { UnitImage, missileText, fillLabel, HumanText, fmtFrames } from "../components";
 import type {
   Unit,
   UnitClass,
@@ -13,7 +13,171 @@ import type {
   UnitInfluenceLabel,
   InfluenceExtend,
   SkillStage,
+  Missile,
 } from "../types";
+
+// published missiles.json lookup, provided once at the page root so deeply
+// nested rows (ExtendProps, CommandFacts -- both several components removed
+// from the page's useMissiles() call) can resolve a raw missile id without
+// prop-drilling it through every intermediate component.
+const MissilesContext = createContext<Record<string, Missile> | null>(null);
+
+// published ability_configs.json lookup (every AbilityConfig._ConfigID's
+// resolved influence rows), provided once at the page root so ability
+// influence type 189 ("Grant ability") can resolve its raw config id
+// without a per-row backend lookup.
+const AbilityConfigsContext = createContext<Record<string, AbilityInfluence[]> | null>(null);
+
+// ---- "Command" script decoding (client-side, so iterating doesn't need a
+// re-export) ---------------------------------------------------------------
+// Two ids are literally named "Command" -- UnitSpecialty type 34 and
+// ability type 72 -- whose ENTIRE meaning rides in a raw engine script
+// instead of numeric params. Surveyed every distinct script across all real
+// carriers (76 UnitSpecialty rows / 55 distinct ability-72 commands); only
+// a handful of verbs are actually used, decoded below. Never invented --
+// each verb's argument meaning comes from its own name/units in the string.
+type CommandFact =
+  | { kind: "hit_effect"; style: string; effect: string; gate?: string }
+  | { kind: "missile_override"; tiers: Record<string, number>; gate?: string }
+  | { kind: "on_death_explosion"; trigger: string; range?: number; missile?: number; effect?: string; sound?: string }
+  // 2nd param on both slow/damage fields is a FIXED radius override, NOT
+  // doubled like the Revenge/MissileShot Range fields -- 0/absent uses the
+  // unit's own attack range (verified on Uesugi Kenshin's slow field and
+  // Ulyxes/Rouyu's damage fields).
+  | { kind: "slow_field"; percent?: number; range?: number }
+  | { kind: "damage_field"; mode: "damageattack" | "damageratio"; amount?: number; range?: number; interval_f?: number }
+  | { kind: "missile_shot"; missile?: number; shots?: number; shot_delay_f?: number; target_max?: number; atk_amp_pct?: number; range?: number }
+  | { kind: "other"; verb: string; params?: number[] };
+
+function toNum(v?: string): number | undefined {
+  if (v == null) return undefined;
+  const n = Number(v);
+  return Number.isNaN(n) ? undefined : n;
+}
+function commandKv(args: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  const re = /(\w+)\s*=\s*"?([^",()]+)"?/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(args))) out[m[1]] = m[2];
+  return out;
+}
+
+function decodeSpecialtyCommand(cmd?: string | null): CommandFact[] {
+  if (!cmd) return [];
+  const out: CommandFact[] = [];
+  const gate = /if\(\s*(.*?)\s*\)\s*\{/.exec(cmd)?.[1];
+  const hitFx = /SetHitEffect\(\s*"Style=([^"]*)"\s*,\s*"Effect=([^"]*)"\s*\)/g;
+  let m: RegExpExecArray | null;
+  while ((m = hitFx.exec(cmd))) out.push({ kind: "hit_effect", style: m[1], effect: m[2], gate });
+  const setMissile = /SetMissile\(\s*((?:"cc\d+=\d+"\s*,?\s*)+)\)/g;
+  while ((m = setMissile.exec(cmd))) {
+    const tiers: Record<string, number> = {};
+    const ccPair = /cc(\d+)=(\d+)/g;
+    let cm: RegExpExecArray | null;
+    while ((cm = ccPair.exec(m[1]))) tiers[`cc${cm[1]}`] = Number(cm[2]);
+    out.push({ kind: "missile_override", tiers, gate });
+  }
+  return out;
+}
+
+function decodeAbilityCommand(cmd?: string | null): CommandFact[] {
+  if (!cmd) return [];
+  const out: CommandFact[] = [];
+  const revenge = /DoUnit_RegistCommand\(\s*"(On\w+)"\s*,\s*"?DoUnitAction_Revenge\(([^)]*)\)/g;
+  let m: RegExpExecArray | null;
+  while ((m = revenge.exec(cmd))) {
+    const kv = commandKv(m[2]);
+    // Range is displayed at HALF its raw value in-game (verified on both
+    // on-deploy and on-death missile-range commands).
+    const rawRange = toNum(kv.Range);
+    out.push({
+      kind: "on_death_explosion", trigger: m[1], range: rawRange != null ? rawRange * 2 : undefined,
+      missile: toNum(kv.Missile), effect: kv.Effect, sound: kv.Sound,
+    });
+  }
+  const createField = /DoUnitAction_CreateField\(\s*"(\w+)"\s*,\s*([^)]*)\)/g;
+  while ((m = createField.exec(cmd))) {
+    const mode = m[1];
+    const nums = m[2].split(",").map((s) => s.trim()).filter(Boolean).map(Number);
+    if (mode === "slow") {
+      // 2nd param = fixed range override, 0/absent = unit's own attack range.
+      out.push({ kind: "slow_field", percent: nums[0], range: nums[1] || undefined });
+    } else if (mode === "damageattack" || mode === "damageratio") {
+      // 2nd param = fixed range override, 0/absent = unit's own attack
+      // range (same as slow's 2nd param).
+      out.push({
+        kind: "damage_field", mode,
+        amount: nums[0], range: nums[1] || undefined, interval_f: nums[2],
+      });
+    } else {
+      out.push({ kind: "other", verb: mode, params: nums });
+    }
+  }
+  const missileShot = /DoUnitAction_MissileShot\(([^)]*)\)/g;
+  while ((m = missileShot.exec(cmd))) {
+    const kv = commandKv(m[1]);
+    // Range is displayed at HALF its raw value in-game (same doubling as
+    // on_death_explosion above).
+    const rawRange = toNum(kv.Range);
+    out.push({
+      kind: "missile_shot", missile: toNum(kv.Missile), shots: toNum(kv.ShotNum),
+      shot_delay_f: toNum(kv.ShotDelay), target_max: toNum(kv.TargetMax),
+      atk_amp_pct: toNum(kv.AttackAmp), range: rawRange != null ? rawRange * 2 : undefined,
+    });
+  }
+  return out;
+}
+
+// resolves a raw missile id against the published missiles.json lookup --
+// the decode is client-side, but the missile facts live only in
+// Missile.atb, so a small published table is needed for anything beyond
+// the bare id.
+function missileRef(mid: number | undefined, missiles?: Record<string, Missile> | null): string {
+  if (mid == null) return "?";
+  const info = missiles?.[String(mid)];
+  return info ? `#${mid} (${missileText(info)})` : `#${mid}`;
+}
+
+function commandFactText(f: CommandFact, missiles?: Record<string, Missile> | null): string {
+  switch (f.kind) {
+    case "hit_effect":
+      return `hit effect: ${f.style} → ${f.effect}${f.gate ? ` (if ${f.gate})` : ""}`;
+    case "missile_override":
+      return `missile override per class tier: ${Object.entries(f.tiers).map(([k, v]) => `${k}=${missileRef(v, missiles)}`).join(", ")}${f.gate ? ` (if ${f.gate})` : ""}`;
+    case "on_death_explosion":
+      return `${f.trigger === "OnDead" ? "on death" : "on escape"}: explosion, range ${f.range ?? "?"}${f.missile ? `, missile ${missileRef(f.missile, missiles)}` : ""}`;
+    case "slow_field":
+      return `creates a field (range ${f.range ?? "unit's own range"}): slows enemies ${f.percent ?? "?"}%`;
+    case "damage_field": {
+      // both modes divide the raw amount by 100: damageattack is % of ATK,
+      // damageratio is % of the enemy's max HP.
+      const isAtk = f.mode === "damageattack";
+      const pct = f.amount != null ? f.amount / 100 : f.amount;
+      const base = isAtk ? "% ATK" : "% of enemy max HP";
+      const perSec = pct != null && f.interval_f
+        ? ` (${Math.round((pct * 60 / f.interval_f) * 100) / 100}${base}/s)` : "";
+      return `creates a damage field (range ${f.range ?? "unit's own range"}): ${pct ?? "?"}${base} every ${fmtFrames(f.interval_f)}${perSec}`;
+    }
+    case "missile_shot":
+      return `fires missile ${missileRef(f.missile, missiles)} ×${f.shots ?? 1}, delay ${f.shot_delay_f ?? "?"}f, up to ${f.target_max ?? "?"} targets, ${f.atk_amp_pct ?? 100}% ATK, range ${f.range ?? "?"}`;
+    default:
+      return `${f.verb}${f.params ? ` [${f.params.join(", ")}]` : ""}`;
+  }
+}
+
+function CommandFacts({ cmd, kind }: { cmd?: string | null; kind: "specialty" | "ability" }) {
+  const missiles = useContext(MissilesContext);
+  if (!cmd) return null;
+  const facts = kind === "specialty" ? decodeSpecialtyCommand(cmd) : decodeAbilityCommand(cmd);
+  if (!facts.length) return <span className="expr" title={cmd}> {cmd}</span>;
+  return (
+    <>
+      {facts.map((f, i) => (
+        <span className="meaning" key={i} title={cmd}> {commandFactText(f, missiles)}</span>
+      ))}
+    </>
+  );
+}
 
 function InfluenceLabel({ label, nameOverride }: { label?: UnitInfluenceLabel; nameOverride?: string }) {
   if (!label) return null;
@@ -33,11 +197,9 @@ function InfluenceLabel({ label, nameOverride }: { label?: UnitInfluenceLabel; n
 
 // skill ids 2/3/4/5/89/90 (ATK/DEF buffs, Type-A/B/C): the static "Type-A/
 // B/C" name only describes rows that target OTHER units -- a target=self
-// row on these same ids is the unit's own self-buff, not a Type-anything
-// (user 2026-07-05: "Type A is only if skill influence 2 is not target
-// self... same is true for other buffs that target self and is of low
-// number"). Override the displayed name in that case; the note/tooltip
-// still explains the distinction.
+// row on these same ids is the unit's own self-buff, not a Type-anything.
+// Override the displayed name in that case; the note/tooltip still
+// explains the distinction.
 const SELF_BUFF_NAME: Record<number, string> = {
   2: "Self ATK buff", 3: "Self ATK buff", 89: "Self ATK buff",
   4: "Self DEF buff", 5: "Self DEF buff", 90: "Self DEF buff",
@@ -50,14 +212,13 @@ function skillLabelName(inf: SkillInfluence): string | undefined {
 }
 
 // ---- ExtendProperty decoding ----------------------------------------------
-// Unified English for every recurring key found by a full scan of
-// SkillInfluenceConfig + AbilityConfig extends (2026-07-04). Time values are
-// 60fps engine frames. Keys not listed fall through raw (k=v) -- never
-// silently dropped.
+// Unified English for every recurring key across SkillInfluenceConfig and
+// AbilityConfig extends. Time values are 60fps engine frames. Keys not
+// listed fall through raw (k=v) -- never silently dropped.
 function frames(v: string | number): string {
   const n = Number(v);
   if (!Number.isFinite(n) || n <= 0) return `${v}f`;
-  return `${(n / 60).toFixed(n % 60 ? 1 : 0)}s`;
+  return fmtFrames(n);
 }
 
 // damage-school words used by 属性/反撃攻撃属性/対象属性 values.
@@ -72,17 +233,73 @@ function counterText(v: string): string {
     .replace(/GetDefeatsCountOfEnemyByPlayer\(\)/g, "enemies defeated by player units")
     .replace(/GetDefeatsCount[Oo]fEnemyByToken\(\)/g, "enemies defeated by tokens")
     .replace(/GetDefeatsCountOfPlayer\(\$UnitId\)/g, "this unit defeated")
-    .replace(/GetDefeatsCountOfPlayer\(\)/g, "allied units defeated");
+    .replace(/GetDefeatsCountOfPlayer\(\)/g, "allied units defeated")
+    .replace(/\+/g, " and ");
 }
 
 // ids whose "mulLim" extend key holds a FRAME count, not a percent (the
 // generic mulLim case below assumes percent, which is right almost
-// everywhere else): 212 Conditional skill duration increase caps the
-// duration GAIN in frames (user-confirmed 2026-07-05: mulLim=600 -> 10s,
-// not 600%).
-const FRAME_MULLIM_IDS = new Set([212]);
+// everywhere else): 211 Conditional skill CD reduction and 212 Conditional
+// skill duration increase both cap their gain in frames (e.g. mulLim=600 ->
+// 10s, not 600%).
+const FRAME_MULLIM_IDS = new Set([211, 212]);
 
-function extendText(k: string, v: string | number, influenceType?: number): string {
+const MISSILE_ID_KEYS = new Set(["ミサイルID", "ミサイルID1", "ミサイルID2", "Missile", "ミサイル反撃時ID"]);
+
+const SKILL_OPTION_TEXT: Record<string, string> = {
+  "発動中増加なし": "No Gain During Skill",
+  "発動中減少なし": "No Decrease During Skill",
+  "終了時増加クリア": "Cleared On Skill End",
+};
+
+const OPTION_TEXT: Record<string, string> = {
+  "挑発": "Taunt",
+  "隠密効果解除": "Removes Stealth",
+  "魔界の影響無効化": "Makai Immunity",
+  "ダメージ無効化": "Damage Nullify",
+  "天候の影響無効化": "Weather Immunity",
+  "水中の影響無効化": "Deep Sea Immunity",
+  "地形ダメージ無効": "Terrain Damage Immunity",
+};
+
+const BARD_STAT_NAME: Record<number, string> = { 304: "HP", 305: "ATK", 306: "DEF", 307: "MR" };
+
+function extendText(
+  k: string, vRaw: string | number | (string | number)[], influenceType?: number,
+  missiles?: Record<string, Missile> | null, extend?: InfluenceExtend
+): string {
+  // ミサイルID etc. can be a LIST (one id per hit/attribute, e.g. type 210
+  // "between hit" -- [1115, 1115]), not always a scalar. Resolve EACH id
+  // through the same missiles.json table as the Command decoder.
+  if (MISSILE_ID_KEYS.has(k)) {
+    const ids = Array.isArray(vRaw) ? vRaw : [vRaw];
+    const prefix = k === "ミサイル反撃時ID" ? "counter missile" : "missile";
+    return `${prefix} ${ids.map((id) => missileRef(Number(id), missiles)).join(", ")}`;
+  }
+  // スキル系オプション can carry multiple option strings at once -- translate
+  // each individually rather than joining first and losing the per-item match.
+  if (k === "スキル系オプション" && Array.isArray(vRaw)) {
+    return vRaw.map((o) => SKILL_OPTION_TEXT[String(o)] || `option: ${o}`).join(", ");
+  }
+  // 属性 can carry multiple schools at once (e.g. type 210 alternating
+  // physical/magic between hits) -- translate each individually rather than
+  // joining first and losing the per-item match against SCHOOL.
+  if (k === "属性" && Array.isArray(vRaw)) {
+    return `school: ${vRaw.map((s) => SCHOOL[String(s)] || s).join("/")}`;
+  }
+  // オプション can also carry multiple option strings at once -- same
+  // per-item translation issue as スキル系オプション above.
+  if (k === "オプション" && Array.isArray(vRaw)) {
+    return vRaw.map((o) => OPTION_TEXT[String(o)] || `option: ${o}`).join(", ");
+  }
+  // 対象属性 can carry multiple schools at once (e.g. "applies vs physical,
+  // magic, and true damage") -- same per-item translation issue as 属性.
+  if (k === "対象属性" && Array.isArray(vRaw)) {
+    return `vs ${vRaw.map((s) => SCHOOL[String(s)] || s).join("/")}`;
+  }
+  // every OTHER key is scalar (multi-value extend lists like 属性/エフェクト are
+  // rendered by their own array-aware callers, not this generic switch).
+  const v: string | number = Array.isArray(vRaw) ? vRaw.join(",") : vRaw;
   if (k === "mulLim" && influenceType != null && FRAME_MULLIM_IDS.has(influenceType)) {
     return `cap ${frames(v)}`;
   }
@@ -101,12 +318,16 @@ function extendText(k: string, v: string | number, influenceType?: number): stri
     case "addLim": return `flat cap ${v}`;
     case "Add": return `+${v} per count`;
     case "Max": return `cap ${v}`;
-    case "MulAdd": return `+${v}%/count`;
-    case "MulMax": case "MulMaxBase": return `cap ${v}%`;
-    case "MulMaxAdd": return `cap +${v}%/level`;
-    case "上昇": return `gain ${v}`;
-    case "上限": return `cap ${v}`;
-    case "減衰": return `decay ${v}`;
+    case "MulAdd": {
+      const stat = influenceType != null ? BARD_STAT_NAME[influenceType] : undefined;
+      return stat ? `${stat} +${v}%` : `+${v}%/count`;
+    }
+    case "MulMaxBase": return `base cap ${v}%`;
+    case "MulMaxAdd": return Number(v) ? `for each target, cap +${v}%` : "";
+    case "MulMax": return Number(v) && Number(extend?.MulMaxAdd) ? `max cap ${v}%` : "";
+    case "上昇": return `gain ${Number(v) / 100}%`;
+    case "上限": return `cap ${Number(v) / 100}%`;
+    case "減衰": return `decay ${Number(v) / 100}%`;
     case "exMul": return `exMul ${v}%`;
     case "exAdd": return `exAdd ${v}`;
     case "ダメージ倍率": return `damage x${Number(v) / 100}`;
@@ -131,10 +352,11 @@ function extendText(k: string, v: string | number, influenceType?: number): stri
     case "重複番号": return `stack-id ${v}`;
     case "永続": return Number(v) ? "permanent" : `${k}=${v}`;
     case "射程範囲内のみ": return "within range only";
-    // user 2026-07-05 (via 191 gradual-ATK-when-not-attacking): inverted
-    // flips the trigger direction — the stat increases with each attack
-    // instead of over time.
-    case "増減反転": return "inverted (gains per attack instead)";
+    // inverted flips the trigger direction -- the stat increases with each
+    // attack instead of over time (seen on ability 191's gradual-ATK effect).
+    // 増減反転 (ability 191's trigger-direction flag) is folded into the
+    // displayed name via abilityLabelName instead of shown here.
+    case "増減反転": return "";
     case "IgnoreSelf": return "ignores self";
     case "位置入れ替え": return "swaps position";
     case "条件一致のみ": return "only while condition met";
@@ -161,22 +383,17 @@ function extendText(k: string, v: string | number, influenceType?: number): stri
       return `priority: ${PRI[String(v)] || v}`;
     }
     case "優先方向": return String(v) === "降順" ? "highest first" : `order: ${v}`;
-    case "スキル系オプション": {
-      const OPT: Record<string, string> = {
-        "発動中増加なし": "no gain during skill", "終了時増加クリア": "cleared on skill end",
-      };
-      return OPT[String(v)] || `option: ${v}`;
-    }
-    case "オプション": {
-      const OPT: Record<string, string> = {
-        "ダメージ無効化": "damage nullify", "魔界の影響無効化": "Makai immunity",
-        "天候の影響無効化": "weather immunity",
-      };
-      return OPT[String(v)] || `option: ${v}`;
-    }
-    // references
-    case "ミサイルID": case "ミサイルID1": case "ミサイルID2": case "Missile": return `missile ${v}`;
-    case "ミサイル反撃時ID": return `counter missile ${v}`;
+    case "スキル系オプション": return SKILL_OPTION_TEXT[String(v)] || `option: ${v}`;
+    case "オプション": return OPTION_TEXT[String(v)] || `option: ${v}`;
+    // War God Blessing family: each applicable school is its own boolean flag
+    // key (not a single 属性 list), e.g. {魔法:1, 物理:1, 貫通:1} together.
+    case "魔法": return "applies to: Magic";
+    case "物理": return "applies to: Physical";
+    case "貫通": return "applies to: Piercing";
+    // internal tag confirming this row belongs to the battle_god_bless
+    // mechanic -- already implied by the activate_command, no user-facing text.
+    case "戦神の加護用": return "";
+    // references (ミサイルID/ミサイル反撃時ID/Missile handled above, before the switch)
     case "Factor": return `factor ${v}`;
     case "Range": case "射程": return `range ${v}`;
     case "攻撃種別": return `attack style: ${v}`;
@@ -194,12 +411,14 @@ function extendText(k: string, v: string | number, influenceType?: number): stri
 }
 
 function ExtendProps({ extend, influenceType }: { extend?: InfluenceExtend; influenceType?: number }) {
+  const missiles = useContext(MissilesContext);
   if (!extend) return null;
-  return (
-    <span className="params">
-      {" "}{Object.entries(extend).map(([k, v]) => extendText(k, v, influenceType)).join(", ")}
-    </span>
-  );
+  const text = Object.entries(extend)
+    .map(([k, v]) => extendText(k, v, influenceType, missiles, extend))
+    .filter(Boolean)
+    .join(", ");
+  if (!text) return null;
+  return <span className="params"> {text}</span>;
 }
 
 // One derived sentence fragment for a skill influence row: the multiplier /
@@ -208,32 +427,102 @@ function ExtendProps({ extend, influenceType }: { extend?: InfluenceExtend; infl
 // ids whose `add` is a reference/flag handled elsewhere, not a plain value:
 // 49 skill swap (chain UI), 122 linked ability, 121 (ability config ref),
 // 21 missile (resolved into `missile`), 173/177 tick-scale direction, 47
-// animation change (add = an animation index, not a meaningful count --
-// user 2026-07-05: "type 47 ... add 2 value 2 Animation change" is noise).
+// animation change (add is an animation index, not a meaningful count).
 const SKILL_ADD_REF = new Set([21, 47, 49, 121, 122, 173, 177]);
 
 const fmtX = (v: number) => `x${(v / 100).toFixed(2).replace(/\.?0+$/, "")}`;
 
 function skillRowValue(inf: SkillInfluence, label?: UnitInfluenceLabel): string | null {
+  // id 51 (Regeneration): mul = tick interval (frames), add = HP per tick --
+  // show the raw amount, the interval as frames+seconds, and the computed
+  // per-second rate together.
+  if (inf.influence_type === 51 && inf.add != null && inf.mul) {
+    const perSec = Math.round((inf.add * 60) / inf.mul);
+    return `${inf.add} HP / ${fmtFrames(inf.mul)} (${perSec} HP/s)`;
+  }
+  // ids 59/60 (Reduce enemy MR/DEF): mul is a two-way modifier, "reduce TO
+  // mul% of normal" (mul=80 = -20%), not a raw reduction percent -- mul3 on
+  // these rows is an unrelated Power-filled value.
+  if ((inf.influence_type === 59 || inf.influence_type === 60) && inf.mul) {
+    return `-${100 - inf.mul}%`;
+  }
+  // id 52 (Valkyrie UP modifier): mul is the multiplier directly (mul=200
+  // matches carrier text "コスト回復2倍" = x2 cost recovery), never Power-filled.
+  if (inf.influence_type === 52 && inf.mul) {
+    return fmtX(inf.mul);
+  }
+  // id 116 (Ally magic damage amplification): mul is the multiplier directly
+  // (Chibi Anri's フルエンチャント carries three rows gated by class-change
+  // stage, mul=110/130/135, scaling up per evolution) -- was rendering
+  // nothing at all since no tpl referenced mul.
+  if (inf.influence_type === 116 && inf.mul) {
+    return fmtX(inf.mul);
+  }
+  // ids 145/146 (Dancer ATK/DEF share modifier): mul3 is a multiplier of the
+  // shared percent, add is a flat amount added to it -- either can be absent
+  // or mul3 neutral (100), so only show whichever part actually changes it.
+  if (inf.influence_type === 145 || inf.influence_type === 146) {
+    const parts: string[] = [];
+    if (inf.mul3 != null && inf.mul3 !== 100) parts.push(fmtX(inf.mul3));
+    if (inf.add) parts.push(`+${inf.add} flat`);
+    return parts.length ? parts.join(", ") : null;
+  }
+  // id 170 (Permanent PAD modification): PAD is set to add+1, not reduced by
+  // add directly (Aleese (Swimsuit)'s add=5 sets PAD to 6).
+  if (inf.influence_type === 170 && inf.add != null) {
+    return `to ${inf.add + 1}`;
+  }
+  // id 14 (Set PAD): probably shares 170's add+1 offset, not yet
+  // independently confirmed for this id.
+  if (inf.influence_type === 14 && inf.add != null) {
+    return `to ${fmtFrames(inf.add + 1)}`;
+  }
+  // ids 85/86/87 (ATK/DEF/Lose-HP with rarity): add is always the target
+  // rarity id; the buff/loss amount is mul3 when Power-filled but some
+  // carriers have no Power on this row at all, so show whichever is
+  // actually present rather than a broken placeholder.
+  if (inf.influence_type === 85 || inf.influence_type === 87) {
+    return `${inf.mul3 != null ? fmtX(inf.mul3) : "?"} (rarity ${inf.add ?? "?"})`;
+  }
+  if (inf.influence_type === 86 && inf.mul != null) {
+    return `-${inf.mul}% HP (rarity ${inf.add ?? "?"})`;
+  }
+  // ids 72/77/79/98 (multi-hit/critical/multi-target/true-damage chance): mul3 is a
+  // multiplier of the base chance, add is a flat +percent on top -- either
+  // field can be absent on a given row, and mul3=100 is a no-op multiplier,
+  // so only show whichever part actually changes anything.
+  if (inf.influence_type === 72 || inf.influence_type === 77 || inf.influence_type === 79 || inf.influence_type === 98) {
+    const parts: string[] = [];
+    if (inf.mul3 != null && inf.mul3 !== 100) parts.push(fmtX(inf.mul3));
+    if (inf.add) parts.push(`+${inf.add}%`);
+    return parts.length ? parts.join(" ") : null;
+  }
+  // id 25 (Skill Duration Increase): expressed EITHER way per row -- mul3
+  // set = duration to mul3% of normal; mul3 absent, add set = duration +
+  // add seconds directly (not frames).
+  if (inf.influence_type === 25) {
+    if (inf.mul3 != null) {
+      const capped = inf.mul3_cap != null && inf.mul3_cap !== inf.mul3
+        ? `${inf.mul3}% → ${inf.mul3_cap}% at max level` : `${inf.mul3}%`;
+      return `to ${capped} of normal`;
+    }
+    if (inf.add != null) return `+${inf.add}s`;
+  }
   // id 56 (Time stop): mul is the scope, not a value -- 1000 = all enemies
-  // (global sentinel), -1 = enemies within range only (user-confirmed
-  // 2026-07-05). Prefix the duration template with the resolved scope.
+  // (a global sentinel), -1 = enemies within range only. Prefix the
+  // duration template with the resolved scope.
   if (inf.influence_type === 56 && label?.tpl != null) {
     const scope = inf.mul === 1000 ? "all enemies" : inf.mul === -1 ? "enemies within range" : `mul ${inf.mul}`;
     const rest = label.tpl
       .replace(/\{mul2\}/g, String(inf.mul2 ?? "?"))
-      .replace(/\{mul2s\}/g, inf.mul2 != null ? `${(inf.mul2 / 60).toFixed(1).replace(/\.0$/, "")}s` : "?");
+      .replace(/\{mul2s\}/g, inf.mul2 != null ? fmtFrames(inf.mul2) : "?");
     return `${scope}, ${rest}`;
   }
-  // per-type template ({mul3}/{add} raw, {x} = mul3/100): flat-valued types
-  // like 32 "generates 10 UP" instead of a bogus x0.1. "" = suppress (flags).
-  // {mul3pct} = mul3 as a literal percent (NOT a x-multiplier), with the
-  // level-up cap folded in when present -- for ids whose own name/note says
-  // "%" (31/33/34/35/40/42/86/95/103/108/178/204/205/214/215/216): their
-  // mul3 (or mul/add per id) IS the percent value directly, e.g. Kaoru's
-  // skill 214 mul3=40 with text "40%軽減" -- NOT x0.40 (user-confirmed
-  // 2026-07-05, caught via the same generic-mul3-as-multiplier bug on 214/
-  // 216 first, then surveyed every "%"-named id for the same shape).
+  // per-type template. Placeholders: {mul3}/{mul2}/{mul}/{add} raw numbers;
+  // {mul3f}/{mul2s}/{mulf}/{addf} = the same field as frames+seconds;
+  // {mul3pct} = mul3 as a literal percent (NOT a x-multiplier) with the
+  // level-up cap folded in when present; {x} = mul3/100 as a multiplier.
+  // "" = suppress entirely (pure flags).
   if (label?.tpl != null) {
     if (label.tpl === "") return null;
     const mul3pct = inf.mul3 != null
@@ -243,16 +532,19 @@ function skillRowValue(inf: SkillInfluence, label?: UnitInfluenceLabel): string 
       : "?%";
     return label.tpl
       .replace(/\{mul3pct\}/g, mul3pct)
+      .replace(/\{mul3f\}/g, inf.mul3 != null ? fmtFrames(inf.mul3) : "?")
       .replace(/\{mul3\}/g, String(inf.mul3 ?? "?"))
+      .replace(/\{mul2s\}/g, inf.mul2 != null ? fmtFrames(inf.mul2) : "?")
       .replace(/\{mul2\}/g, String(inf.mul2 ?? "?"))
-      .replace(/\{mul2s\}/g, inf.mul2 != null ? `${(inf.mul2 / 60).toFixed(1).replace(/\.0$/, "")}s` : "?")
+      .replace(/\{mulf\}/g, inf.mul != null ? fmtFrames(inf.mul) : "?")
       .replace(/\{mul\}/g, String(inf.mul ?? "?"))
+      .replace(/\{addf\}/g, inf.add != null ? fmtFrames(inf.add) : "?")
       .replace(/\{add\}/g, String(inf.add ?? "?"))
       .replace(/\{x\}/g, inf.mul3 != null ? fmtX(inf.mul3) : "?");
   }
   if (inf.influence_type === 49) {
     // swap target 0 / absent = LIMITED USE: no skill remains after this one
-    // finishes (user-confirmed). Non-zero targets render via the chain UI.
+    // finishes. Non-zero targets render via the chain UI.
     return inf.add ? null : "limited use — no skill after this finishes";
   }
   if (inf.mul3 != null) {
@@ -263,7 +555,7 @@ function skillRowValue(inf: SkillInfluence, label?: UnitInfluenceLabel): string 
     return inf.power_filled ? `${capped} (Power)` : capped;
   }
   if (inf.influence_type === 122 && inf.add != null) {
-    return `grants the linked ability effects below (config #${inf.add})`;
+    return `config #${inf.add}, effects below`;
   }
   if (inf.add != null && inf.influence_type != null && !SKILL_ADD_REF.has(inf.influence_type)) {
     return `value ${inf.add}`;
@@ -272,8 +564,8 @@ function skillRowValue(inf: SkillInfluence, label?: UnitInfluenceLabel): string 
 }
 
 function SkillInfluenceRow({
-  inf, i, label,
-}: { inf: SkillInfluence; i: number; label?: UnitInfluenceLabel }) {
+  inf, i, label, siblings,
+}: { inf: SkillInfluence; i: number; label?: UnitInfluenceLabel; siblings?: SkillInfluence[] }) {
   if (label?.hidden) return null;
   const parts = [
     `type ${inf.influence_type}`,
@@ -286,9 +578,19 @@ function SkillInfluenceRow({
   ].filter(Boolean);
   const ts = inf.tick_scale;
   const value = skillRowValue(inf, label);
+  // id 203 (Max cost consumption) means two different things depending on
+  // whether the same skill also carries 204/205 (UP-consuming ATK/DEF buff):
+  // with them, it's the UP consumed to reach the buff's max; without them,
+  // it's just the flat cost required to activate the skill at all.
+  const nameOverride = inf.influence_type === 203
+    ? (siblings?.some((s) => s.influence_type === 204 || s.influence_type === 205)
+      ? "Max UP consumed for scaling buff"
+      : "Flat cost to activate")
+    : skillLabelName(inf);
   return (
     <li key={i}>
       <code>{parts.join(" · ")}</code>
+      <InfluenceLabel label={label} nameOverride={nameOverride} />
       {value && <span className="meaning"> {value}</span>}
       {ts && ts.per_sec != null && (
         <span className="meaning">
@@ -302,7 +604,6 @@ function SkillInfluenceRow({
       {inf.missile && (
         <span className="meaning"> missile: {missileText(inf.missile)}</span>
       )}
-      <InfluenceLabel label={label} nameOverride={skillLabelName(inf)} />
       <ExtendProps extend={inf.extend} influenceType={inf.influence_type ?? undefined} />
       {(inf.expression_human || inf.expression) && (
         <span className="expr" title={inf.expression}>
@@ -338,10 +639,17 @@ function abilityRate(inf: AbilityInfluence): string | null {
 
 // ability 70/71/82 (ATK/DEF/HP "buff"): the static "Sortie/Deployment"
 // name doesn't say which one a given row actually is -- its OWN `invoke`
-// field ("sortie" or "deployed") already says so directly (user 2026-07-05:
-// "base it on Invoke, don't just say Sortie/Deployment, it does not help").
-const INVOKE_STAT_NAME: Record<number, string> = { 70: "ATK Buff", 71: "DEF Buff", 82: "HP Buff" };
+// field ("sortie" or "deployed") already says so directly.
+const INVOKE_STAT_NAME: Record<number, string> = { 70: "ATK Buff", 71: "DEF Buff", 82: "HP Buff", 76: "MR Buff" };
 function abilityLabelName(inf: AbilityInfluence): string | undefined {
+  // id 191 (Gradual Attack Increase): extend key 増減反転=1 inverts the
+  // trigger direction from "while not attacking" to "after each attack" --
+  // fold that into the displayed name instead of a buried extend annotation.
+  if (inf.influence_type === 191) {
+    return inf.extend?.["増減反転"]
+      ? "Gradual Attack Increase (after each attack)"
+      : "Gradual Attack Increase (while not attacking)";
+  }
   const base = inf.influence_type != null ? INVOKE_STAT_NAME[inf.influence_type] : undefined;
   if (!base) return undefined;
   const invoke = String(inf.invoke ?? "");
@@ -355,6 +663,8 @@ function AbilityInfluenceRow({
   inf: AbilityInfluence; i: number; label?: UnitInfluenceLabel;
   labelsMap?: Record<string, UnitInfluenceLabel>;
 }) {
+  const missiles = useContext(MissilesContext);
+  const abilityConfigs = useContext(AbilityConfigsContext);
   if (label?.hidden) return null;
   const parts = [
     `type ${inf.influence_type}`,
@@ -362,8 +672,74 @@ function AbilityInfluenceRow({
     inf.target != null ? `target ${inf.target}` : null,
     inf.params && inf.params.length ? `[${inf.params.join(", ")}]` : null,
   ].filter(Boolean);
-  // the humanized value line: label's template filled with actual params.
-  const filled = label?.tpl ? fillLabel(label.tpl, inf.params) : null;
+  // id 34 (Prevent status ailment): p1=100 is full immunity, any other
+  // value is a reduction percent instead -- two different sentences, not
+  // just a number substitution.
+  let filled: string | null;
+  if (inf.influence_type === 34 && inf.params?.[0] != null) {
+    filled = inf.params[0] === 100 ? "Status Immunity" : `Status Effect Reduction ${inf.params[0]}%`;
+  } else if (inf.influence_type === 39 && inf.params?.[0] != null) {
+    // id 39 (Nullify attack restriction): p1 is an enum, only 3 ("while not
+    // using skill") is confirmed so far -- other values show as raw numbers.
+    filled = inf.params[0] === 3 ? "while not using skill" : String(inf.params[0]);
+  } else if (inf.influence_type === 76) {
+    // id 76 (MR Buff, sortie/deployment family): unlike 70/71/82, the value
+    // itself switches by invoke, not just the name -- p1 on sortie rows, p2
+    // on deployed rows.
+    const v = inf.invoke === "sortie" ? inf.params?.[0] : inf.invoke === "deployed" ? inf.params?.[1] : null;
+    filled = v != null ? `+${v} flat` : null;
+  } else if (inf.influence_type === 122) {
+    // id 122 (Reduce enemy MR): p1 (percent) and p2 (flat) are independent --
+    // a row can carry either or both, so don't show "-0%" when p1 is unset.
+    const parts: string[] = [];
+    if (inf.params?.[0]) parts.push(`-${inf.params[0]}%`);
+    if (inf.params?.[1]) parts.push(`-${inf.params[1]} flat`);
+    filled = parts.length ? parts.join(", ") : null;
+  } else if (inf.influence_type === 137) {
+    // id 137 (Deployment Spot MR buff): p1 is percent (100 = neutral, hide
+    // it), p2 is a flat addition -- either can be present independently.
+    const parts: string[] = [];
+    if (inf.params?.[0] != null && inf.params[0] !== 100) parts.push(`→ ${inf.params[0]}%`);
+    if (inf.params?.[1]) parts.push(`+${inf.params[1]} flat`);
+    filled = parts.length ? parts.join(", ") : null;
+  } else if ([155, 156, 157, 158].includes(inf.influence_type ?? -1)) {
+    // ids 155/156/157/158 (Lukifer Death HP/ATK/DEF/MR buff): the gain per
+    // death is p1-100, an arithmetic expression that must be computed, not
+    // shown literally.
+    filled = inf.params?.[0] != null ? `gain ${inf.params[0] - 100}% per death` : null;
+  } else if ([160, 161, 162, 163].includes(inf.influence_type ?? -1)) {
+    // ids 160-163 (Perma HP/ATK/DEF/MR gain on condition): real carriers use
+    // EITHER p1 (percent, paired with a mulLim extend cap) OR p2 (flat,
+    // paired with an addLim extend cap) depending on the specific carrier --
+    // class-ability rows and unit-ability rows have been observed using
+    // different fields for the same id, so show whichever is actually set.
+    const parts: string[] = [];
+    if (inf.params?.[0]) parts.push(`+${inf.params[0]}%`);
+    if (inf.params?.[1]) parts.push(`+${inf.params[1]} flat`);
+    filled = parts.length ? parts.join(", ") : null;
+  } else if ([164, 165, 166, 167].includes(inf.influence_type ?? -1)) {
+    // ids 164-167 (Death Count based HP/ATK/DEF/MR buff): same either/or
+    // shape as 160-163 (p1 percent + mulLim, or p2 flat + addLim), just with
+    // a "per death" suffix.
+    const parts: string[] = [];
+    if (inf.params?.[0]) parts.push(`+${inf.params[0]}%`);
+    if (inf.params?.[1]) parts.push(`+${inf.params[1]} flat`);
+    filled = parts.length ? `${parts.join(", ")} per death` : null;
+  } else if (inf.influence_type === 188 && inf.params?.[0] != null) {
+    // id 188 (Gain ranged attack): p1 is the range, p2 is a Missile.atb id
+    // (resolved against the published missiles table, not embedded server-side).
+    const range = `range ${inf.params[0]}`;
+    const m = inf.params[1] != null ? missiles?.[String(inf.params[1])] : null;
+    filled = m ? `${range}, missile: ${missileText(m)}` : range;
+  } else {
+    // the humanized value line: label's template filled with actual params.
+    // Every ability tpl references at least one {pN} placeholder, so a row
+    // with no params at all has nothing real to fill in -- skip it rather
+    // than rendering zeroed-out placeholders (e.g. "0% / 0f (0.0s)").
+    filled = label?.tpl && inf.params && inf.params.length
+      ? fillLabel(label.tpl, inf.params)
+      : null;
+  }
   const rate = abilityRate(inf);
   return (
     <li key={i}>
@@ -375,9 +751,18 @@ function AbilityInfluenceRow({
         <span className="meaning" key={mid}> missile {mid}: {missileText(m)}</span>
       ))}
       <ExtendProps extend={inf.extend} influenceType={inf.influence_type ?? undefined} />
-      {(inf.command_human || inf.command) && (
+      {inf.influence_type === 72 ? (
+        <CommandFacts cmd={inf.command} kind="ability" />
+      ) : (inf.command_human || inf.command) && (
         <span className="expr" title={inf.command}>
           {" "}if <HumanText text={inf.command_human || inf.command || ""} />
+        </span>
+      )}
+      {(inf.no_change_condition_human || inf.no_change_condition) &&
+        inf.no_change_condition !== inf.command && (
+        <span className="expr" title={inf.no_change_condition}>
+          {" "}{(inf.command_human || inf.command) ? "and" : "if"}{" "}
+          <HumanText text={inf.no_change_condition_human || inf.no_change_condition || ""} />
         </span>
       )}
       {(inf.activate_command_human || inf.activate_command) && (
@@ -385,14 +770,23 @@ function AbilityInfluenceRow({
           {" "}on <HumanText text={inf.activate_command_human || inf.activate_command || ""} />
         </span>
       )}
-      {inf.granted_ability && (
+      {inf.influence_type === 206 && inf.params?.length ? (
+        <div className="muted small linked-ability-head">
+          alternative units: {inf.params.map((pid, j) => (
+            <span key={pid}>
+              {j > 0 && ", "}
+              <Link to={`/units/${pid}`}>unit #{pid}</Link>
+            </span>
+          ))}
+        </div>
+      ) : null}
+      {inf.influence_type === 189 && inf.params?.[0] != null && (
         <>
           <div className="muted small linked-ability-head">
-            grants ability #{inf.granted_ability.id}
-            {inf.granted_ability.name ? ` ${inf.granted_ability.name}` : ""}:
+            grants the ability effects below (config #{inf.params[0]}):
           </div>
           <ul className="effects">
-            {inf.granted_ability.influences.map((g, j) => (
+            {(abilityConfigs?.[String(inf.params[0])] ?? []).map((g, j) => (
               <AbilityInfluenceRow
                 inf={g} i={j} key={j} labelsMap={labelsMap}
                 label={g.influence_type != null ? labelsMap?.[String(g.influence_type)] : undefined}
@@ -585,6 +979,7 @@ function SkillStageRow({
                 <SkillInfluenceRow
                   inf={inf} i={j} key={j}
                   label={inf.influence_type != null ? labels[String(inf.influence_type)] : undefined}
+                  siblings={s.influences}
                 />
               ))}
             </ul>
@@ -757,10 +1152,10 @@ function statRange(vals: number[]): string {
   return min === max ? min.toLocaleString() : `${min.toLocaleString()} → ${max.toLocaleString()}`;
 }
 
-// ability 188 "Gain ranged atk" (invoke inherent · target self, p1 = range,
-// user-confirmed): a melee unit that carries it attacks at that range --
-// surface it in the stat box. Class-attribute rows apply to their own class;
-// ability-level rows apply unit-wide.
+// ability 188 "Gain ranged atk" (invoke inherent, target self, p1 = range):
+// a melee unit that carries it attacks at that range -- surface it in the
+// stat box. Class-attribute rows apply to their own class; ability-level
+// rows apply unit-wide.
 function inherentRange(rows?: { influence_type?: number; invoke?: string | number; target?: string | number; params?: number[] }[] | null): number | null {
   for (const r of rows || []) {
     if (r.influence_type === 188 && r.invoke === "inherent" && r.target === "self" && r.params?.[0]) {
@@ -770,13 +1165,13 @@ function inherentRange(rows?: { influence_type?: number; invoke?: string | numbe
   return null;
 }
 
-// user 2026-07-05: "pure stat buff that target only self" (invoke=inherent,
-// target=self) should surface in the stat box the same way ability 188
-// already does for Range -- generalized to HP/ATK/DEF/MR/Cost. Ids mirror
-// export_units.py's STAT_ABILITY/FLAT_ABILITY buff-page grouping (13/14/12/
-// 82/76 are percent of base; 15/21/10/81 are flat). Shown as a badge next
-// to the base value (non-destructive -- the base stat columns already come
-// straight from the stat formula and don't know about this ability layer).
+// a pure stat buff targeting only self (invoke=inherent, target=self)
+// surfaces in the stat box the same way ability 188 does for Range --
+// generalized to HP/ATK/DEF/MR/Cost. Ids mirror export_units.py's
+// STAT_ABILITY/FLAT_ABILITY buff-page grouping (13/14/12/82/76 are percent
+// of base; 15/21/10/81 are flat). Shown as a badge next to the base value
+// (non-destructive -- the base stat columns already come straight from the
+// stat formula and don't know about this ability layer).
 type InherentStatKind = "hp" | "atk" | "def" | "mr" | "range" | "cost";
 const INHERENT_STAT_ABILITY: Record<InherentStatKind, [number, "pct" | "flat"][]> = {
   hp: [[12, "pct"], [82, "pct"]],
@@ -963,6 +1358,23 @@ function ClassAttributes({
 
 const TIER_LABEL: Record<number, string> = { 0: "Base", 1: "AW", 2: "AW2A", 3: "AW2B" };
 
+// A plain `to="/units"` link always lands on the default (unfiltered,
+// page 0) list, discarding whatever filters/page/search were active
+// before navigating here. Going back in history instead returns to the
+// exact previous URL (filters and all); fall back to a plain link only
+// when there's no in-app history to go back to (e.g. a shared link opened
+// directly on this page).
+function BackToUnits({ children, className }: { children: ReactNode; className?: string }) {
+  const navigate = useNavigate();
+  const hasHistory = (window.history.state?.idx ?? 0) > 0;
+  if (!hasHistory) return <Link to="/units" className={className}>{children}</Link>;
+  return (
+    <a href="/units" className={className} onClick={(e) => { e.preventDefault(); navigate(-1); }}>
+      {children}
+    </a>
+  );
+}
+
 export default function UnitDetail() {
   const { id } = useParams();
   const unitId = Number(id);
@@ -970,6 +1382,8 @@ export default function UnitDetail() {
   const influenceLabels = useUnitInfluenceLabels();
   const loc = useLocalisation();
   const princeTitles = usePrinceTitles();
+  const missiles = useMissiles();
+  const abilityConfigs = useAbilityConfigs();
   const [tier, setTier] = useState(0);
 
   if (loading) return <p className="loading">Loading…</p>;
@@ -980,7 +1394,7 @@ export default function UnitDetail() {
         <button className="stage-gap-btn" style={{ width: "auto" }} onClick={() => location.reload()}>
           retry
         </button>{" "}
-        <Link to="/units">Back to units</Link>
+        <BackToUnits>Back to units</BackToUnits>
       </p>
     );
   }
@@ -997,8 +1411,10 @@ export default function UnitDetail() {
   const displayName = unit.name_en || unit.name || "(unnamed)";
 
   return (
+    <MissilesContext.Provider value={missiles}>
+    <AbilityConfigsContext.Provider value={abilityConfigs}>
     <div className="detail unit-page">
-      <Link to="/units" className="back">← units</Link>
+      <BackToUnits className="back">← units</BackToUnits>
 
       <aside className="unit-infobox">
         <div className={`unit-infobox-banner rarity-${unit.rarity_id}`}>{displayName}</div>
@@ -1017,17 +1433,17 @@ export default function UnitDetail() {
           </div>
         )}
         <div className="unit-infobox-meta">
-          <Link className="meta-chip" to={`/units?tag=${encodeURIComponent(unit.rarity)}`}>{unit.rarity}</Link>
+          <Link className="meta-chip" to={`/units?rarity=${encodeURIComponent(unit.rarity.replace(/ Hero$/, ""))}`}>{unit.rarity}</Link>
           {unit.gender && (
-            <Link className="meta-chip" to={`/units?tag=${encodeURIComponent(String(unit.gender))}`}>{unit.gender}</Link>
+            <Link className="meta-chip" to={`/units?gender=${encodeURIComponent(String(unit.gender))}`}>{unit.gender}</Link>
           )}
           {unit.faction && (
-            <Link className="meta-chip" to={`/units?tag=${encodeURIComponent(unit.faction)}`} title={unit.faction}>
+            <Link className="meta-chip" to={`/units?faction=${encodeURIComponent(unit.faction)}`} title={unit.faction}>
               {loc?.races[unit.faction] || unit.faction}
             </Link>
           )}
           {unit.race && (
-            <Link className="meta-chip" to={`/units?tag=${encodeURIComponent(unit.race)}`} title={unit.race}>
+            <Link className="meta-chip" to={`/units?race=${encodeURIComponent(unit.race)}`} title={unit.race}>
               {loc?.races[unit.race] || unit.race}
             </Link>
           )}
@@ -1037,12 +1453,12 @@ export default function UnitDetail() {
             </Link>
           )}
           {(unit.identity_tags || []).map((t) => (
-            <Link className="meta-chip" to={`/units?tag=${encodeURIComponent(t)}`} key={t} title={t}>
+            <Link className="meta-chip" to={`/units?attr=${encodeURIComponent(t)}`} key={t} title={t}>
               {loc?.tags[t] || t}
             </Link>
           ))}
           {unit.genus && (
-            <Link className="meta-chip" to={`/units?tag=${encodeURIComponent(unit.genus)}`} title={unit.genus}>
+            <Link className="meta-chip" to={`/units?season=${encodeURIComponent(unit.genus)}`} title={unit.genus}>
               {loc?.tags[unit.genus] || unit.genus}
             </Link>
           )}
@@ -1203,12 +1619,16 @@ export default function UnitDetail() {
                   <span className="params"> [{s.params.join(", ")}]</span>
                 )}
                 {s.name && <span className="meaning"> {s.name}</span>}
-                {s.command && <span className="expr" title={s.command}> {s.command}</span>}
+                {s.type === 34 ? (
+                  <CommandFacts cmd={s.command} kind="specialty" />
+                ) : s.command && <span className="expr" title={s.command}> {s.command}</span>}
               </li>
             ))}
           </ul>
         </section>
       )}
     </div>
+    </AbilityConfigsContext.Provider>
+    </MissilesContext.Provider>
   );
 }

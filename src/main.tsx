@@ -8,7 +8,6 @@ import EnemyList from "./pages/EnemyList";
 import EnemyDetail from "./pages/EnemyDetail";
 import UnitList from "./pages/UnitList";
 import UnitDetail from "./pages/UnitDetail";
-import Admin from "./pages/Admin";
 import Buffs from "./pages/Buffs";
 import "./styles.css";
 
@@ -24,7 +23,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="enemies/:id" element={<EnemyDetail />} />
           <Route path="units" element={<UnitList />} />
           <Route path="units/:id" element={<UnitDetail />} />
-          <Route path="admin" element={<Admin />} />
           <Route path="buffs" element={<Buffs />} />
         </Route>
       </Routes>

@@ -41,7 +41,7 @@ export interface Missile {
   slow?: [number, number] | null;
   deflectable?: boolean | null;
   // PenetrateType != 0: travelling projectile that hits every enemy it
-  // passes through (user-confirmed); width = ColDiameter collision width.
+  // passes through; width = ColDiameter collision width.
   penetrate?: number | null;
   width?: number | null;
   heal?: boolean | null;
@@ -226,8 +226,10 @@ export type UnitImageKind = "art" | "icon" | "sprite";
 // Raw influence row (SkillInfluenceConfig / AbilityConfig). Meanings are NOT
 // yet resolved (no label table ported for these ids) -- ids/params shown raw.
 // Extra key=value data from the row's ExtendProperty column (e.g. a buff's
-// duration/percent/stack-cap that doesn't fit the fixed Param1-4 slots).
-export type InfluenceExtend = Record<string, string | number>;
+// duration/percent/stack-cap that doesn't fit the fixed Param1-4 slots). A
+// key's own value can be a LIST (e.g. a charge skill's 20 chained skill ids,
+// or type 210's one-missile-id-per-attribute 属性/ミサイルID pairs).
+export type InfluenceExtend = Record<string, string | number | (string | number)[]>;
 
 export interface SkillInfluence {
   influence_type?: number;
@@ -236,7 +238,7 @@ export interface SkillInfluence {
   mul2?: number;
   mul3?: number;
   // this row's cap at max skill level, from _HoldRatioUpperLimit
-  // (e.g. mul3=450 base, cap=500 -> "5x at max level", user-confirmed).
+  // (e.g. mul3=450 base, cap=500 -> "5x at max level").
   mul3_cap?: number;
   // mul3/mul3_cap were filled from the skill's Power/PowerMax (the row's own
   // mul3 was unset -- Power integrated at export, see aigis.unit).
@@ -244,9 +246,9 @@ export interface SkillInfluence {
   // the exact skill-text placeholder token this row fills, from the row's
   // Tag0/TagDiff ExtendProperty (e.g. "[ATK]" or "<DEF>").
   tag?: string;
-  // influence types 173/177 ("Scaling Attack"/"Scaling no. Targets",
-  // user-confirmed formula) decoded: per_tick amount every interval_frames
-  // (@60fps), capped at `cap`, direction +1 increasing / -1 decreasing.
+  // influence types 173/177 ("Scaling Attack"/"Scaling no. Targets")
+  // decoded: per_tick amount every interval_frames (@60fps), capped at
+  // `cap`, direction +1 increasing / -1 decreasing.
   tick_scale?: {
     per_tick?: number; interval_frames?: number; per_sec?: number;
     cap?: number; direction?: number;
@@ -280,15 +282,12 @@ export interface AbilityInfluence {
   command_human?: string;
   activate_command?: string;
   activate_command_human?: string;
+  // separate gate condition from AbilityConfig.NoChangeCondition -- distinct
+  // from both command and activate_command (e.g. a class restriction on a
+  // War God Blessing row whose own command is an unrelated HP-ratio check).
+  no_change_condition?: string;
+  no_change_condition_human?: string;
   extend?: InfluenceExtend;
-  // type 189 "Grant ability": the granted AbilityList entry, resolved
-  // (p1 = ability id).
-  granted_ability?: {
-    id: number;
-    name?: string | null;
-    text?: string | null;
-    influences: AbilityInfluence[];
-  };
 }
 
 export interface SkillStage {
@@ -383,9 +382,9 @@ export interface UnitClass {
   name?: string;
   description?: string;
   ranged: boolean;
-  // ClassData.PlaceAttribute, decoded (user 2026-07-05): which deploy spot(s)
-  // this class can be placed in -- almost always matches `ranged`, but a
-  // handful of units (e.g. #1313 Miriam) are deployable in either spot.
+  // ClassData.PlaceAttribute, decoded: which deploy spot(s) this class can
+  // be placed in -- almost always matches `ranged`, but a handful of units
+  // (e.g. #1313 Miriam) are deployable in either spot.
   deploy_slot?: string | null;
   range?: number | null;
   block?: number | null;
@@ -485,11 +484,12 @@ export interface BuffRow {
   tgt?: string | number | null; // resolved target
   fl?: 1;               // flat value (not percent)
   mod?: string[];       // same-unit modifier ids folded into v
-  // functional group override (user 2026-07-05): ability 13/70 (ATK) and
-  // 14/71 (DEF) split by their OWN invoke into "sortie_atk"/"deploy_atk" /
-  // "sortie_def"/"deploy_def"; 223/224 always force into the sortie group
-  // regardless of their own invoke ("it functions in the sortie buff
-  // calculation"). Rows without this stay grouped by ns:t as before.
+  // functional group override: ability 13/70 (ATK) and 14/71 (DEF) split by
+  // their OWN invoke into "sortie_atk"/"deploy_atk"/"sortie_def"/
+  // "deploy_def"; 223/224 (War God Blessing ATK/DEF) get their own
+  // "war_god_blessing_atk"/"war_god_blessing_def" group instead, a separate
+  // mechanic from Sortie/Deployment buffs. Rows without this stay grouped
+  // by ns:t as before.
   grp?: string;
 }
 
@@ -497,15 +497,15 @@ export interface BuffRow {
 export interface UnitInfluenceLabel {
   name?: string | null;
   verified?: boolean;
-  // user-marked (test unit / synthesis fodder / NPC-only / token-only /
-  // no data): deliberately not labeled, note carries the user's mark text.
+  // manually marked (test unit / synthesis fodder / NPC-only / token-only /
+  // no data): deliberately not labeled, note carries the mark's context.
   marker?: boolean;
-  // value template derived from the user's notes ({pN} = ParamN, filled by
-  // fillLabel): "+{p1}%" = increase by, "→ {p1}%" = set/raise/reduce TO.
+  // value template ({pN} = ParamN, filled by fillLabel): "+{p1}%" = increase
+  // by, "→ {p1}%" = set/raise/reduce TO.
   tpl?: string;
   note?: string;
-  // user-confirmed: no known player-facing effect (internal mechanism, or
-  // no observed effect) -- hide the row from the UI by default.
+  // no known player-facing effect (internal mechanism, or no observed
+  // effect) -- hide the row from the UI by default.
   hidden?: boolean;
 }
 export interface UnitInfluenceLabels {
@@ -514,13 +514,20 @@ export interface UnitInfluenceLabels {
 }
 
 // slim units-list index entry.
+// List-page entry: every top-level field of the full unit record EXCEPT
+// skills/abilities/classes' full nested bodies (kept out to keep the list
+// index small -- they're already complete in the per-unit detail file).
+// Every field is emitted even if unused today, so a new filter can just
+// read whatever's already present instead of needing another
+// export_units.py edit.
 export interface UnitIndexEntry {
   id: number;
   name?: string | null;
   name_en?: string | null;
-  classes?: string[];   // every class-tier JP name (for class filtering)
+  class_names?: string[];   // every class-tier JP name (for class filtering)
   tags?: string[];      // identity + genus + faction + race + gender + rarity
   faction?: string | null;
+  faction_id?: number | null;
   npc?: boolean;
   prince?: boolean;
   art_tiers?: number[];
@@ -528,6 +535,21 @@ export interface UnitIndexEntry {
   rarity_id: number;
   gender?: string | number;
   race?: string | null;
+  race_id?: number | null;
+  big_race?: string | null;
+  big_race_id?: number | null;
+  identity_tags?: string[];
+  identity_ids?: number[];
+  genus?: string | null;
+  genus_id?: number | null;
+  position?: "melee" | "ranged" | "omni" | null;
+  release_year?: number | null;
+  magic_resistance?: number | null;
+  sell_price?: number | null;
+  trade_point?: number | null;
+  build_exp?: number | null;
+  affection_bonuses?: string[];
+  specials?: UnitSpecial[];
   class?: string | null;
   ranged?: boolean | null;
   cost_min?: number | null;

@@ -15,7 +15,11 @@ import type {
   UnitInfluenceLabels,
   Localisation,
   PrinceTitle,
+  Missile,
+  AbilityInfluence,
 } from "./types";
+import { INFLUENCE_LABELS } from "./influenceLabels";
+import { RACE_LABELS, TAG_LABELS } from "./tagLabels";
 
 const cache: Record<string, unknown> = {};
 
@@ -152,13 +156,17 @@ export function useUnitDetail(id: number) {
   return state;
 }
 
-// JP -> EN class/race maps.
+// JP -> EN class/race maps. races/tags are always the static, hot-reloadable
+// RACE_LABELS/TAG_LABELS (see tagLabels.ts) -- editing a translation there
+// takes effect immediately, no Python re-export needed. classes/skills/
+// abilities still come from the published export (they need the wiki-crawl
+// voting pipeline, which can't move client-side the same way).
 export function useLocalisation(): Localisation | null {
   const [loc, set] = useState<Localisation | null>(null);
   useEffect(() => {
     loadJSON<Localisation>("localisation")
-      .then(set)
-      .catch(() => set({ classes: {}, races: {}, tags: {}, skills: {}, abilities: {} }));
+      .then((l) => set({ ...l, races: RACE_LABELS, tags: TAG_LABELS }))
+      .catch(() => set({ classes: {}, races: RACE_LABELS, tags: TAG_LABELS, skills: {}, abilities: {} }));
   }, []);
   return loc;
 }
@@ -176,14 +184,33 @@ export function spriteUrl(patternId: number): string {
   return `${import.meta.env.BASE_URL}sprites/${patternId}.png`;
 }
 
+// Skill/ability influence names/templates are a static import from
+// influenceLabels.ts, not a fetched JSON file, so editing wording doesn't
+// require a Python re-export.
 export function useUnitInfluenceLabels(): UnitInfluenceLabels | null {
-  const [labels, set] = useState<UnitInfluenceLabels | null>(null);
+  return INFLUENCE_LABELS;
+}
+
+// every Missile.atb id with non-trivial facts (splash/slow/on-hit/penetrate/
+// ...), keyed by id -- lets any raw missile id (e.g. one found inside a
+// decoded "Command" script) be resolved without a per-row backend lookup.
+export function useMissiles(): Record<string, Missile> | null {
+  const [missiles, set] = useState<Record<string, Missile> | null>(null);
   useEffect(() => {
-    loadJSON<UnitInfluenceLabels>("unit_influence_labels")
-      .then(set)
-      .catch(() => set({ skill: {}, ability: {} }));
+    loadJSON<Record<string, Missile>>("missiles").then(set).catch(() => set({}));
   }, []);
-  return labels;
+  return missiles;
+}
+
+// every AbilityConfig._ConfigID's resolved influence rows, keyed by id --
+// lets ability influence type 189 ("Grant ability") resolve its raw
+// AbilityConfig._ConfigID param client-side.
+export function useAbilityConfigs(): Record<string, AbilityInfluence[]> | null {
+  const [configs, set] = useState<Record<string, AbilityInfluence[]> | null>(null);
+  useEffect(() => {
+    loadJSON<Record<string, AbilityInfluence[]>>("ability_configs").then(set).catch(() => set({}));
+  }, []);
+  return configs;
 }
 
 // Unit images. ICONS are published with the site (public/unit-icon, ~108 MB).

@@ -68,6 +68,37 @@ main { padding: 18px 20px; max-width: 1100px; margin: 0 auto; }
 .toolbar .count, .count { color: var(--muted); margin-left: auto; }
 .loading { color: var(--muted); }
 
+/* searchable single-select combobox (class / skill / ability influence
+   dropdowns -- too many options to scan by scrolling a plain <select>) */
+.searchable-select { position: relative; width: 220px; max-width: 100%; }
+/* skill/ability influence options are long ("223 -- War God Blessing ATK
+   Buff") -- wide enough that the selected label isn't clipped mid-word. */
+.searchable-select--wide { width: 420px; }
+.searchable-select input {
+  width: 100%; background: var(--panel2); border: 1px solid var(--line);
+  color: var(--text); padding: 7px 28px 7px 10px; border-radius: 6px;
+}
+.unit-toolbar .searchable-select--wide input { width: 100%; }
+.searchable-select input::placeholder { color: var(--muted); }
+.searchable-select-clear {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 15px; line-height: 1; padding: 2px 4px;
+}
+.searchable-select-clear:hover { color: #e0a0a0; }
+.searchable-select-list {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20;
+  background: var(--panel2); border: 1px solid var(--accent); border-radius: 6px;
+  max-height: 320px; overflow-y: auto; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+.searchable-select-option {
+  padding: 6px 10px; font-size: 13px; cursor: pointer; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.searchable-select-option:hover, .searchable-select-option.selected { background: var(--line); }
+.searchable-select-all { color: var(--muted); border-bottom: 1px solid var(--line); }
+.searchable-select-empty { padding: 8px 10px; font-size: 13px; color: var(--muted); }
+
 /* tables */
 .grid { width: 100%; border-collapse: collapse; }
 .grid th, .grid td {
@@ -607,18 +638,56 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 .unit-tile-name { font-weight: 700; line-height: 1.3; }
 .unit-tile-sub { line-height: 1.3; }
 
-/* toolbar: a coherent filter/search panel */
+/* toolbar: a coherent filter/search panel, laid out as two deliberate rows
+   (search+class+NPC+count, then skill/ability influence+filter buttons)
+   instead of letting one long flex row wrap unpredictably. */
 .unit-toolbar {
-  flex-wrap: wrap;
-  row-gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 10px 12px;
 }
+.unit-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+}
 .unit-toolbar select { min-width: 140px; max-width: 210px; }
-.unit-toolbar input[type="text"], .unit-toolbar input:not([type]) { width: 220px; }
+.unit-toolbar-row > input[type="text"], .unit-toolbar-row > input:not([type]) {
+  flex: 1 1 220px;
+  min-width: 180px;
+  max-width: 360px;
+}
 .unit-toolbar select:hover, .unit-toolbar input:hover { border-color: var(--accent); }
+/* first row (search + class): with NPC/count/buttons moved to their own
+   rows, class now shares the row with only the search box -- let it grow
+   into the leftover space instead of sitting at its old fixed width. */
+.unit-toolbar-row .searchable-select { flex: 1 1 220px; width: auto; }
+/* skill/ability influence row: the two wide comboboxes share the row's
+   remaining space evenly. */
+.unit-toolbar-row .searchable-select--wide { flex: 1 1 320px; width: auto; }
+/* filters/reset are one logical action, not two independent buttons --
+   tighter internal gap + a shared outer border reads as one grouped
+   control, distinct from the wider gap used between unrelated row items. */
+.unit-toolbar-actions {
+  display: flex;
+  margin-left: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.unit-toolbar-actions .filter-toggle-btn {
+  border: none;
+  border-radius: 0;
+}
+.unit-toolbar-actions .filter-toggle-btn + .filter-toggle-btn {
+  border-left: 1px solid var(--line);
+}
 
 /* tag-mentions panel (tag-filtered unit list) */
 .tag-mentions {
@@ -644,6 +713,64 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 }
 .filter-chip button:hover { color: #e0a0a0; }
 
+/* unit-list filter panel (checkbox categories mirroring the in-game filter menu) */
+.toolbar input[type="checkbox"],
+.filter-check input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none;
+  width: 16px; height: 16px; min-width: 16px;
+  border: 1px solid var(--line); border-radius: 4px;
+  background: var(--panel2); cursor: pointer;
+  display: inline-grid; place-content: center;
+  transition: background 0.12s, border-color 0.12s;
+}
+.toolbar input[type="checkbox"]:hover,
+.filter-check input[type="checkbox"]:hover { border-color: var(--accent); }
+.toolbar input[type="checkbox"]:checked,
+.filter-check input[type="checkbox"]:checked {
+  background: var(--accent); border-color: var(--accent);
+}
+.toolbar input[type="checkbox"]:checked::after,
+.filter-check input[type="checkbox"]:checked::after {
+  content: ""; width: 4px; height: 8px;
+  border: solid var(--bg, #14161a); border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+.filter-toggle-btn {
+  background: var(--panel2); border: 1px solid var(--accent); color: var(--text);
+  border-radius: 6px; padding: 7px 14px; cursor: pointer; font-size: 13px;
+  transition: background 0.12s;
+}
+.filter-toggle-btn:hover { background: var(--line); }
+.npc-toggle {
+  display: inline-flex; align-items: center; gap: 7px;
+  white-space: nowrap; cursor: pointer; color: var(--muted); font-size: 13px;
+}
+.filter-panel {
+  display: flex; flex-wrap: wrap; gap: 24px;
+  background: var(--panel2); border: 1px solid var(--line);
+  border-radius: 8px; padding: 16px 20px; margin-bottom: 14px;
+}
+.filter-group { min-width: 170px; }
+.filter-group-title {
+  font-weight: 700; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 8px;
+}
+.filter-group-options {
+  display: flex; flex-direction: column; gap: 6px;
+  max-height: 220px; overflow-y: auto; padding-right: 6px;
+}
+.filter-check {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; cursor: pointer; white-space: nowrap;
+}
+.filter-check:hover { color: var(--accent); }
+.filter-clear-btn {
+  align-self: flex-start; background: none; border: 1px solid var(--muted);
+  color: var(--muted); border-radius: 6px; padding: 7px 14px; cursor: pointer;
+  font-size: 13px; height: fit-content; transition: color 0.12s, border-color 0.12s;
+}
+.filter-clear-btn:hover { color: #e0a0a0; border-color: #e0a0a0; }
+
 /* pager jump box */
 .pager-jump {
   width: 52px;
@@ -666,67 +793,8 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 .prince-titles > summary { cursor: pointer; color: #e0b341; }
 .npc-toggle { white-space: nowrap; cursor: pointer; }
 
-/* admin influence-audit page */
-.admin-list { display: flex; flex-direction: column; gap: 6px; }
-.admin-entry {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 8px 12px;
-}
-.admin-entry summary {
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.admin-id { font-size: 14px; font-weight: 700; min-width: 34px; }
-.admin-count { color: var(--muted); font-size: 12px; min-width: 52px; }
-.admin-label { color: #9ece6a; }
-.admin-status {
-  font-size: 10px;
-  text-transform: uppercase;
-  border-radius: 3px;
-  padding: 0 6px;
-  font-weight: 700;
-}
-.admin-status--unlabeled { background: #4a3535; color: #e0a0a0; }
-.admin-status--marked { background: #333845; color: #9aa4b5; }
-.admin-status--unverified { background: #4a4235; color: #e0c78a; }
-.admin-status--verified { background: #2e4235; color: #9ece6a; }
-.admin-note { margin: 6px 0 0; }
-.admin-sig {
-  margin-top: 8px;
-  padding: 6px 10px;
-  background: var(--panel2);
-  border-radius: 6px;
-}
 .admin-examples { list-style: none; padding-left: 12px; margin: 4px 0 0; font-size: 12px; }
 .admin-examples li { padding: 1px 0; }
-.admin-has-note { font-size: 12px; }
-.admin-note-input {
-  display: block;
-  width: 100%;
-  min-height: 40px;
-  margin-top: 8px;
-  background: var(--panel2);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  color: var(--text);
-  padding: 6px 8px;
-  font: 12px/1.4 inherit;
-  resize: vertical;
-}
-.admin-dl-btn {
-  background: var(--panel2);
-  border: 1px solid var(--line);
-  color: var(--text);
-  padding: 7px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-.admin-dl-btn:hover { border-color: var(--accent); }
 
 /* ===================== responsive (tablet) ===================== */
 @media (max-width: 768px) {
@@ -773,6 +841,16 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 
 /* ---- /buffs page ---------------------------------------------------- */
 .buff-toolbar { flex-wrap: wrap; }
+.buff-toolbar select {
+  min-width: 140px;
+  max-width: 210px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  padding: 7px 10px;
+  border-radius: 6px;
+}
+.buff-toolbar select:hover { border-color: var(--accent); }
 .stat-tab {
   padding: 5px 14px;
   border: 1px solid var(--line);

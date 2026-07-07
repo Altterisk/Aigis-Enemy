@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { loadJSONFile, useUnitInfluenceLabels, useLocalisation } from "../data";
+import { HumanText } from "../components";
 import type { BuffRow, UnitInfluenceLabel } from "../types";
 
 const STATS = [
@@ -18,23 +19,17 @@ type StatKey = (typeof STATS)[number]["k"];
 const GROUP_PREVIEW = 10; // rows shown per type before "show all"
 
 // skill mul3 values are normally "percent of base" TOTAL multipliers (130 =
-// x1.3) -- EXCEPT 204/205 (UP-Consuming ATK/DEF buff), whose own note says
-// "value is percent to ADD" (user-confirmed 2026-07-05: cap 80 = +80% =
-// x1.8, not x0.8).
+// x1.3) -- EXCEPT 204/205 (UP-Consuming ATK/DEF buff), whose value is a
+// percent to ADD (cap 80 = +80% = x1.8, not x0.8).
 const SKILL_ADDITIVE_PCT = new Set([204, 205]);
 // ability percent buffs are normally "+X%" ADDITIVE (stacks on top of
 // 100%) -- EXCEPT ids whose own template is "→ {p1}%" (already a TOTAL
 // percent-of-base multiplier, not a delta): Deployment Spot 134/135/136,
-// Placement 207, Conqueror-type 197/198/199 (user 2026-07-05: "these should
-// be x1.6 for example, not +... same with conqueror type atk buff").
-// Bard 304-307 do NOT belong here -- reverted 2026-07-05: their raw MulMax
-// is additive (+X%) same as Sortie/Deployment; the "200% of base 50% is
-// 100%" comment was about the skill 248-251 BOOST arithmetic (fixed in
-// export_units.py's _ability_value, not a display-format signal). Putting
-// them here made a bare, unboosted MulMax (e.g. Yasaka's 25, no boost skill
-// at all) render as a bogus "x0.25 debuff" instead of "+25%".
-// Lukifer Death HP/ATK/DEF/MR buff (155/156/157/158): user 2026-07-05 --
-// "this is multiplier" (displayed as x-notation, not +X%).
+// Placement 207, Conqueror-type 197/198/199, Lukifer Death HP/ATK/DEF/MR
+// buff 155/156/157/158. Bard 304-307 do NOT belong here -- their raw
+// MulMax is additive (+X%) same as Sortie/Deployment; a bare, unboosted
+// MulMax (e.g. a carrier with no boost skill at all) would otherwise
+// render as a bogus "x0.25 debuff" instead of "+25%".
 const ABILITY_MULTIPLIER_PCT = new Set([134, 135, 136, 155, 156, 157, 158, 197, 198, 199, 207]);
 
 function fmtValue(r: BuffRow): string {
@@ -64,8 +59,7 @@ export default function Buffs() {
   const labels = useUnitInfluenceLabels();
   const loc = useLocalisation();
   const [stat, setStat] = useState<StatKey>("ATK");
-  const [ns, setNs] = useState<"all" | "skill" | "ability">("all");
-  const [type, setType] = useState("all");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadJSONFile<BuffRow[]>("buff_index").then(setRows).catch(() => setFailed(true));
@@ -74,24 +68,22 @@ export default function Buffs() {
   const labelOf = (nsK: string, t: number): UnitInfluenceLabel | undefined =>
     (nsK === "skill" ? labels?.skill : labels?.ability)?.[String(t)];
 
-  // synthetic group names for rows carrying a `grp` override (user
-  // 2026-07-05: Sortie buff and Deployment buff are different functional
-  // groups, not the same thing under one type id).
+  // display names for rows carrying a `grp` override.
   const GRP_NAME: Record<string, string> = {
     sortie_atk: "Sortie ATK Buff", deploy_atk: "Deployment ATK Buff",
     sortie_def: "Sortie DEF Buff", deploy_def: "Deployment DEF Buff",
+    war_god_blessing_atk: "War God Blessing ATK Buff",
+    war_god_blessing_def: "War God Blessing DEF Buff",
   };
   const groupKey = (r: BuffRow) => r.grp ?? `${r.ns}:${r.t}`;
 
-  // per-type groups for the selected stat, each ranked by cap value,
-  // one row per unit (its best), biggest groups first.
+  // every group for the selected stat, each ranked by cap value, one row
+  // per unit (its best), biggest groups first.
   const groups = useMemo(() => {
     const by = new Map<string, BuffRow[]>();
     (rows || []).forEach((r) => {
       if (r.stat !== stat) return;
-      if (ns !== "all" && r.ns !== ns) return;
       const k = groupKey(r);
-      if (type !== "all" && k !== type) return;
       let list = by.get(k);
       if (!list) by.set(k, (list = []));
       list.push(r);
@@ -112,29 +104,20 @@ export default function Buffs() {
         return { k, grp, nsK, t, ranked };
       })
       .sort((a, b) => b.ranked.length - a.ranked.length);
-  }, [rows, stat, ns, type]);
-
-  const typeOpts = useMemo(() => {
-    const seen = new Map<string, { c: number; nsK: string; t: number; grp?: string }>();
-    (rows || []).forEach((r) => {
-      if (r.stat !== stat) return;
-      if (ns !== "all" && r.ns !== ns) return;
-      const k = groupKey(r);
-      const e = seen.get(k);
-      if (e) e.c++;
-      else seen.set(k, { c: 1, nsK: r.ns, t: r.t, grp: r.grp });
-    });
-    return [...seen.entries()]
-      .map(([k, e]) => ({ k, ...e }))
-      .sort((a, b) => b.c - a.c);
-  }, [rows, stat, ns]);
+  }, [rows, stat]);
 
   if (failed) {
     return <p className="muted">buff_index.json not found — re-run export_units.py.</p>;
   }
   if (!rows) return <p className="loading">Loading buff index…</p>;
 
-  const single = type !== "all";
+  const toggleExpanded = (k: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k); else next.add(k);
+      return next;
+    });
+  };
 
   return (
     <div className="buffs-page">
@@ -145,35 +128,24 @@ export default function Buffs() {
         max achievable value. Hover a value for the raw params. Self-only,
         1st-barrack, token-targeted and specific-unit rows are excluded.
       </p>
-      <div className="toolbar unit-toolbar buff-toolbar">
+
+      <div className="toolbar buff-toolbar">
         {STATS.map((s) => (
           <button
             key={s.k}
             className={`stat-tab${s.k === stat ? " active" : ""}${s.k.endsWith("_DEBUFF") ? " debuff-tab" : ""}`}
-            onClick={() => { setStat(s.k); setType("all"); }}
+            onClick={() => setStat(s.k)}
           >
             {s.label}
           </button>
         ))}
-        <select value={ns} onChange={(e) => { setNs(e.target.value as typeof ns); setType("all"); }}>
-          <option value="all">skills + abilities</option>
-          <option value="skill">skills only</option>
-          <option value="ability">abilities only</option>
-        </select>
-        <select value={type} onChange={(e) => setType(e.target.value)}>
-          <option value="all">all effect types</option>
-          {typeOpts.map((o) => (
-            <option key={o.k} value={o.k}>
-              {o.grp ? GRP_NAME[o.grp] || o.grp : `${o.nsK} ${o.t} — ${labelOf(o.nsK, o.t)?.name || "?"}`} ({o.c})
-            </option>
-          ))}
-        </select>
         <span className="count">{groups.length} effect types</span>
       </div>
       <div className="buff-groups">
         {groups.map((g) => {
           const lab = g.grp ? undefined : labelOf(g.nsK, g.t);
-          const shown = single ? g.ranked : g.ranked.slice(0, GROUP_PREVIEW);
+          const isExpanded = expanded.has(g.k);
+          const shown = isExpanded ? g.ranked : g.ranked.slice(0, GROUP_PREVIEW);
           return (
             <section key={g.k} className="buff-group">
               <header className="buff-group-head">
@@ -198,26 +170,23 @@ export default function Buffs() {
                         {r.mod?.length ? <span className="buff-mod">*</span> : null}
                       </td>
                       <td><Link to={`/units/${r.u}`}>#{r.u} {r.n}</Link></td>
-                      <td className="muted small">{r.tgt ?? "-"}</td>
+                      <td className="muted small">
+                        {typeof r.tgt === "string" ? <HumanText text={r.tgt} /> : (r.tgt ?? "-")}
+                      </td>
                       <td className="muted small">{loc?.classes[r.s] || r.s}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {!single && g.ranked.length > GROUP_PREVIEW && (
-                <button className="buff-more" onClick={() => setType(g.k)}>
-                  show all {g.ranked.length}
+              {g.ranked.length > GROUP_PREVIEW && (
+                <button className="buff-more" onClick={() => toggleExpanded(g.k)}>
+                  {isExpanded ? "collapse" : `expand (${g.ranked.length})`}
                 </button>
               )}
             </section>
           );
         })}
       </div>
-      {single && (
-        <button className="buff-more" onClick={() => setType("all")}>
-          back to all types
-        </button>
-      )}
     </div>
   );
 }
