@@ -152,13 +152,13 @@ function CheckboxGroup({
       <div className="filter-group-title">{title}</div>
       <div className="filter-group-options">
         {options.map((o) => (
-          <label key={o.value} className="filter-check">
+          <label key={o.value} className={`cg-pill${selected.includes(o.value) ? " on" : ""}`}>
             <input
               type="checkbox"
               checked={selected.includes(o.value)}
               onChange={() => onToggle(o.value)}
             />
-            {" "}{o.label}
+            {o.label}
           </label>
         ))}
       </div>
@@ -401,13 +401,13 @@ export default function UnitList() {
           />
         </div>
         <div className="unit-toolbar-row">
-          <label className="muted small npc-toggle">
+          <label className={`cg-pill${showNpc ? " on" : ""}`}>
             <input
               type="checkbox"
               checked={showNpc}
               onChange={(e) => setParam("npc", e.target.checked ? "1" : null)}
             />
-            {" "}NPC / test / fodder
+            NPC / test / fodder
           </label>
           <div className="unit-toolbar-actions">
             <button className="filter-toggle-btn" onClick={() => setShowFilters(!showFilters)}>

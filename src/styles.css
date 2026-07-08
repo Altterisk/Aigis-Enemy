@@ -604,6 +604,22 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 
 /* skill/ability/class-attribute tables */
 .unit-detail-table { margin-top: 8px; border: 1px solid var(--line); }
+/* phones: the skill/stat tables are wider than the viewport -- scroll them
+   inside their own box instead of overflowing the page sideways */
+@media (max-width: 700px) {
+  .unit-detail-table, .unit-stat-table, .unit-token-stat-table {
+    display: block;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+}
+@media (max-width: 600px) {
+  .unit-infobox {
+    float: none;
+    width: 100%;
+    margin: 0 0 12px 0;
+  }
+}
 .unit-detail-table th, .unit-detail-table td {
   border-right: 1px solid var(--line);
   vertical-align: top;
@@ -730,6 +746,9 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 }
 .tag-mentions summary { cursor: pointer; color: var(--accent); font-size: 13px; }
 .tag-mentions ul { columns: 2; }
+@media (max-width: 600px) {
+  .tag-mentions ul { columns: 1; }
+}
 
 /* active class/tag filter chips */
 .active-filters { display: flex; gap: 8px; margin-bottom: 10px; }
@@ -744,9 +763,8 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 }
 .filter-chip button:hover { color: #e0a0a0; }
 
-/* unit-list filter panel (checkbox categories mirroring the in-game filter menu) */
-.toolbar input[type="checkbox"],
-.filter-check input[type="checkbox"] {
+/* unit-list filter panel (pill-toggle categories mirroring the in-game filter menu) */
+.toolbar input[type="checkbox"] {
   appearance: none; -webkit-appearance: none;
   width: 16px; height: 16px; min-width: 16px;
   border: 1px solid var(--line); border-radius: 4px;
@@ -754,14 +772,11 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   display: inline-grid; place-content: center;
   transition: background 0.12s, border-color 0.12s;
 }
-.toolbar input[type="checkbox"]:hover,
-.filter-check input[type="checkbox"]:hover { border-color: var(--accent); }
-.toolbar input[type="checkbox"]:checked,
-.filter-check input[type="checkbox"]:checked {
+.toolbar input[type="checkbox"]:hover { border-color: var(--accent); }
+.toolbar input[type="checkbox"]:checked {
   background: var(--accent); border-color: var(--accent);
 }
-.toolbar input[type="checkbox"]:checked::after,
-.filter-check input[type="checkbox"]:checked::after {
+.toolbar input[type="checkbox"]:checked::after {
   content: ""; width: 4px; height: 8px;
   border: solid var(--bg, #14161a); border-width: 0 2px 2px 0;
   transform: rotate(45deg) translate(-1px, -1px);
@@ -777,24 +792,19 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   white-space: nowrap; cursor: pointer; color: var(--muted); font-size: 13px;
 }
 .filter-panel {
-  display: flex; flex-wrap: wrap; gap: 24px;
+  display: flex; flex-direction: column; gap: 14px;
   background: var(--panel2); border: 1px solid var(--line);
   border-radius: 8px; padding: 16px 20px; margin-bottom: 14px;
 }
-.filter-group { min-width: 170px; }
+.filter-group { max-width: 100%; }
 .filter-group-title {
   font-weight: 700; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase;
   color: var(--accent); margin-bottom: 8px;
 }
 .filter-group-options {
-  display: flex; flex-direction: column; gap: 6px;
+  display: flex; flex-wrap: wrap; gap: 6px;
   max-height: 220px; overflow-y: auto; padding-right: 6px;
 }
-.filter-check {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 13px; cursor: pointer; white-space: nowrap;
-}
-.filter-check:hover { color: var(--accent); }
 .filter-clear-btn {
   align-self: flex-start; background: none; border: 1px solid var(--muted);
   color: var(--muted); border-radius: 6px; padding: 7px 14px; cursor: pointer;
@@ -871,7 +881,8 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 }
 
 /* ---- /buffs page ---------------------------------------------------- */
-.buff-toolbar { flex-wrap: wrap; }
+.buff-toolbar { flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.buff-toolbar.buff-toolbar-effects { margin-bottom: 14px; }
 .buff-toolbar select {
   min-width: 140px;
   max-width: 210px;
@@ -883,13 +894,15 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 }
 .buff-toolbar select:hover { border-color: var(--accent); }
 .stat-tab {
-  padding: 5px 14px;
+  padding: 5px 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel2);
   color: var(--muted);
   font-weight: 600;
+  font-size: 12.5px;
   cursor: pointer;
+  white-space: nowrap;
 }
 .stat-tab:hover { color: var(--text); border-color: var(--accent); }
 .stat-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -901,25 +914,32 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   gap: 16px;
   align-items: start;
 }
+/* effect categories carry an extra Condition column -- give each group the
+   full row so the table has room to breathe */
+.buff-groups.buff-groups-wide { grid-template-columns: 1fr; }
 .buff-group {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 12px 14px;
   overflow-x: auto;
+  min-width: 0;
 }
 .buff-group-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 4px 10px;
   margin-bottom: 8px;
 }
 .buff-group-title { font-weight: 700; }
 .buff-group-meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .buff-group-meta .unverified { color: #e0af68; font-style: normal; }
+.buff-table { width: 100%; }
 .buff-table th, .buff-table td { padding: 4px 8px; }
 .buff-table td.buff-val { white-space: nowrap; }
+.buff-table td.buff-cond { max-width: 340px; overflow-wrap: anywhere; }
 .buff-mod { color: #e0af68; margin-left: 2px; cursor: help; }
 .buff-more {
   margin-top: 8px;
@@ -934,6 +954,12 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 .buff-more:hover { color: var(--text); border-color: var(--accent); }
 @media (max-width: 700px) {
   .buff-groups { grid-template-columns: 1fr; }
+  .stat-tab { padding: 4px 9px; font-size: 12px; }
+  .buff-table { font-size: 12px; }
+  .buff-table th, .buff-table td { padding: 3px 6px; }
+  .buff-table td.buff-cond { max-width: 180px; }
+  .buff-group { padding: 10px 10px; }
+  .buff-group-meta { white-space: normal; }
 }
 
 /* ===== /costgen -- UP generation simulator ===== */

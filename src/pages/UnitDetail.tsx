@@ -1547,27 +1547,27 @@ export default function UnitDetail() {
             <Link className="meta-chip" to={`/units?gender=${encodeURIComponent(String(unit.gender))}`}>{unit.gender}</Link>
           )}
           {unit.faction && (
-            <Link className="meta-chip" to={`/units?faction=${encodeURIComponent(unit.faction)}`} title={unit.faction}>
+            <Link className="meta-chip" to={`/tags/${encodeURIComponent(unit.faction)}`} title={unit.faction}>
               {loc?.races[unit.faction] || unit.faction}
             </Link>
           )}
           {unit.race && (
-            <Link className="meta-chip" to={`/units?race=${encodeURIComponent(unit.race)}`} title={unit.race}>
+            <Link className="meta-chip" to={`/tags/${encodeURIComponent(unit.race)}`} title={unit.race}>
               {loc?.races[unit.race] || unit.race}
             </Link>
           )}
           {unit.big_race && (
-            <Link className="meta-chip" to={`/units?tag=${encodeURIComponent(unit.big_race)}`} title={unit.big_race}>
+            <Link className="meta-chip" to={`/tags/${encodeURIComponent(unit.big_race)}`} title={unit.big_race}>
               {loc?.races[unit.big_race] || unit.big_race}
             </Link>
           )}
           {(unit.identity_tags || []).map((t) => (
-            <Link className="meta-chip" to={`/units?attr=${encodeURIComponent(t)}`} key={t} title={t}>
+            <Link className="meta-chip" to={`/tags/${encodeURIComponent(t)}`} key={t} title={t}>
               {loc?.tags[t] || t}
             </Link>
           ))}
           {unit.genus && (
-            <Link className="meta-chip" to={`/units?season=${encodeURIComponent(unit.genus)}`} title={unit.genus}>
+            <Link className="meta-chip" to={`/tags/${encodeURIComponent(unit.genus)}`} title={unit.genus}>
               {loc?.tags[unit.genus] || unit.genus}
             </Link>
           )}

@@ -19,6 +19,7 @@
 //  * deploy cost = cost_min (max level); conditional reductions floor at 0.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadJSONFile, unitImageUrl } from "../data";
+import { useUiStore, type CostGenSel } from "../store";
 
 // ---------------------------------------------------------------- data types
 
@@ -105,15 +106,9 @@ const SLOT_LABEL: Record<SlotKey, string> = {
 };
 const CC_LABEL: Record<number, string> = { 0: "Base", 1: "CC", 2: "AW", 3: "AW2A", 4: "AW2B" };
 
-interface Sel {
-  id: number;
-  color: number; // palette slot, fixed while selected
-  tier: number; // index into tiers
-  slot: SlotKey;
-  sliders: Record<string, number>;
-  toggles: Record<string, boolean>;
-  costOverride: string; // "" = computed
-}
+// selection state type lives in the store (persisted so the page keeps its
+// setup across navigation/reload, like the unit list's URL params do)
+type Sel = CostGenSel;
 
 // dark-surface categorical palette (dataviz reference, validated vs #1e2128)
 const PALETTE = ["#3987e5", "#199e70", "#c98500", "#008300", "#9085e9", "#e66767", "#d55181", "#d95926"];
@@ -579,11 +574,18 @@ function Chart({ series, seconds }: { series: Series[]; seconds: number }) {
 
 export default function CostGen() {
   const [data, setData] = useState<{ units: CGUnit[] } | null>(null);
-  const [sels, setSels] = useState<Sel[]>([]);
-  const [cdr, setCdr] = useState(0);
-  const [ignoreCosts, setIgnoreCosts] = useState(false);
-  const [ignoreInitial, setIgnoreInitial] = useState(false);
-  const [seconds, setSeconds] = useState(180);
+  // selection + sim settings persist in the UI store so navigating away and
+  // back (or reloading) keeps the comparison setup
+  const sels = useUiStore((s) => s.costgenSels);
+  const setSels = useUiStore((s) => s.setCostgenSels);
+  const cdr = useUiStore((s) => s.costgenCdr);
+  const setCdr = useUiStore((s) => s.setCostgenCdr);
+  const seconds = useUiStore((s) => s.costgenSeconds);
+  const setSeconds = useUiStore((s) => s.setCostgenSeconds);
+  const ignoreCosts = useUiStore((s) => s.costgenIgnoreCosts);
+  const setIgnoreCosts = useUiStore((s) => s.setCostgenIgnoreCosts);
+  const ignoreInitial = useUiStore((s) => s.costgenIgnoreInitial);
+  const setIgnoreInitial = useUiStore((s) => s.setCostgenIgnoreInitial);
   const [query, setQuery] = useState("");
   const [dropOpen, setDropOpen] = useState(false);
 

@@ -484,9 +484,8 @@ export type TagMentions = Record<string, { unit?: TagMention[]; enemy?: TagMenti
 export interface BuffRow {
   u: number;            // unit id
   n?: string | null;    // unit name
-  stat: "HP" | "ATK" | "DEF" | "MR" | "RNG" | "PAD_REDUCTION" | "CDR"
-      | "ATK_DEBUFF" | "DEF_DEBUFF" | "MR_DEBUFF";
-  ns: "skill" | "ability";
+  stat: string;         // stat key (HP/ATK/...) or effect category (MAKAI/...)
+  ns: "skill" | "ability" | "special";
   t: number;            // influence type id
   v: number;            // ranking value = the buff's CAP (max achievable)
   p?: (number | null)[] | null; // raw params (skill: mul/mul2/mul3/add)
@@ -494,6 +493,9 @@ export interface BuffRow {
   tgt?: string | number | null; // resolved target
   fl?: 1;               // flat value (not percent)
   mod?: string[];       // same-unit modifier ids folded into v
+  // effect rows only: value kind + application condition text
+  vk?: "pct" | "flag" | "flat" | "sec";
+  cond?: string;
   // functional group override: ability 13/70 (ATK) and 14/71 (DEF) split by
   // their OWN invoke into "sortie_atk"/"deploy_atk"/"sortie_def"/
   // "deploy_def"; 223/224 (War God Blessing ATK/DEF) get their own

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { loadJSONFile, useUnitInfluenceLabels, useLocalisation } from "../data";
 import { HumanText, fmtFrames } from "../components";
 import type { BuffRow, UnitInfluenceLabel } from "../types";
@@ -16,7 +16,26 @@ const STATS = [
   { k: "DEF_DEBUFF", label: "DEF debuff" },
   { k: "MR_DEBUFF", label: "MR debuff" },
 ] as const;
-type StatKey = (typeof STATS)[number]["k"];
+// non-stat effect categories (second tab row): innate abilities + effects
+// granted to allies, each row carrying its application condition. Token-
+// sourced rows are attributed to the owner (source column names the token).
+const EFFECTS = [
+  { k: "MAKAI", label: "Makai" },
+  { k: "TENKAI", label: "Tenkai" },
+  { k: "WEATHER", label: "Weather" },
+  { k: "DEEPSEA", label: "Deep Sea" },
+  { k: "STATUS", label: "Status Ailments" },
+  { k: "STEALTH", label: "Stealth" },
+  { k: "TAUNT", label: "Taunt" },
+  { k: "EVASION", label: "Evasion" },
+  { k: "NULLIFY", label: "Nullification" },
+  { k: "INVULN", label: "Invulnerability" },
+  { k: "BARRIER", label: "Barrier" },
+  { k: "LIMIT", label: "Deploy Limit" },
+  { k: "HPCUT", label: "HP Cut" },
+  { k: "TIMESTOP", label: "Time Stop" },
+] as const;
+type StatKey = (typeof STATS)[number]["k"] | (typeof EFFECTS)[number]["k"];
 
 const GROUP_PREVIEW = 10; // rows shown per type before "show all"
 
@@ -45,6 +64,11 @@ const isReduction = (r: BuffRow) =>
   r.stat.endsWith("_DEBUFF") || r.stat === "PAD_REDUCTION" || r.stat === "CDR";
 
 function fmtValue(r: BuffRow): string {
+  // effect rows carry an explicit value kind
+  if (r.vk === "flag") return "✓";
+  if (r.vk === "sec") return r.v >= 9999 ? "∞ (permanent)" : `${r.v}s`;
+  if (r.vk === "flat") return `${r.v.toLocaleString()} flat`;
+  if (r.vk === "pct") return `${r.v}%`;
   if (isSetPad(r)) return `→ ${fmtFrames(r.v)}`;
   if (r.fl) return `+${r.v.toLocaleString()} flat`;
   const asMultiplier =
@@ -71,8 +95,18 @@ export default function Buffs() {
   const [failed, setFailed] = useState(false);
   const labels = useUnitInfluenceLabels();
   const loc = useLocalisation();
-  const [stat, setStat] = useState<StatKey>("ATK");
+  // selected tab lives in the URL so back/forward and shared links restore it
+  const [params, setParams] = useSearchParams();
+  const rawStat = params.get("stat") || "ATK";
+  const stat: StatKey = ([...STATS, ...EFFECTS].some((s) => s.k === rawStat)
+    ? rawStat : "ATK") as StatKey;
+  const setStat = (k: StatKey) => {
+    const next = new URLSearchParams(params);
+    if (k === "ATK") next.delete("stat"); else next.set("stat", k);
+    setParams(next, { replace: true });
+  };
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const isEffect = EFFECTS.some((e) => e.k === stat);
 
   useEffect(() => {
     loadJSONFile<BuffRow[]>("buff_index").then(setRows).catch(() => setFailed(true));
@@ -87,6 +121,14 @@ export default function Buffs() {
     sortie_def: "Sortie DEF Buff", deploy_def: "Deployment DEF Buff",
     war_god_blessing_atk: "War God Blessing ATK Buff",
     war_god_blessing_def: "War God Blessing DEF Buff",
+    makai_reduction: "Makai Effect Reduction (ability 73/74/75)",
+    makai_immunity: "Makai Adaptation (ability 112/113)",
+    tenkai_reduction: "Tenkai Effect Reduction (ability 181/182/183)",
+    tenkai_immunity: "Tenkai Immunity (ability 184/185/186)",
+    special_stealth: "Stealth (special property 16)",
+    special_limit: "Doesn't count against deployment limit (special property 13)",
+    missile_timestop: "100% slow missile (time stop on hit)",
+    field_hpcut: "Max-HP damage field",
   };
   const groupKey = (r: BuffRow) => r.grp ?? `${r.ns}:${r.t}`;
 
@@ -154,7 +196,26 @@ export default function Buffs() {
         ))}
         <span className="count">{groups.length} effect types</span>
       </div>
-      <div className="buff-groups">
+      <div className="toolbar buff-toolbar buff-toolbar-effects">
+        {EFFECTS.map((s) => (
+          <button
+            key={s.k}
+            className={`stat-tab${s.k === stat ? " active" : ""}`}
+            onClick={() => setStat(s.k)}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+      {isEffect && (
+        <p className="muted small">
+          Innate abilities and effects granted to allies (self-only skill rows
+          included where they define the effect, e.g. invulnerability).
+          Conditions and skill-gating are shown per row; token-granted effects
+          list the owner, with the token named in the source column.
+        </p>
+      )}
+      <div className={`buff-groups${isEffect ? " buff-groups-wide" : ""}`}>
         {groups.map((g) => {
           const lab = g.grp ? undefined : labelOf(g.nsK, g.t);
           const isExpanded = expanded.has(g.k);
@@ -172,7 +233,10 @@ export default function Buffs() {
               </header>
               <table className="grid buff-table">
                 <thead>
-                  <tr><th>#</th><th>Cap</th><th>Unit</th><th>Target</th><th>Source</th></tr>
+                  <tr>
+                    <th>#</th><th>{isEffect ? "Value" : "Cap"}</th><th>Unit</th>
+                    <th>Target</th>{isEffect && <th>Condition</th>}<th>Source</th>
+                  </tr>
                 </thead>
                 <tbody>
                   {shown.map((r, i) => (
@@ -186,6 +250,11 @@ export default function Buffs() {
                       <td className="muted small">
                         {typeof r.tgt === "string" ? <HumanText text={r.tgt} /> : (r.tgt ?? "-")}
                       </td>
+                      {isEffect && (
+                        <td className="muted small buff-cond">
+                          {r.cond ? <HumanText text={r.cond} /> : "-"}
+                        </td>
+                      )}
                       <td className="muted small">{loc?.classes[r.s] || r.s}</td>
                     </tr>
                   ))}
