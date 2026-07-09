@@ -1,7 +1,7 @@
-import { useState, createContext, useContext } from "react";
+import { useState, useEffect, createContext, useContext } from "react";
 import type { ReactNode } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useUnitDetail, useUnitInfluenceLabels, useLocalisation, usePrinceTitles, useMissiles, useAbilityConfigs } from "../data";
+import { useUnitDetail, useUnitInfluenceLabels, useLocalisation, usePrinceTitles, useMissiles, useAbilityConfigs, unitImageUrl, unitAnimUrl } from "../data";
 import { UnitImage, missileText, fillLabel, HumanText, fmtFrames, ColorCodedText } from "../components";
 import type {
   Unit,
@@ -1467,6 +1467,73 @@ function ClassAttributes({
 
 const TIER_LABEL: Record<number, string> = { 0: "Base", 1: "AW", 2: "AW2A", 3: "AW2B" };
 
+/** Gallery grid thumbnail; hides itself when the file doesn't exist. */
+function GalleryThumb({ item, onOpen }: { item: GalleryItem; onOpen: () => void }) {
+  const [ok, setOk] = useState(true);
+  if (!ok) return null;
+  return (
+    <button className={`gallery-thumb gallery-thumb--${item.kind}`} onClick={onOpen} title={item.label}>
+      <img src={item.src} alt={item.label} loading="lazy" onError={() => setOk(false)} />
+      <span className="gallery-thumb-label">{item.label}</span>
+    </button>
+  );
+}
+
+/** One viewable item in the art lightbox / gallery. */
+export interface GalleryItem {
+  label: string;
+  src: string;
+  kind: "art" | "icon" | "anim";
+}
+
+/** Fullscreen lightbox over a list of gallery items. Keeps its OWN cursor
+ *  (never mutates the page behind it); ←/→ move between items, Escape or
+ *  backdrop click closes. */
+function ArtLightbox({ items, start, onClose }: {
+  items: GalleryItem[];
+  start: number;
+  onClose: () => void;
+}) {
+  const [idx, setIdx] = useState(start);
+  const [broken, setBroken] = useState<Record<string, boolean>>({});
+  useEffect(() => setIdx(start), [start, items.length]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") setIdx((i) => (i + items.length - 1) % items.length);
+      if (e.key === "ArrowRight") setIdx((i) => (i + 1) % items.length);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose, items.length]);
+  const cur = items[idx];
+  if (!cur) return null;
+  return (
+    <div className="art-lightbox" onClick={onClose}>
+      <div className="art-lightbox-body" onClick={(e) => e.stopPropagation()}>
+        {broken[cur.src] ? (
+          <div className="art-lightbox-img art-lightbox-none">no image</div>
+        ) : (
+          <img
+            className={`art-lightbox-img${cur.kind === "anim" ? " art-lightbox-pixel" : ""}`}
+            src={cur.src}
+            alt={cur.label}
+            onError={() => setBroken((b) => ({ ...b, [cur.src]: true }))}
+          />
+        )}
+        <div className="art-lightbox-bar">
+          <button className="art-lightbox-nav" aria-label="previous"
+            onClick={() => setIdx((i) => (i + items.length - 1) % items.length)}>←</button>
+          <span className="art-lightbox-label">{cur.label} <span className="muted small">{idx + 1}/{items.length}</span></span>
+          <button className="art-lightbox-nav" aria-label="next"
+            onClick={() => setIdx((i) => (i + 1) % items.length)}>→</button>
+          <button className="art-lightbox-close" onClick={onClose} aria-label="close">✕</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // A plain `to="/units"` link always lands on the default (unfiltered,
 // page 0) list, discarding whatever filters/page/search were active
 // before navigating here. Going back in history instead returns to the
@@ -1494,6 +1561,7 @@ export default function UnitDetail() {
   const missiles = useMissiles();
   const abilityConfigs = useAbilityConfigs();
   const [tier, setTier] = useState(0);
+  const [galleryAt, setGalleryAt] = useState<number | null>(null);
 
   if (loading) return <p className="loading">Loading…</p>;
   if (!unit) {
@@ -1519,6 +1587,60 @@ export default function UnitDetail() {
   const allTokens = unit.classes.flatMap((c) => c.tokens);
   const displayName = unit.name_en || unit.name || "(unnamed)";
 
+  // gallery, grouped one section per art tier: that tier's splash art, face
+  // icon and battle-sprite animations. Sprite pose names vary per unit
+  // (Stand/Attack/Damage + skill-mode sets like Atk2/Std2/special_1); a
+  // trailing _2.._4 whose remainder is itself a pose = that pose's per-tier
+  // duplicate set. shd* poses are shadows — not shown. A unit with a single
+  // AW2 path titles it "AW2"; dual paths get AW2A / AW2B. Missing files
+  // hide themselves via onError.
+  const tierTitle = (t: number) =>
+    (t === 2 || t === 3) && !(artTiers.includes(2) && artTiers.includes(3))
+      ? "AW2"
+      : TIER_LABEL[t];
+  const anims = (unit.anims ?? []).filter((a) => !a.startsWith("shd"));
+  const POSE_ORDER = ["Stand", "Attack", "Attack (special)", "Damage"];
+  const parsedAnims = anims.map((a) => {
+    // a LONE special_N (no tier copies of its own) is the attack sprite of
+    // tier set N+1 (e.g. #2838's special_1 = its AW attack); special_N with
+    // _2.._4 copies is a standalone pose family with per-tier sets.
+    const sp = a.match(/^special_(\d)$/i);
+    if (sp && !anims.includes(`${a}_2`)) {
+      return { name: a, base: "Attack (special)", setIdx: Number(sp[1]) };
+    }
+    const m = a.match(/^(.*)_([2-4])$/);
+    const isSet = !!m && anims.includes(m[1]);
+    return { name: a, base: isSet ? m![1] : a, setIdx: isSet ? Number(m![2]) - 1 : 0 };
+  });
+  const animsFor = (setIdx: number) =>
+    parsedAnims
+      .filter((x) => x.setIdx === setIdx)
+      .sort((x, y) =>
+        (POSE_ORDER.indexOf(x.base) + 1 || 99) - (POSE_ORDER.indexOf(y.base) + 1 || 99) ||
+        x.base.localeCompare(y.base))
+      .map((x) => ({
+        label: `Sprite — ${x.base}`,
+        src: unitAnimUrl(unit.dot_id, x.name),
+        kind: "anim" as const,
+      }));
+  const gallerySections: { title: string; items: GalleryItem[] }[] = artTiers.map((t, idx) => ({
+    title: tierTitle(t),
+    items: [
+      { label: "Art", src: unitImageUrl("art", unit.dot_id, t), kind: "art" as const },
+      { label: "Icon", src: unitImageUrl("icon", unit.dot_id, t), kind: "icon" as const },
+      ...animsFor(idx),
+    ],
+  }));
+  {
+    // sprite sets beyond the known art tiers (rare) still get a section
+    for (let s = artTiers.length; s <= 3; s++) {
+      const extra = animsFor(s);
+      if (extra.length) gallerySections.push({ title: `Set ${s + 1}`, items: extra });
+    }
+  }
+  const galleryItems: GalleryItem[] = gallerySections.flatMap((s) =>
+    s.items.map((it) => ({ ...it, label: `${it.label} — ${s.title}` })));
+
   return (
     <MissilesContext.Provider value={missiles}>
     <AbilityConfigsContext.Provider value={abilityConfigs}>
@@ -1527,7 +1649,22 @@ export default function UnitDetail() {
 
       <aside className="unit-infobox">
         <div className={`unit-infobox-banner rarity-${unit.rarity_id}`}>{displayName}</div>
-        <UnitImage kind="art" id={unit.dot_id} tier={tier} fallbackKind="icon" className="unit-art-img" alt={displayName} />
+        <button
+          className="unit-art-zoom"
+          onClick={() => setGalleryAt(gallerySections
+            .slice(0, Math.max(0, artTiers.indexOf(tier)))
+            .reduce((n, s) => n + s.items.length, 0))}
+          title="View full art"
+        >
+          <UnitImage kind="art" id={unit.dot_id} tier={tier} fallbackKind="icon" className="unit-art-img" alt={displayName} />
+        </button>
+        {galleryAt !== null && (
+          <ArtLightbox
+            items={galleryItems}
+            start={Math.max(0, galleryAt)}
+            onClose={() => setGalleryAt(null)}
+          />
+        )}
         {artTiers.length > 1 && (
           <div className="unit-tier-tabs">
             {artTiers.map((t) => (
@@ -1626,6 +1763,23 @@ export default function UnitDetail() {
       )}
 
       <ClassAttributes classes={unit.classes} labels={abilityLabels} classMap={loc?.classes} />
+
+      <section>
+        <h3>Gallery</h3>
+        {gallerySections.map((sec, si) => {
+          const offset = gallerySections.slice(0, si).reduce((n, s) => n + s.items.length, 0);
+          return (
+            <div key={sec.title} className="gallery-tier">
+              <h4 className="gallery-tier-title">{sec.title}</h4>
+              <div className="gallery-grid">
+                {sec.items.map((item, i) => (
+                  <GalleryThumb key={item.src} item={item} onOpen={() => setGalleryAt(offset + i)} />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </section>
 
       {allTokens.length > 0 && (
         <section>

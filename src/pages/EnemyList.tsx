@@ -106,7 +106,9 @@ export default function EnemyList() {
       <div className="enemy-grid">
         {shown.map((e) => (
           <Link to={`/enemies/${e.id}`} className="enemy-tile" key={e.id}>
-            <Sprite patternId={e.pattern_id} size={56} alt={String(e.id)} />
+            <span className="sprite-box">
+              <Sprite patternId={e.pattern_id} size={52} fit alt={String(e.id)} />
+            </span>
             <div className="enemy-tile-body">
               <div className="enemy-tile-id">
                 #{e.id} {e.boss && <span className="badge boss">BOSS</span>}

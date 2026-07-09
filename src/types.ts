@@ -439,6 +439,7 @@ export interface Unit {
   npc?: boolean;        // NPC / test / fodder card (not a real playable unit)
   prince?: boolean;     // member of the Prince title group
   art_tiers?: number[]; // which awakening art tiers have a local art file
+  anims?: string[];     // exported battle-sprite animation names (pose[_set])
   rarity: string;
   rarity_id: number;
   gender?: string | number;

@@ -6,8 +6,9 @@ Thumbs.db
 
 # Served from disk (dev + build both read these straight from public/) but too
 # large to push to the public GitHub repo -- stay on disk locally, never
-# committed. The unit-page route still exists on GitHub Pages, it just won't
-# have images to load.
+# committed. In production they come from the aigis-assets repo via jsDelivr
+# (VITE_ASSETS_CDN in .github/workflows/deploy.yml).
 public/sprites/
+public/sprite-anim/
 public/banners/
 public/data/units_full.json

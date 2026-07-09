@@ -180,8 +180,58 @@ export function usePrinceTitles(): PrinceTitle[] | null {
   return titles;
 }
 
+// Site assets that are gitignored locally (enemy sprites, banners, enemy
+// idle gifs) are served from a single jsDelivr assets repo in production.
+const ASSETS_CDN: string =
+  (import.meta.env.VITE_ASSETS_CDN as string | undefined)?.replace(/\/$/, "") || "";
+
+function assetUrl(rel: string): string {
+  if (ASSETS_CDN && !import.meta.env.DEV) return `${ASSETS_CDN}/${rel}`;
+  return `${import.meta.env.BASE_URL}${rel}`;
+}
+
 export function spriteUrl(patternId: number): string {
-  return `${import.meta.env.BASE_URL}sprites/${patternId}.png`;
+  return assetUrl(`sprites/${patternId}.png`);
+}
+
+export interface CurrentMission {
+  mission_id: number;
+  name: string;
+  category: string;
+}
+
+// missions whose config row is currently OPEN (Enable day-bitmask set)
+export function useCurrentMissions(): CurrentMission[] | null {
+  const [cur, set] = useState<CurrentMission[] | null>(null);
+  useEffect(() => {
+    loadJSON<CurrentMission[]>("current_missions").then(set).catch(() => set([]));
+  }, []);
+  return cur;
+}
+
+export interface HistoryYear {
+  group: number;
+  title: string;
+  banner_texture: number;
+  missions: number[];
+}
+
+export function useHistoryYears(): HistoryYear[] | null {
+  const [years, set] = useState<HistoryYear[] | null>(null);
+  useEffect(() => {
+    loadJSON<HistoryYear[]>("history_years").then(set).catch(() => set([]));
+  }, []);
+  return years;
+}
+
+// Enemy idle animation; EnemyDot archives are shared per dot number.
+export function enemyAnimUrl(patternId: number): string {
+  const dot = Math.floor((patternId - 0x200000) / 16);
+  return assetUrl(`sprite-anim/${dot}.gif`);
+}
+
+export function bannerUrl(missionId: number | string): string {
+  return assetUrl(`banners/${missionId}.png`);
 }
 
 // Skill/ability influence names/templates are a static import from
@@ -217,13 +267,39 @@ export function useAbilityConfigs(): Record<string, AbilityInfluence[]> | null {
 // ART and battle SPRITES are several GB and stay out of this repo: in dev
 // they live in ../unit_images served by vite.config.js's middleware at
 // /unit-img/*. For the published site, set VITE_IMG_CDN to a static base
-// hosting the same art/<id>.png + sprite/<id>.png layout — e.g. a dedicated
-// image repo via jsDelivr: https://cdn.jsdelivr.net/gh/<user>/<repo>@<tag>
-// (jsDelivr serves files up to 20 MB from public GitHub repos; keep each
-// image repo under ~1 GB, split if needed). Without it, production falls
-// back to icons (UnitImage fallbackKind).
+// hosting the same art/<id>.png + sprite/<id>.png layout. The art is split
+// across several bucket repos (python/make_image_buckets.py) served via
+// jsDelivr; a "{b}" placeholder in VITE_IMG_CDN is replaced with the bucket
+// number for the unit id, routed by VITE_IMG_BUCKET_BOUNDS — a
+// comma-separated list of each bucket's highest unit id (ascending); ids
+// past the last boundary go to the last+1 (open-ended, newest) bucket.
+// e.g. VITE_IMG_CDN=https://cdn.jsdelivr.net/gh/Altterisk/aigis-img-{b}@main
+//      VITE_IMG_BUCKET_BOUNDS=615,1225,1885,2580
+// Without VITE_IMG_CDN, production falls back to icons (UnitImage
+// fallbackKind).
 const IMG_CDN: string =
   (import.meta.env.VITE_IMG_CDN as string | undefined)?.replace(/\/$/, "") || "";
+const IMG_BUCKET_BOUNDS: number[] =
+  ((import.meta.env.VITE_IMG_BUCKET_BOUNDS as string | undefined) || "")
+    .split(",")
+    .map((s) => parseInt(s, 10))
+    .filter((n) => !isNaN(n));
+
+function imgBucket(id: number): number {
+  let b = 0;
+  while (b < IMG_BUCKET_BOUNDS.length && id > IMG_BUCKET_BOUNDS[b]) b++;
+  return b;
+}
+
+// Unit battle-sprite animation (all poses exported by export_anim.py);
+// lives in the same id-routed bucket repos as art/sprite.
+export function unitAnimUrl(dotId: number, pose: string): string {
+  if (IMG_CDN && !import.meta.env.DEV) {
+    const base = IMG_CDN.replace("{b}", String(imgBucket(dotId)));
+    return `${base}/anim/${dotId}_${pose}.gif`;
+  }
+  return `${import.meta.env.BASE_URL}unit-img/anim/${dotId}_${pose}.gif`;
+}
 
 export function unitImageUrl(kind: UnitImageKind, id: number, tier = 0): string {
   const suffix = kind === "sprite" || tier === 0 ? "" : `_aw${tier}`;
@@ -231,7 +307,8 @@ export function unitImageUrl(kind: UnitImageKind, id: number, tier = 0): string 
     return `${import.meta.env.BASE_URL}unit-icon/${id}${suffix}.png`;
   }
   if (IMG_CDN && !import.meta.env.DEV) {
-    return `${IMG_CDN}/${kind}/${id}${suffix}.png`;
+    const base = IMG_CDN.replace("{b}", String(imgBucket(id)));
+    return `${base}/${kind}/${id}${suffix}.png`;
   }
   return `${import.meta.env.BASE_URL}unit-img/${kind}/${id}${suffix}.png`;
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { spriteUrl, unitImageUrl, DMG_COLORS, useInfluenceLabels, useLocalisation } from "./data";
+import { spriteUrl, enemyAnimUrl, unitImageUrl, DMG_COLORS, useInfluenceLabels, useLocalisation } from "./data";
 import type {
   Effect, DamageType, UnitImageKind, Missile, MissileOnHit,
   Localisation as LocalisationT,
@@ -192,8 +192,10 @@ export function Sprite({
   alt?: string;
   fit?: boolean;
 }) {
-  const [failed, setFailed] = useState(false);
-  if (failed || patternId == null) {
+  // try the idle animation first, then the static png, then a placeholder
+  const [state, setState] = useState<"anim" | "png" | "missing">("anim");
+  useEffect(() => setState("anim"), [patternId]);
+  if (state === "missing" || patternId == null) {
     return <div className="sprite sprite--missing" style={{ width: size, height: size }} />;
   }
   // fit: respect the sprite's real proportions, bounded by `size`.
@@ -203,11 +205,11 @@ export function Sprite({
   return (
     <img
       className="sprite"
-      src={spriteUrl(patternId)}
+      src={state === "anim" ? enemyAnimUrl(patternId) : spriteUrl(patternId)}
       style={style}
       alt={alt}
       loading="lazy"
-      onError={() => setFailed(true)}
+      onError={() => setState(state === "anim" ? "png" : "missing")}
     />
   );
 }

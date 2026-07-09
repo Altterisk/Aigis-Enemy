@@ -33,7 +33,9 @@ export default function EnemyDetail() {
     <div className="detail">
       <Link to="/enemies" className="back">← enemies</Link>
       <div className="enemy-hero">
-        <Sprite patternId={e.pattern_id} size={120} alt={String(e.id)} />
+        <span className="sprite-box sprite-box--lg">
+          <Sprite patternId={e.pattern_id} size={112} fit alt={String(e.id)} />
+        </span>
         <div>
           <h2>Enemy #{e.id}</h2>
           <div className="meta">

@@ -1068,3 +1068,171 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 @media (max-width: 700px) {
   .cg-ctl-group { width: 100%; }
 }
+
+/* ---- unit art gallery lightbox ---- */
+.unit-art-zoom {
+  display: block;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: zoom-in;
+  width: 100%;
+}
+.art-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+}
+.art-lightbox-body {
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 96vw;
+  max-height: 96vh;
+}
+.art-lightbox-img {
+  max-width: 92vw;
+  max-height: 88vh;
+  object-fit: contain;
+  border-radius: 6px;
+}
+/* controls pinned to the viewport bottom, independent of the art size */
+.art-lightbox-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  background: rgba(13, 15, 19, 0.85);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.art-lightbox-close {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.art-lightbox-close:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ---- lightbox nav (gallery viewer) ---- */
+.art-lightbox-nav {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 4px 14px;
+  cursor: pointer;
+  font-size: 15px;
+}
+.art-lightbox-nav:hover { color: var(--accent); border-color: var(--accent); }
+.art-lightbox-label { color: #fff; font-size: 13px; }
+.art-lightbox-pixel { image-rendering: pixelated; min-width: 128px; min-height: 128px; max-width: 60vw; max-height: 60vh; }
+.art-lightbox-none {
+  display: flex; align-items: center; justify-content: center;
+  width: 240px; height: 200px; color: var(--muted);
+  background: var(--panel); border-radius: 8px;
+}
+
+/* ---- unit gallery section ---- */
+.gallery-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.gallery-thumb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: zoom-in;
+  transition: border-color 0.12s ease, transform 0.12s ease;
+}
+.gallery-thumb:hover { border-color: var(--accent); transform: translateY(-1px); }
+.gallery-thumb img { max-width: 110px; max-height: 130px; object-fit: contain; }
+.gallery-thumb--anim img { image-rendering: pixelated; min-height: 64px; }
+.gallery-thumb-label { font-size: 11px; color: var(--muted); }
+
+/* ---- stage list touch-up ---- */
+.event-group {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
+  transition: border-color 0.12s ease;
+}
+.event-group:hover { border-color: var(--accent); }
+.event-head { border-bottom: none; padding-bottom: 0; }
+.event-banner {
+  width: 185px;
+  height: auto;
+  max-height: 74px;
+  background: transparent;
+}
+.stage-row { margin: 10px 0 2px; }
+.stage-row li a {
+  display: block;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+.stage-row li a:hover { background: var(--panel2); text-decoration: none; }
+
+/* history year groups */
+.year-group { margin: 20px 0; }
+.year-head { margin-bottom: 10px; }
+.year-banner {
+  display: block;
+  width: 100%;
+  max-width: 500px;
+  border-radius: 8px;
+}
+
+/* ---- enemy list touch-up ---- */
+.enemy-tile { align-items: center; }
+.enemy-tile .sprite,
+.enemy-tile .sprite--missing {
+  flex: none;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+/* fixed sprite well: centers animated idle gifs without distortion */
+.sprite-box {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel2);
+  border-radius: 6px;
+  flex: none;
+}
+.sprite-box--lg { width: 124px; height: 124px; border-radius: 8px; }
+.sprite-box .sprite { image-rendering: pixelated; }
+.enemy-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+
+.gallery-tier { margin-bottom: 14px; }
+.gallery-tier-title {
+  margin: 10px 0 8px;
+  color: var(--muted);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
