@@ -292,11 +292,11 @@ function imgBucket(id: number): number {
 }
 
 // Unit battle-sprite animation (all poses exported by export_anim.py);
-// lives in the same id-routed bucket repos as art/sprite.
+// lives in the aigis-assets repo — the id-routed art buckets sit near the
+// 1 GB limit.
 export function unitAnimUrl(dotId: number, pose: string): string {
-  if (IMG_CDN && !import.meta.env.DEV) {
-    const base = IMG_CDN.replace("{b}", String(imgBucket(dotId)));
-    return `${base}/anim/${dotId}_${pose}.gif`;
+  if (ASSETS_CDN && !import.meta.env.DEV) {
+    return `${ASSETS_CDN}/anim/${dotId}_${pose}.gif`;
   }
   return `${import.meta.env.BASE_URL}unit-img/anim/${dotId}_${pose}.gif`;
 }
