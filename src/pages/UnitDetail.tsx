@@ -1599,18 +1599,15 @@ export default function UnitDetail() {
       ? "AW2"
       : TIER_LABEL[t];
   const anims = (unit.anims ?? []).filter((a) => !a.startsWith("shd"));
-  const POSE_ORDER = ["Stand", "Attack", "Attack (special)", "Damage"];
+  const POSE_ORDER = ["Stand", "Attack", "Damage"];
+  // "pose~N" = that pose in tier BLOCK N-1 of the sprite archive (export
+  // suffixes by block, so a pose that only exists from AW onward still
+  // lands on the right tier); a bare name is block 0.
   const parsedAnims = anims.map((a) => {
-    // a LONE special_N (no tier copies of its own) is the attack sprite of
-    // tier set N+1 (e.g. #2838's special_1 = its AW attack); special_N with
-    // _2.._4 copies is a standalone pose family with per-tier sets.
-    const sp = a.match(/^special_(\d)$/i);
-    if (sp && !anims.includes(`${a}_2`)) {
-      return { name: a, base: "Attack (special)", setIdx: Number(sp[1]) };
-    }
-    const m = a.match(/^(.*)_([2-4])$/);
-    const isSet = !!m && anims.includes(m[1]);
-    return { name: a, base: isSet ? m![1] : a, setIdx: isSet ? Number(m![2]) - 1 : 0 };
+    const m = a.match(/^(.*)~(\d)$/);
+    return m
+      ? { name: a, base: m[1], setIdx: Number(m[2]) - 1 }
+      : { name: a, base: a, setIdx: 0 };
   });
   const animsFor = (setIdx: number) =>
     parsedAnims
