@@ -1784,7 +1784,11 @@ export default function UnitDetail() {
           {allTokens.map((t, i) => (
             <div key={i} className="unit-token-card">
               <div className="meta token-head">
-                <UnitImage kind="icon" id={t.unit} className="unit-icon-thumb" alt={String(t.unit)} />
+                {t.no_icon ? (
+                  <div className="unit-img unit-img--missing unit-icon-thumb" />
+                ) : (
+                  <UnitImage kind="icon" id={t.unit} className="unit-icon-thumb" alt={String(t.unit)} />
+                )}
                 <strong>{t.unit_name || `unit ${t.unit}`}</strong>
                 {t.class_name && (
                   <span className="muted" title={t.class_name}>

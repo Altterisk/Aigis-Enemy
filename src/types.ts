@@ -138,6 +138,30 @@ export interface StageEnemy extends StageEnemyForm {
   route_behaviour?: RouteBehaviour | null;
 }
 
+// one spoken line of stage dialogue. face is a compact ref resolved by the
+// frontend: "u<cardId>" base unit icon, "u<cardId>a<tier>" awakened icon,
+// "l<missionId>_<faceId>" exported NPC face (talk-face/), null/absent = none.
+export interface DialogueLine {
+  name?: string;
+  text?: string;
+  face?: string | null;
+}
+
+// one dialogue scene (a CallEvent group) + how it triggers.
+export interface DialogueSection {
+  trigger?: "start" | "battle" | "end" | "enemy_spawn" | "enemy_event" | "enemy_death" | "route" | "story";
+  at_sec?: number | null;
+  enemy_id?: number;
+  enemy_ids?: number[];
+  lines?: DialogueLine[];
+}
+
+// per-mission out-of-battle story talk (data/talk/<missionId>.json).
+export interface StoryTalk {
+  mission_id: number;
+  sections: DialogueSection[];
+}
+
 // full stage (per-stage file).
 export interface Stage {
   quest_id: number;
@@ -156,6 +180,8 @@ export interface Stage {
   active?: boolean;
   modifiers?: Effect[];
   popups?: string[];
+  dialogue?: DialogueSection[];
+  story_talk?: boolean;
   enemies?: StageEnemy[];
   hard?: {
     multiplier?: number;
@@ -355,6 +381,7 @@ export interface UnitAbility {
 
 export interface UnitToken {
   unit: number;
+  no_icon?: boolean;    // not manually deployable -> no deploy icon exists
   unit_name?: string | null;
   class_name?: string | null;
   cost?: number;

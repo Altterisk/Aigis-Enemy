@@ -1,9 +1,13 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   useStageDetail,
   useInfluenceLabels,
   useRaceLabels,
   useSpecialtyConfig,
+  useStoryTalk,
+  talkFaceUrl,
+  bannerUrl,
 } from "../data";
 import { Sprite, DamageBadge, Effects, Tags, auraRadius, periodicRate, missileOnHitText, HumanText } from "../components";
 import type {
@@ -14,6 +18,8 @@ import type {
   InfluenceLabels,
   RaceLabels,
   SpecialtyConfig,
+  DialogueSection,
+  DialogueLine,
 } from "../types";
 
 // safe number formatter: the exported data omits zero/empty fields (compacted),
@@ -351,55 +357,132 @@ function EnemyCard({
   );
 }
 
+// Human label for how a dialogue scene is triggered.
+function dialogueTriggerText(s: DialogueSection): string {
+  switch (s.trigger) {
+    case "start": return "at stage start";
+    case "battle": {
+      const t = s.at_sec ?? 0;
+      return `during battle (~${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")})`;
+    }
+    case "end": return "at stage end (on clear)";
+    case "enemy_spawn": return `when enemy #${s.enemy_id} appears`;
+    case "enemy_event": return `enemy #${s.enemy_id} event`;
+    case "enemy_death": return `when enemy #${s.enemy_id} dies`;
+    case "route": {
+      const ids = s.enemy_ids ?? [];
+      return ids.length
+        ? `route event (enemy #${ids.join(", #")})`
+        : "route event";
+    }
+    case "story": return "event story";
+    default: return "scene";
+  }
+}
+
+function TalkFace({ line }: { line: DialogueLine }) {
+  const [failed, setFailed] = useState(false);
+  const url = talkFaceUrl(line.face);
+  if (!url || failed) {
+    // no portrait (narration / unknown speaker): initial in a placeholder well
+    return <div className="dlg-face dlg-face--none">{(line.name || "…").slice(0, 1)}</div>;
+  }
+  return (
+    <img
+      className="dlg-face"
+      src={url}
+      alt={line.name || ""}
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+// stage-direction "speakers" like （オーバーレイ）: a caption, not a person.
+const isCaption = (l: DialogueLine) =>
+  !l.face && !!l.name && /^[（(].*[）)]$/.test(l.name);
+
+function DialogueSectionBlock({ s }: { s: DialogueSection }) {
+  return (
+    <div className="dlg-section">
+      <div className="dlg-trigger">{dialogueTriggerText(s)}</div>
+      {(s.lines ?? []).map((l, i) =>
+        isCaption(l) ? (
+          <div className="dlg-caption" key={i}>{l.text}</div>
+        ) : (
+          <div className="dlg-line" key={i}>
+            <TalkFace line={l} />
+            <div className="dlg-body">
+              {l.name && <div className="dlg-name">{l.name}</div>}
+              <div className="dlg-text">{l.text}</div>
+            </div>
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
 export default function StageDetail() {
   const { questId } = useParams();
   const { loading, stage } = useStageDetail(Number(questId));
   const labels = useInfluenceLabels();
   const races = useRaceLabels();
   const spcfg = useSpecialtyConfig();
+  const [tab, setTab] = useState<"enemies" | "dialogue">("enemies");
+  const storyTalk = useStoryTalk(stage?.mission_id, !!stage?.story_talk);
+  const [bannerFailed, setBannerFailed] = useState(false);
   if (loading) return <p className="loading">Loading…</p>;
   if (!stage) return <p>Stage not found. <Link to="/stages">Back</Link></p>;
 
   const enemies = stage.enemies ?? [];
+  const dialogue = stage.dialogue ?? [];
+  const storySections = storyTalk?.sections ?? [];
+  const dialogueCount = dialogue.length + storySections.length;
+  const hasDialogue = dialogueCount > 0 || !!stage.story_talk;
+  const activeTab = hasDialogue ? tab : "enemies";
 
   return (
-    <div className="detail">
+    <div className="detail stage-page">
       <Link to="/stages" className="back">← stages</Link>
-      <h2>{stage.name}</h2>
-      {stage.event && (
-        <div className="event-line">
-          <span className="cat-badge">{stage.event_category}</span> {stage.event}
+
+      <header className="stage-head">
+        {stage.mission_id != null && !bannerFailed && (
+          <img
+            className="stage-banner"
+            src={bannerUrl(stage.mission_id)}
+            alt=""
+            onError={() => setBannerFailed(true)}
+          />
+        )}
+        <div className="stage-head-main">
+          <h2>{stage.name}</h2>
+          {stage.event && (
+            <div className="event-line">
+              <span className="cat-badge">{stage.event_category}</span> {stage.event}
+            </div>
+          )}
+          <div className="meta stage-meta">
+            <span className="meta-chip">Quest {stage.quest_id}</span>
+            <span className="meta-chip">Map {stage.map_no} / Entry {stage.entry_no}</span>
+            <span className="meta-chip" title="stat multiplier on HP and melee ATK">
+              ×{stage.multiplier ?? 1} mult
+            </span>
+            <span className="meta-chip">Charisma {stage.charisma ?? 0}</span>
+            <span className="meta-chip">Capacity {stage.capacity ?? 0}</span>
+            {stage.active === false && <span className="meta-chip past-chip">past content</span>}
+          </div>
         </div>
-      )}
+      </header>
+
       {stage.description && (
-        <p className="muted small" style={{ whiteSpace: "pre-line" }}>{stage.description}</p>
+        <p className="stage-desc">{stage.description}</p>
       )}
-      <div className="meta">
-        <span>Quest {stage.quest_id}</span>
-        <span>Map {stage.map_no} / Entry {stage.entry_no}</span>
-        <span title="stat multiplier on HP and melee ATK">×{stage.multiplier ?? 1} mult</span>
-        <span>Charisma {stage.charisma ?? 0}</span>
-        <span>Capacity {stage.capacity ?? 0}</span>
-      </div>
 
       {stage.modifiers && stage.modifiers.length > 0 && (
         <section>
           <h3>Stage modifiers</h3>
           <Effects effects={stage.modifiers} />
-        </section>
-      )}
-
-      {stage.popups && stage.popups.length > 0 && (
-        <section>
-          <h3>Ability popups ({stage.popups.length})</h3>
-          <div className="muted small">
-            In-game explanation popups shown in this stage.
-          </div>
-          <div className="popups">
-            {stage.popups.map((p, i) => (
-              <div className="popup" key={i}>{p}</div>
-            ))}
-          </div>
         </section>
       )}
 
@@ -421,14 +504,78 @@ export default function StageDetail() {
         </section>
       )}
 
-      <section>
-        <h3>Enemies ({enemies.length})</h3>
-        <div className="enemy-cards">
-          {enemies.map((e, i) => (
-            <EnemyCard key={`${e.enemy_id}-${i}`} e={e} labels={labels} races={races} spcfg={spcfg} />
-          ))}
+      {hasDialogue && (
+        <div className="stage-tabs">
+          <button
+            className={activeTab === "enemies" ? "active" : ""}
+            onClick={() => setTab("enemies")}
+          >
+            Enemies ({enemies.length})
+          </button>
+          <button
+            className={activeTab === "dialogue" ? "active" : ""}
+            onClick={() => setTab("dialogue")}
+          >
+            Dialogue ({dialogueCount})
+          </button>
         </div>
-      </section>
+      )}
+
+      {activeTab === "enemies" && (
+        <>
+          {stage.popups && stage.popups.length > 0 && (
+            <section>
+              <h3>Ability popups ({stage.popups.length})</h3>
+              <div className="muted small">
+                In-game explanation popups shown in this stage.
+              </div>
+              <div className="popups">
+                {stage.popups.map((p, i) => (
+                  <div className="popup" key={i}>{p}</div>
+                ))}
+              </div>
+            </section>
+          )}
+          <section>
+            {!hasDialogue && <h3>Enemies ({enemies.length})</h3>}
+            <div className="enemy-cards">
+              {enemies.map((e, i) => (
+                <EnemyCard key={`${e.enemy_id}-${i}`} e={e} labels={labels} races={races} spcfg={spcfg} />
+              ))}
+            </div>
+          </section>
+        </>
+      )}
+
+      {activeTab === "dialogue" && (
+        <section className="dlg">
+          {dialogue.length > 0 && (
+            <>
+              <h3>In-stage dialogue</h3>
+              <div className="muted small">
+                Scenes triggered inside this stage, in trigger order. Conditional
+                scenes (e.g. a specific enemy dying) are listed too.
+              </div>
+              {dialogue.map((s, i) => <DialogueSectionBlock key={i} s={s} />)}
+            </>
+          )}
+          {storySections.length > 0 && (
+            <>
+              <h3>Event story</h3>
+              <div className="muted small">
+                Story scenes of this event shown outside battle (on entering or
+                after clearing its stages). The exact stage each scene belongs
+                to is not recorded in the map data, so all of the event's
+                scenes are listed in order.
+              </div>
+              {storySections.map((s, i) => <DialogueSectionBlock key={i} s={s} />)}
+            </>
+          )}
+          {dialogue.length === 0 && storySections.length === 0 && (
+            <p className="muted">No dialogue found for this stage.</p>
+          )}
+        </section>
+      )}
     </div>
   );
 }

@@ -1228,6 +1228,134 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 .sprite-box .sprite { image-rendering: pixelated; }
 .enemy-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
 
+/* ==================== stage detail page revamp ==================== */
+.stage-head {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  background: linear-gradient(135deg, var(--panel) 0%, #1a1e2a 100%);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-top: 6px;
+}
+.stage-banner {
+  width: 220px;
+  max-height: 90px;
+  object-fit: contain;
+  border-radius: 8px;
+  flex: none;
+  background: #0d0f13;
+}
+.stage-head-main { flex: 1; min-width: 0; }
+.stage-head-main h2 { margin: 0 0 4px; }
+.stage-head-main .event-line { margin: 2px 0 8px; }
+.stage-meta { margin-bottom: 0; gap: 6px; }
+.past-chip { border-color: #4a3535; color: #d0a0a0; }
+.stage-desc {
+  white-space: pre-line;
+  color: var(--muted);
+  font-size: 13px;
+  background: var(--panel);
+  border-left: 3px solid var(--line);
+  border-radius: 0 8px 8px 0;
+  padding: 8px 12px;
+  margin: 12px 0 0;
+}
+
+/* tabs (Enemies | Dialogue) */
+.stage-tabs {
+  display: flex;
+  gap: 6px;
+  margin-top: 16px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0;
+}
+.stage-tabs button {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.stage-tabs button:hover { color: var(--text); }
+.stage-tabs button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* dialogue scenes */
+.dlg-section {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px 12px;
+  margin-top: 12px;
+}
+.dlg-trigger {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #d6bcff;
+  background: #3a2e4a;
+  border: 1px solid #5a4a72;
+  border-radius: 10px;
+  padding: 1px 10px;
+  margin-bottom: 8px;
+}
+.dlg-line {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 5px 0;
+}
+.dlg-line + .dlg-line { border-top: 1px solid #23262e; }
+.dlg-face {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: var(--panel2);
+  flex: none;
+}
+.dlg-face--none {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 16px;
+}
+.dlg-body { flex: 1; min-width: 0; }
+/* stage-direction caption (（オーバーレイ）etc.): centered narration, no face */
+.dlg-caption {
+  text-align: center;
+  color: var(--muted);
+  font-style: italic;
+  font-size: 13px;
+  white-space: pre-line;
+  padding: 6px 0;
+}
+.dlg-caption + .dlg-line { border-top: 1px solid #23262e; }
+.dlg-name {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--accent);
+  margin-bottom: 1px;
+}
+.dlg-text { white-space: pre-line; font-size: 13px; }
+
+@media (max-width: 600px) {
+  .stage-head { flex-direction: column; align-items: flex-start; }
+  .stage-banner { width: 100%; max-height: 120px; }
+  .dlg-face { width: 36px; height: 36px; }
+}
+
 .gallery-tier { margin-bottom: 14px; }
 .gallery-tier-title {
   margin: 10px 0 8px;

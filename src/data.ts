@@ -17,6 +17,7 @@ import type {
   PrinceTitle,
   Missile,
   AbilityInfluence,
+  StoryTalk,
 } from "./types";
 import { INFLUENCE_LABELS } from "./influenceLabels";
 import { RACE_LABELS, TAG_LABELS } from "./tagLabels";
@@ -85,6 +86,35 @@ export function useStageDetail(questId: number) {
     return () => { alive = false; };
   }, [questId]);
   return state;
+}
+
+// Per-mission out-of-battle story talk (enter/clear scenes), loaded on demand.
+// Only fetched when the stage says it exists (story_talk flag).
+export function useStoryTalk(missionId: number | null | undefined, enabled: boolean) {
+  const [talk, set] = useState<StoryTalk | null>(null);
+  useEffect(() => {
+    let alive = true;
+    set(null);
+    if (!enabled || missionId == null) return;
+    loadJSON<StoryTalk>(`talk/${missionId}`)
+      .then((t) => { if (alive) set(t); })
+      .catch(() => { if (alive) set(null); });
+    return () => { alive = false; };
+  }, [missionId, enabled]);
+  return talk;
+}
+
+// Dialogue face ref -> image URL. "u<cardId>[a<tier>]" = unit icon;
+// "l<hash>" = deduped NPC face (talk-face/<hash>.png, gitignored locally and
+// served from the assets repo in production, like banners/sprites).
+export function talkFaceUrl(face?: string | null): string | null {
+  if (!face) return null;
+  if (face.startsWith("l")) {
+    return assetUrl(`talk-face/${face.slice(1)}.png`);
+  }
+  const m = /^u(\d+)(?:a(\d+))?$/.exec(face);
+  if (!m) return null;
+  return unitImageUrl("icon", Number(m[1]), m[2] ? Number(m[2]) : 0);
 }
 
 export function useInfluenceLabels(): InfluenceLabels | null {
