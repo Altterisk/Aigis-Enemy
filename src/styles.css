@@ -1331,6 +1331,9 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   font-weight: 700;
   font-size: 16px;
 }
+.dlg-face-link { flex: none; border-radius: 8px; }
+.dlg-face-link:hover .dlg-face { outline: 2px solid var(--accent); }
+.dlg-name a { color: var(--accent); }
 .dlg-body { flex: 1; min-width: 0; }
 /* stage-direction caption (（オーバーレイ）etc.): centered narration, no face */
 .dlg-caption {

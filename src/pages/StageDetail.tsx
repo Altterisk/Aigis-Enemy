@@ -402,23 +402,40 @@ function TalkFace({ line }: { line: DialogueLine }) {
 const isCaption = (l: DialogueLine) =>
   !l.face && !!l.name && /^[（(].*[）)]$/.test(l.name);
 
+// A "u<cardId>[a<tier>]" face IS that unit's own icon -> the speaker is that
+// unit; link face + name to its page. Local NPC faces have no unit.
+const faceUnitId = (face?: string | null): number | null => {
+  const m = face ? /^u(\d+)/.exec(face) : null;
+  return m ? Number(m[1]) : null;
+};
+
 function DialogueSectionBlock({ s }: { s: DialogueSection }) {
   return (
     <div className="dlg-section">
       <div className="dlg-trigger">{dialogueTriggerText(s)}</div>
-      {(s.lines ?? []).map((l, i) =>
-        isCaption(l) ? (
-          <div className="dlg-caption" key={i}>{l.text}</div>
-        ) : (
+      {(s.lines ?? []).map((l, i) => {
+        if (isCaption(l)) return <div className="dlg-caption" key={i}>{l.text}</div>;
+        const uid = faceUnitId(l.face);
+        return (
           <div className="dlg-line" key={i}>
-            <TalkFace line={l} />
+            {uid != null ? (
+              <Link to={`/units/${uid}`} className="dlg-face-link" title="open this unit's page">
+                <TalkFace line={l} />
+              </Link>
+            ) : (
+              <TalkFace line={l} />
+            )}
             <div className="dlg-body">
-              {l.name && <div className="dlg-name">{l.name}</div>}
+              {l.name && (
+                <div className="dlg-name">
+                  {uid != null ? <Link to={`/units/${uid}`}>{l.name}</Link> : l.name}
+                </div>
+              )}
               <div className="dlg-text">{l.text}</div>
             </div>
           </div>
-        )
-      )}
+        );
+      })}
     </div>
   );
 }
