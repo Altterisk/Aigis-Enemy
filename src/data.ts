@@ -18,6 +18,7 @@ import type {
   Missile,
   AbilityInfluence,
   StoryTalk,
+  UnitSpeech,
 } from "./types";
 import { INFLUENCE_LABELS } from "./influenceLabels";
 import { RACE_LABELS, TAG_LABELS } from "./tagLabels";
@@ -102,6 +103,21 @@ export function useStoryTalk(missionId: number | null | undefined, enabled: bool
     return () => { alive = false; };
   }, [missionId, enabled]);
   return talk;
+}
+
+// Per-unit quotes + affection/trust scenes, loaded on demand. Units without
+// speech data simply have no file -> null (section hidden).
+export function useUnitSpeech(id: number) {
+  const [speech, set] = useState<UnitSpeech | null>(null);
+  useEffect(() => {
+    let alive = true;
+    set(null);
+    loadJSON<UnitSpeech>(`speech/${id}`)
+      .then((s) => { if (alive) set(s); })
+      .catch(() => { if (alive) set(null); });
+    return () => { alive = false; };
+  }, [id]);
+  return speech;
 }
 
 // Dialogue face ref -> image URL. "u<cardId>[a<tier>]" = unit icon;

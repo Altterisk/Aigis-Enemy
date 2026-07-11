@@ -1367,3 +1367,35 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
+
+/* unit quotes (status screen) + affection/trust scenes */
+.quote-list {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 6px 14px;
+}
+.quote-row {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  padding: 5px 0;
+}
+.quote-row + .quote-row { border-top: 1px solid #23262e; }
+.quote-at {
+  flex: none;
+  width: 64px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #d6bcff;
+  text-align: right;
+}
+.quote-text { white-space: pre-line; font-size: 13px; }
+.speech-scene > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+.speech-scene-at { margin-left: 10px; }

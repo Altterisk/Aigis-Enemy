@@ -162,6 +162,28 @@ export interface StoryTalk {
   sections: DialogueSection[];
 }
 
+// per-unit speech (data/speech/<cardId>.json): status-screen quotes +
+// affection/trust conversation scenes.
+export interface SpeechQuote {
+  at?: number;          // affection/trust % the quote unlocks at
+  adjutant?: boolean;   // shown while set as adjutant instead of a threshold
+  text: string;
+}
+
+export interface SpeechScene {
+  scene?: number;       // absent on harlem-quest scenes from prev03
+  at?: number | null;   // 30 (LoveEv1) for scene 1, 100 for scene 2
+  quest?: boolean;      // extra scene unlocked by the unit's harlem quest
+  lines: { name?: string | null; text: string }[];
+}
+
+export interface UnitSpeech {
+  id: number;
+  quotes?: SpeechQuote[];
+  quotes2?: string[];   // second quote block (Flavor2); trigger unverified
+  scenes?: SpeechScene[];
+}
+
 // full stage (per-stage file).
 export interface Stage {
   quest_id: number;

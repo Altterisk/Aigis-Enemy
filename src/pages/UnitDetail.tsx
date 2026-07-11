@@ -1,7 +1,7 @@
 import { useState, useEffect, createContext, useContext } from "react";
 import type { ReactNode } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useUnitDetail, useUnitInfluenceLabels, useLocalisation, usePrinceTitles, useMissiles, useAbilityConfigs, unitImageUrl, unitAnimUrl } from "../data";
+import { useUnitDetail, useUnitInfluenceLabels, useLocalisation, usePrinceTitles, useMissiles, useAbilityConfigs, useUnitSpeech, unitImageUrl, unitAnimUrl } from "../data";
 import { UnitImage, missileText, fillLabel, HumanText, fmtFrames, ColorCodedText } from "../components";
 import type {
   Unit,
@@ -15,6 +15,8 @@ import type {
   SkillStage,
   Missile,
   AffectionBonus,
+  UnitSpeech,
+  SpeechScene,
 } from "../types";
 
 // published missiles.json lookup, provided once at the page root so deeply
@@ -1540,6 +1542,57 @@ function ArtLightbox({ items, start, onClose }: {
 // exact previous URL (filters and all); fall back to a plain link only
 // when there's no in-app history to go back to (e.g. a shared link opened
 // directly on this page).
+// status-screen quotes (unlock % from the card's own LoveEv1 thresholds) +
+// the affection conversation scenes (scene 1 at 30, scene 2 at 100; extra
+// scenes come from the unit's special harlem quest).
+function SpeechSceneBlock({ s }: { s: SpeechScene }) {
+  return (
+    <details className="dlg-section speech-scene">
+      <summary>
+        {s.scene != null ? `Scene ${s.scene}` : "Extra scene"}
+        {s.at != null && <span className="dlg-trigger speech-scene-at">at {s.at}% affection</span>}
+        {s.quest && <span className="dlg-trigger speech-scene-at">from its harlem quest</span>}
+      </summary>
+      {s.lines.map((l, i) =>
+        l.name ? (
+          <div className="dlg-line" key={i}>
+            <div className="dlg-body">
+              <div className="dlg-name">{l.name}</div>
+              <div className="dlg-text">{l.text}</div>
+            </div>
+          </div>
+        ) : (
+          <div className="dlg-caption" key={i}>{l.text}</div>
+        ))}
+    </details>
+  );
+}
+
+function SpeechSection({ speech }: { speech: UnitSpeech }) {
+  return (
+    <section>
+      <h3>Quotes &amp; scenes</h3>
+      {speech.quotes && speech.quotes.length > 0 && (
+        <div className="quote-list">
+          {speech.quotes.map((q, i) => (
+            <div className="quote-row" key={i}>
+              <span className="quote-at">{q.adjutant ? "adjutant" : `${q.at}%`}</span>
+              <span className="quote-text">{q.text}</span>
+            </div>
+          ))}
+          {(speech.quotes2 ?? []).map((t, i) => (
+            <div className="quote-row" key={`f2-${i}`}>
+              <span className="quote-at" title="second quote block (Flavor2) — when it shows is unverified">extra {i + 1}?</span>
+              <span className="quote-text">{t}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {(speech.scenes ?? []).map((s, i) => <SpeechSceneBlock s={s} key={i} />)}
+    </section>
+  );
+}
+
 function BackToUnits({ children, className }: { children: ReactNode; className?: string }) {
   const navigate = useNavigate();
   const hasHistory = (window.history.state?.idx ?? 0) > 0;
@@ -1560,6 +1613,7 @@ export default function UnitDetail() {
   const princeTitles = usePrinceTitles();
   const missiles = useMissiles();
   const abilityConfigs = useAbilityConfigs();
+  const speech = useUnitSpeech(unitId);
   const [tier, setTier] = useState(0);
   const [galleryAt, setGalleryAt] = useState<number | null>(null);
 
@@ -1777,6 +1831,8 @@ export default function UnitDetail() {
           );
         })}
       </section>
+
+      {speech && <SpeechSection speech={speech} />}
 
       {allTokens.length > 0 && (
         <section>
