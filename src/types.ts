@@ -268,6 +268,16 @@ export interface Localisation {
   abilities: Record<string, string>;
 }
 
+// Machine-translated skill/ability/class DESCRIPTIONS (data/texts.json, built
+// by python/translate_descriptions.py), keyed by the raw JP text. Kept out of
+// localisation.json -- that one is fetched on every page, this is ~1.6 MB and
+// only the unit detail page needs it.
+export interface Texts {
+  skill_texts: Record<string, string>;
+  ability_texts: Record<string, string>;
+  class_texts: Record<string, string>;
+}
+
 // one Prince title card (data/prince_titles.json).
 export interface PrinceTitle {
   id: number;

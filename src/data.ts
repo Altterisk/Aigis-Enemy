@@ -14,6 +14,7 @@ import type {
   UnitImageKind,
   UnitInfluenceLabels,
   Localisation,
+  Texts,
   PrinceTitle,
   Missile,
   AbilityInfluence,
@@ -215,6 +216,21 @@ export function useLocalisation(): Localisation | null {
       .catch(() => set({ classes: {}, races: RACE_LABELS, tags: TAG_LABELS, skills: {}, abilities: {} }));
   }, []);
   return loc;
+}
+
+// Machine-translated skill/ability/class descriptions (data/texts.json).
+// Separate from useLocalisation: this file is ~1.6 MB, so only the pages that
+// render descriptions pay for it. Missing file -> empty maps (JP shows).
+const EMPTY_TEXTS: Texts = { skill_texts: {}, ability_texts: {}, class_texts: {} };
+
+export function useTexts(): Texts {
+  const [texts, set] = useState<Texts>(EMPTY_TEXTS);
+  useEffect(() => {
+    loadJSON<Texts>("texts")
+      .then((t) => set({ ...EMPTY_TEXTS, ...t }))
+      .catch(() => set(EMPTY_TEXTS));
+  }, []);
+  return texts;
 }
 
 // the Prince title group (empty until the export has produced it).

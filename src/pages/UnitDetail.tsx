@@ -1,7 +1,7 @@
 import { useState, useEffect, createContext, useContext } from "react";
 import type { ReactNode } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useUnitDetail, useUnitInfluenceLabels, useLocalisation, usePrinceTitles, useMissiles, useAbilityConfigs, useUnitSpeech, unitImageUrl, unitAnimUrl } from "../data";
+import { useUnitDetail, useUnitInfluenceLabels, useLocalisation, useTexts, usePrinceTitles, useMissiles, useAbilityConfigs, useUnitSpeech, unitImageUrl, unitAnimUrl } from "../data";
 import { UnitImage, missileText, fillLabel, HumanText, fmtFrames, ColorCodedText } from "../components";
 import type {
   Unit,
@@ -30,6 +30,12 @@ const MissilesContext = createContext<Record<string, Missile> | null>(null);
 // influence type 189 ("Grant ability") can resolve its raw config id
 // without a per-row backend lookup.
 const AbilityConfigsContext = createContext<Record<string, AbilityInfluence[]> | null>(null);
+
+// JP->EN description maps (data/texts.json, machine-translated), keyed by the
+// raw JP text so any component holding the JP string can look its translation
+// up directly.
+type TextMaps = { skill: Record<string, string>; ability: Record<string, string>; cls: Record<string, string> };
+const TextsContext = createContext<TextMaps>({ skill: {}, ability: {}, cls: {} });
 
 // ---- "Command" script decoding (client-side, so iterating doesn't need a
 // re-export) ---------------------------------------------------------------
@@ -929,11 +935,11 @@ function fmtTokenValue(v: number, asMultiplier: boolean): string {
   return String(Math.round(x * 100) / 100);
 }
 
-// Substitute <TOKEN>s inside the skill text. A token directly followed by 倍
+// Substitute <TOKEN>s inside a skill text. A token directly followed by 倍
 // is a multiplier (value/100); ％/秒/体/etc take the raw number. Unresolvable
-// tokens stay as-is.
-function SkillText({ s }: { s: SkillStage }) {
-  const text = s.text || "";
+// tokens stay as-is. English translations keep the tokens verbatim (rendered
+// as "<ATK>x"), so the multiplier signal comes from the JP original.
+function TokenText({ text, s, jp }: { text: string; s: SkillStage; jp: string }) {
   // both token styles occur in the game text: <ATK> and [ATK]
   const parts = text.split(/(<[A-Z_]+>|\[[A-Z_]+\])/g);
   return (
@@ -943,7 +949,7 @@ function SkillText({ s }: { s: SkillStage }) {
         if (!m) return part;
         const resolved = resolveToken(part, s);
         if (!resolved) return part;
-        const asMul = (parts[i + 1] || "").startsWith("倍");
+        const asMul = (parts[i + 1] || "").startsWith("倍") || jp.includes(part + "倍");
         const min = fmtTokenValue(resolved.min, asMul);
         const max = resolved.max != null && resolved.max !== resolved.min
           ? fmtTokenValue(resolved.max, asMul) : null;
@@ -957,6 +963,21 @@ function SkillText({ s }: { s: SkillStage }) {
           </span>
         );
       })}
+    </>
+  );
+}
+
+// Skill effect text: the machine-translated English (when the map has this
+// JP text) with the JP original kept underneath, else the JP alone.
+function SkillText({ s }: { s: SkillStage }) {
+  const texts = useContext(TextsContext);
+  const jp = s.text || "";
+  const en = texts.skill[jp];
+  if (!en) return <TokenText text={jp} s={s} jp={jp} />;
+  return (
+    <>
+      <span title="machine translated"><TokenText text={en} s={s} jp={jp} /></span>
+      <div className="muted small"><TokenText text={jp} s={s} jp={jp} /></div>
     </>
   );
 }
@@ -1157,7 +1178,9 @@ function SkillBlock({
 function AbilityBlock({
   label, ability, labels,
 }: { label: string; ability?: UnitAbility | null; labels: Record<string, UnitInfluenceLabel> }) {
+  const texts = useContext(TextsContext);
   if (!ability) return null;
+  const abilityEn = ability.text ? texts.ability[ability.text] : undefined;
   return (
     <section>
       <h3>{label}</h3>
@@ -1173,7 +1196,14 @@ function AbilityBlock({
               <span className="muted small"> #{ability.id}</span>
             </td>
             <td className="skill-text">
-              {ability.text && <ColorCodedText text={ability.text} />}
+              {ability.text && (abilityEn ? (
+                <>
+                  <span title="machine translated">{abilityEn}</span>
+                  <div className="muted small"><ColorCodedText text={ability.text} /></div>
+                </>
+              ) : (
+                <ColorCodedText text={ability.text} />
+              ))}
               <InfluenceToggle count={ability.influences?.length || 0}>
                 <ul className="effects">
                   {(ability.influences || []).map((inf, j) => (
@@ -1417,6 +1447,7 @@ function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, 
 function ClassAttributes({
   classes, labels, classMap,
 }: { classes: UnitClass[]; labels: Record<string, UnitInfluenceLabel>; classMap?: Record<string, string> }) {
+  const texts = useContext(TextsContext);
   // The per-tier text (Explanation) is the primary source of "class
   // attribute" info -- it carries mechanics even when there's no linked
   // ClassAbility1 config (e.g. #523's per-tier escalating aura %, which has
@@ -1447,7 +1478,14 @@ function ClassAttributes({
                 )}
               </td>
               <td className="skill-text">
-                {cl.description}
+                {cl.description && texts.cls[cl.description] ? (
+                  <>
+                    <span title="machine translated">{texts.cls[cl.description]}</span>
+                    <div className="muted small">{cl.description}</div>
+                  </>
+                ) : (
+                  cl.description
+                )}
                 <InfluenceToggle count={cl.class_ability_influences?.length || 0}>
                   <ul className="effects">
                     {(cl.class_ability_influences || []).map((inf, j) => (
@@ -1610,6 +1648,7 @@ export default function UnitDetail() {
   const { loading, unit } = useUnitDetail(unitId);
   const influenceLabels = useUnitInfluenceLabels();
   const loc = useLocalisation();
+  const texts = useTexts();
   const princeTitles = usePrinceTitles();
   const missiles = useMissiles();
   const abilityConfigs = useAbilityConfigs();
@@ -1692,9 +1731,16 @@ export default function UnitDetail() {
   const galleryItems: GalleryItem[] = gallerySections.flatMap((s) =>
     s.items.map((it) => ({ ...it, label: `${it.label} — ${s.title}` })));
 
+  const textMaps: TextMaps = {
+    skill: texts.skill_texts,
+    ability: texts.ability_texts,
+    cls: texts.class_texts,
+  };
+
   return (
     <MissilesContext.Provider value={missiles}>
     <AbilityConfigsContext.Provider value={abilityConfigs}>
+    <TextsContext.Provider value={textMaps}>
     <div className="detail unit-page">
       <BackToUnits className="back">← units</BackToUnits>
 
@@ -1892,7 +1938,18 @@ export default function UnitDetail() {
               {t.missile && (
                 <div className="muted small">missile: {missileText(t.missile)}</div>
               )}
-              {t.description && <div className="skill-text">{t.description}</div>}
+              {t.description && (
+                <div className="skill-text">
+                  {texts.class_texts[t.description] ? (
+                    <>
+                      <span title="machine translated">{texts.class_texts[t.description]}</span>
+                      <div className="muted small">{t.description}</div>
+                    </>
+                  ) : (
+                    t.description
+                  )}
+                </div>
+              )}
               {t.class_ability_influences && t.class_ability_influences.length > 0 && (
                 <InfluenceToggle count={t.class_ability_influences.length}>
                   <ul className="effects">
@@ -1948,6 +2005,7 @@ export default function UnitDetail() {
         </section>
       )}
     </div>
+    </TextsContext.Provider>
     </AbilityConfigsContext.Provider>
     </MissilesContext.Provider>
   );
