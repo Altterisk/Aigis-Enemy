@@ -1,11 +1,22 @@
 # Aigis Database
 
-_(stage / enemy / unit viewer)_ — live at [aigis.altterisk.cc](https://aigis.altterisk.cc)
+_(stage / enemy / unit viewer and collection checker)_ — live at [aigis.altterisk.cc](https://aigis.altterisk.cc)
 
 A React (Vite) frontend that reads locally-exported game data. It links
 **stages → their enemies**, **enemies → the stages they appear in**, and shows
 every playable **unit** (stats, skills, abilities, tokens). Unverified
 attributes (effect influence ids) are shown raw, never invented.
+
+The `/collection` route stores unit checks in browser local storage. It has
+collapsible groups, full unit-list filters, bulk check/uncheck, and reversible
+rarity-grouped or continuous implementation-date ordering. Rarity mode splits
+Hero, Chibi, Support, Event, and Gacha/Paid collections. Prince title classes
+sharing a normalized class/icon count as one separate Prince entry. Unit names
+link to details; Hall-of-Fame and eligible bond-quest completion buttons are
+stored with the checklist. Its copy/paste AIGC2 restore code is a compact,
+versioned and checksummed alternative to
+exporting the full state as JSON. The page can also import the `oryu` ownership
+bitmap from an `aigis.chara-stat.us/checker/` URL.
 
 ## Data
 

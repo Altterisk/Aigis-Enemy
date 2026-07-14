@@ -11,6 +11,7 @@ import UnitDetail from "./pages/UnitDetail";
 import TagPage from "./pages/TagPage";
 import Buffs from "./pages/Buffs";
 import CostGen from "./pages/CostGen";
+import Collection from "./pages/Collection";
 import "./styles.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -28,6 +29,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="tags/:tag" element={<TagPage />} />
           <Route path="buffs" element={<Buffs />} />
           <Route path="costgen" element={<CostGen />} />
+          <Route path="collection" element={<Collection />} />
         </Route>
       </Routes>
     </HashRouter>

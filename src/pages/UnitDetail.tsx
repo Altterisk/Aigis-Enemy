@@ -1380,7 +1380,7 @@ function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, 
             return (
               <tr key={cl.class_id}>
                 <td>
-                  <UnitImage kind="icon" id={unit.dot_id} tier={Math.max(0, cl.cc - 1)} className="unit-icon-thumb" />
+                  <UnitImage kind="icon" id={unit.id} tier={Math.max(0, cl.cc - 1)} className="unit-icon-thumb" />
                 </td>
                 <td className="unit-class-name-cell" title={cl.name}>
                   {cl.name ? (
@@ -1770,7 +1770,7 @@ export default function UnitDetail() {
             .reduce((n, s) => n + s.items.length, 0))}
           title="View full art"
         >
-          <UnitImage kind="art" id={unit.dot_id} tier={tier} fallbackKind="icon" className="unit-art-img" alt={displayName} />
+          <UnitImage kind="art" id={unit.id} tier={tier} fallbackKind="icon" className="unit-art-img" alt={displayName} />
         </button>
         {galleryAt !== null && (
           <ArtLightbox

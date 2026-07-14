@@ -606,6 +606,8 @@ export interface UnitIndexEntry {
   faction_id?: number | null;
   npc?: boolean;
   prince?: boolean;
+  support?: boolean;
+  acquisition?: "gacha_paid" | "event";
   art_tiers?: number[];
   rarity: string;
   rarity_id: number;
@@ -620,13 +622,17 @@ export interface UnitIndexEntry {
   genus_id?: number | null;
   position?: "melee" | "ranged" | "omni" | null;
   release_year?: number | null;
+  implementation_date?: string | null;
   magic_resistance?: number | null;
   sell_price?: number | null;
   trade_point?: number | null;
   build_exp?: number | null;
+  hall_of_fame?: boolean;
+  aw2_branches?: number;
   affection_bonuses?: AffectionBonus[];
   specials?: UnitSpecial[];
   class?: string | null;
+  base_class_id?: number | null;
   ranged?: boolean | null;
   cost_min?: number | null;
   hp?: number | null;

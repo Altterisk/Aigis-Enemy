@@ -1,9 +1,6 @@
-// Zustand store for cross-navigation UI preferences (NOT filter/search
-// state -- that lives in the URL via useSearchParams so back/forward and
-// shared links restore it; this is for things like "is the filter panel
-// expanded" that should persist across page navigation but aren't part of
-// the shareable URL). Persisted to localStorage so it also survives a
-// full reload.
+// Zustand store for persistent browser-local state. Shareable filter/search
+// state lives in the URL; page preferences, simulator selections, and the
+// collection checklist live here so they survive navigation and reloads.
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -33,6 +30,16 @@ interface UiState {
   setCostgenIgnoreCosts: (v: boolean) => void;
   costgenIgnoreInitial: boolean;
   setCostgenIgnoreInitial: (v: boolean) => void;
+  collectionOwned: number[];
+  setCollectionOwned: (ids: number[] | ((cur: number[]) => number[])) => void;
+  collectionPrinceDots: number[];
+  setCollectionPrinceDots: (ids: number[] | ((cur: number[]) => number[])) => void;
+  collectionHall: Record<number, number>;
+  setCollectionHall: (
+    states: Record<number, number> | ((cur: Record<number, number>) => Record<number, number>)
+  ) => void;
+  collectionBondDone: number[];
+  setCollectionBondDone: (ids: number[] | ((cur: number[]) => number[])) => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -51,6 +58,24 @@ export const useUiStore = create<UiState>()(
       setCostgenIgnoreCosts: (v) => set({ costgenIgnoreCosts: v }),
       costgenIgnoreInitial: false,
       setCostgenIgnoreInitial: (v) => set({ costgenIgnoreInitial: v }),
+      collectionOwned: [],
+      setCollectionOwned: (ids) =>
+        set((s) => ({ collectionOwned: typeof ids === "function" ? ids(s.collectionOwned) : ids })),
+      collectionPrinceDots: [],
+      setCollectionPrinceDots: (ids) =>
+        set((s) => ({
+          collectionPrinceDots: typeof ids === "function" ? ids(s.collectionPrinceDots) : ids,
+        })),
+      collectionHall: {},
+      setCollectionHall: (states) =>
+        set((s) => ({
+          collectionHall: typeof states === "function" ? states(s.collectionHall) : states,
+        })),
+      collectionBondDone: [],
+      setCollectionBondDone: (ids) =>
+        set((s) => ({
+          collectionBondDone: typeof ids === "function" ? ids(s.collectionBondDone) : ids,
+        })),
     }),
     { name: "aigis-ui-store" }
   )

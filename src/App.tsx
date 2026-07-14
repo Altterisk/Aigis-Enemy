@@ -10,6 +10,7 @@ export default function App() {
         </NavLink>
         <nav>
           <NavLink to="/units">Units</NavLink>
+          <NavLink to="/collection">Collection</NavLink>
           <NavLink to="/enemies">Enemies</NavLink>
           <NavLink to="/stages">Stages</NavLink>
           <NavLink to="/buffs">Buffs</NavLink>
@@ -22,6 +23,15 @@ export default function App() {
       <main>
         <Outlet />
       </main>
+      <footer className="footer">
+        <a href="https://github.com/Altterisk/Aigis-Enemy" target="_blank" rel="noreferrer">
+          Source on GitHub
+        </a>
+        <span className="footer-sep">·</span>
+        <a href="https://altterisk.github.io/portfolio/" target="_blank" rel="noreferrer">
+          Portfolio
+        </a>
+      </footer>
     </div>
   );
 }

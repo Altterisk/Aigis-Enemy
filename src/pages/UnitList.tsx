@@ -495,7 +495,7 @@ export default function UnitList() {
       <div className="unit-grid">
         {shown.map((u) => (
           <Link to={`/units/${u.id}`} className="enemy-tile unit-tile" key={u.id}>
-            <UnitImage kind="icon" id={u.dot_id} className="unit-icon-thumb" alt={String(u.id)} />
+            <UnitImage kind="icon" id={u.id} className="unit-icon-thumb" alt={String(u.id)} />
             <div className="enemy-tile-body unit-tile-body">
               <div className="unit-tile-name">
                 {u.name_en || u.name || "(unnamed)"}
