@@ -18,7 +18,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <HashRouter>
       <Routes>
         <Route path="/" element={<App />}>
-          <Route index element={<Navigate to="/stages" replace />} />
+          <Route index element={<Navigate to="/units" replace />} />
           <Route path="stages" element={<StageList />} />
           <Route path="stages/:questId" element={<StageDetail />} />
           <Route path="enemies" element={<EnemyList />} />

@@ -34,6 +34,17 @@ code { color: #c8d3f5; font-size: 12px; }
   top: 0;
   z-index: 5;
 }
+.topbar .brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+.topbar .brand-logo {
+  height: 32px;
+  width: auto;
+  display: block;
+}
 .topbar h1 {
   font-size: 18px;
   margin: 0;
@@ -1393,6 +1404,15 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   text-align: right;
 }
 .quote-text { white-space: pre-line; font-size: 13px; }
+
+/* translated speech: EN reads as the line, the JP original sits under it */
+.quote-text, .dlg-text, .dlg-caption-text { display: block; min-width: 0; }
+.speech-jp {
+  display: block;
+  white-space: pre-line;
+  margin-top: 2px;
+  opacity: 0.75;
+}
 .speech-scene > summary {
   cursor: pointer;
   font-weight: 600;

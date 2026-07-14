@@ -168,19 +168,23 @@ export interface SpeechQuote {
   at?: number;          // affection/trust % the quote unlocks at
   adjutant?: boolean;   // shown while set as adjutant instead of a threshold
   text: string;
+  text_en?: string;     // machine translation (translate_speech.py)
 }
 
 export interface SpeechScene {
   scene?: number;       // absent on harlem-quest scenes from prev03
   at?: number | null;   // 30 (LoveEv1) for scene 1, 100 for scene 2
   quest?: boolean;      // extra scene unlocked by the unit's harlem quest
-  lines: { name?: string | null; text: string }[];
+  // name_en comes from the durable speaker record (build_speaker_names.py);
+  // a line with no name is Prince-POV narration.
+  lines: { name?: string | null; name_en?: string; text: string; text_en?: string }[];
 }
 
 export interface UnitSpeech {
   id: number;
   quotes?: SpeechQuote[];
   quotes2?: string[];   // second quote block (Flavor2); trigger unverified
+  quotes2_en?: string[];  // parallel to quotes2
   scenes?: SpeechScene[];
 }
 

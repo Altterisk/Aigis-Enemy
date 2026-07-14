@@ -1583,6 +1583,19 @@ function ArtLightbox({ items, start, onClose }: {
 // status-screen quotes (unlock % from the card's own LoveEv1 thresholds) +
 // the affection conversation scenes (scene 1 at 30, scene 2 at 100; extra
 // scenes come from the unit's special harlem quest).
+// A speech line: the machine translation, with the Japanese kept underneath
+// (same convention as names and skill descriptions). Untranslated lines show
+// the Japanese alone.
+function SpeechText({ jp, en, className }: { jp: string; en?: string; className: string }) {
+  if (!en) return <span className={className}>{jp}</span>;
+  return (
+    <span className={className}>
+      <span title="machine translated">{en}</span>
+      <span className="muted small speech-jp">{jp}</span>
+    </span>
+  );
+}
+
 function SpeechSceneBlock({ s }: { s: SpeechScene }) {
   return (
     <details className="dlg-section speech-scene">
@@ -1595,12 +1608,16 @@ function SpeechSceneBlock({ s }: { s: SpeechScene }) {
         l.name ? (
           <div className="dlg-line" key={i}>
             <div className="dlg-body">
-              <div className="dlg-name">{l.name}</div>
-              <div className="dlg-text">{l.text}</div>
+              <div className="dlg-name" title={l.name_en ? l.name : undefined}>
+                {l.name_en || l.name}
+              </div>
+              <SpeechText jp={l.text} en={l.text_en} className="dlg-text" />
             </div>
           </div>
         ) : (
-          <div className="dlg-caption" key={i}>{l.text}</div>
+          <div className="dlg-caption" key={i}>
+            <SpeechText jp={l.text} en={l.text_en} className="dlg-caption-text" />
+          </div>
         ))}
     </details>
   );
@@ -1615,13 +1632,13 @@ function SpeechSection({ speech }: { speech: UnitSpeech }) {
           {speech.quotes.map((q, i) => (
             <div className="quote-row" key={i}>
               <span className="quote-at">{q.adjutant ? "adjutant" : `${q.at}%`}</span>
-              <span className="quote-text">{q.text}</span>
+              <SpeechText jp={q.text} en={q.text_en} className="quote-text" />
             </div>
           ))}
           {(speech.quotes2 ?? []).map((t, i) => (
             <div className="quote-row" key={`f2-${i}`}>
               <span className="quote-at" title="second quote block (Flavor2) — when it shows is unverified">extra {i + 1}?</span>
-              <span className="quote-text">{t}</span>
+              <SpeechText jp={t} en={speech.quotes2_en?.[i]} className="quote-text" />
             </div>
           ))}
         </div>

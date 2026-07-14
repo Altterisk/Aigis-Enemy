@@ -32,10 +32,10 @@ function serveUnitImages(base) {
   };
 }
 
-const BASE = "/Aigis-Enemy/";
+const BASE = "/";
 
 export default defineConfig({
   plugins: [react(), serveUnitImages(BASE)],
-  // Project site served under https://altterisk.github.io/Aigis-Enemy/
+  // Served on the custom domain https://aigis.altterisk.cc/ (see public/CNAME)
   base: BASE,
 });

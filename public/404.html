@@ -2,14 +2,15 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Aigis Data</title>
+  <title>Aigis Database</title>
   <script>
-    // GitHub Pages serves this for any path with no real file. The app is a
-    // HashRouter SPA, so a URL that lost its "#" (e.g. /Aigis-Enemy/units/123)
+    // The static host serves this for any path with no real file (Cloudflare
+    // Pages: build-output 404.html is the default catch-all). The app is a
+    // HashRouter SPA, so a URL that lost its "#" (e.g. /units/123)
     // 404s here -- rewrite the path back into a hash route and go home:
-    //   /Aigis-Enemy/units/123  ->  /Aigis-Enemy/#/units/123
+    //   /units/123  ->  /#/units/123
     (function () {
-      var base = "/Aigis-Enemy/";
+      var base = "/";
       var p = location.pathname;
       var route = p.indexOf(base) === 0 ? p.slice(base.length) : "";
       location.replace(base + (route ? "#/" + route : "") + location.search);

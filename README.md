@@ -1,4 +1,6 @@
-# Aigis Web (stage / enemy / unit viewer)
+# Aigis Database
+
+_(stage / enemy / unit viewer)_ — live at [aigis.altterisk.cc](https://aigis.altterisk.cc)
 
 A React (Vite) frontend that reads locally-exported game data. It links
 **stages → their enemies**, **enemies → the stages they appear in**, and shows
