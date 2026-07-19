@@ -4,17 +4,22 @@
 // gradient-sign hash (dHash over a 12x12 luma grid, horizontal + vertical)
 // of the crop-inset region of every unit icon variant (base/_aw1/_aw2/_aw3).
 // Scanning a screenshot:
-//   1. edge-energy profiles -> peak positions -> spacing votes give the
-//      icon grid pitch and candidate cell corners,
-//   2. a probe phase sweeps (dx, dy, size) exhaustively on the cells with
-//      the strongest edges and takes the median geometry of confident hits
-//      (peaks often sit on the frame's inner edge, so the true icon corner
-//      is a shared constant offset away),
-//   3. every cell is matched against the full hash set with a small jitter
-//      around the consensus geometry; Hamming distance decides.
-// Calibrated on real 962px-wide client screenshots: correct icons score
-// 13-40 of 264 bits (overlay-heavy ones up to ~68), while the best wrong
-// icon stays >= ~77.
+//   1. edge-energy profiles per axis -> peaks; peak-spacing vote clusters
+//      that appear on BOTH axes are icon-size candidates (an icon's own
+//      edges vote its width on each axis; grid pitch differs per axis on
+//      some screens, e.g. gacha results),
+//   2. candidate cell corners per axis = union of arithmetic peak chains
+//      (any pitch >= 0.9 x size; overlapping chains allowed) -- junk
+//      corners merely fail to match later,
+//   3. a probe phase sweeps (dx, dy, size) on the cells with the best
+//      icon-frame evidence (border score: the weakest of the four border
+//      strips' gradient energy); probe match quality picks the size,
+//   4. every cell runs a coarse-then-refined position sweep against the
+//      full hash set; Hamming distance decides, NMS dedupes rectangles.
+// Calibrated on real 962px-wide client screenshots (unit list, base-unit
+// select, gacha results): correct icons score 5-40 of 264 bits, while the
+// best wrong icon stays >= ~70; icons cut by the screen edge or covered
+// by badge overlays land in between and surface as "uncertain".
 
 export interface IconHashDb {
   crop: [number, number, number, number];
@@ -51,7 +56,7 @@ interface IconHashJson {
 const WORDS_PER_HASH = 9;
 // distances are out of 264 bits; see the calibration note above
 export const AUTO_ACCEPT_DIST = 45;
-export const SUGGEST_DIST = 68;
+export const SUGGEST_DIST = 64;
 const PREFIX_CUTOFF = 30; // first 64 bits; correct matches stay well below
 const MAX_SCAN_WIDTH = 2600;
 
@@ -83,7 +88,9 @@ export interface Luma {
   w: number;
   h: number;
   px: Uint8Array;
-  integral: Float64Array; // (w+1)*(h+1) summed-area table
+  integral: Float64Array; // (w+1)*(h+1) luma summed-area table
+  gradX: Float64Array; // (w+1)*(h+1) summed |horizontal luma gradient|
+  gradY: Float64Array; // (w+1)*(h+1) summed |vertical luma gradient|
 }
 
 export function lumaFromRgba(rgba: ArrayLike<number>, w: number, h: number): Luma {
@@ -93,14 +100,23 @@ export function lumaFromRgba(rgba: ArrayLike<number>, w: number, h: number): Lum
   }
   const iw = w + 1;
   const integral = new Float64Array(iw * (h + 1));
+  const gradX = new Float64Array(iw * (h + 1));
+  const gradY = new Float64Array(iw * (h + 1));
   for (let y = 0; y < h; y += 1) {
     let rowSum = 0;
+    let rowGx = 0;
+    let rowGy = 0;
     for (let x = 0; x < w; x += 1) {
-      rowSum += px[y * w + x];
+      const v = px[y * w + x];
+      rowSum += v;
+      rowGx += x + 1 < w ? Math.abs(px[y * w + x + 1] - v) : 0;
+      rowGy += y + 1 < h ? Math.abs(px[(y + 1) * w + x] - v) : 0;
       integral[(y + 1) * iw + x + 1] = integral[y * iw + x + 1] + rowSum;
+      gradX[(y + 1) * iw + x + 1] = gradX[y * iw + x + 1] + rowGx;
+      gradY[(y + 1) * iw + x + 1] = gradY[y * iw + x + 1] + rowGy;
     }
   }
-  return { w, h, px, integral };
+  return { w, h, px, integral, gradX, gradY };
 }
 
 function boxMean(lu: Luma, x0: number, y0: number, x1: number, y1: number): number {
@@ -111,6 +127,29 @@ function boxMean(lu: Luma, x0: number, y0: number, x1: number, y1: number): numb
     (lu.integral[y1 * iw + x1] - lu.integral[y0 * iw + x1]
       - lu.integral[y1 * iw + x0] + lu.integral[y0 * iw + x0]) / area
   );
+}
+
+function boxMeanOf(table: Float64Array, iw: number, x0: number, y0: number, x1: number, y1: number): number {
+  const area = (x1 - x0) * (y1 - y0);
+  if (area <= 0) return 0;
+  return (table[y1 * iw + x1] - table[y0 * iw + x1] - table[y1 * iw + x0] + table[y0 * iw + x0]) / area;
+}
+
+// icon-frame evidence for a cell: icons carry a strong rectangular border,
+// UI chrome rarely has all four. Score = the weakest of the four border
+// strips' edge energy, O(1) via the gradient summed-area tables.
+function borderScore(lu: Luma, x: number, y: number, s: number): number {
+  const iw = lu.w + 1;
+  const cl = (v: number, hi: number) => Math.max(0, Math.min(hi, Math.round(v)));
+  const yi0 = cl(y + 0.15 * s, lu.h);
+  const yi1 = cl(y + 0.85 * s, lu.h);
+  const xi0 = cl(x + 0.15 * s, lu.w);
+  const xi1 = cl(x + 0.85 * s, lu.w);
+  const vStrip = (bx: number) =>
+    boxMeanOf(lu.gradX, iw, cl(bx - 3, lu.w), yi0, cl(bx + 3, lu.w), yi1);
+  const hStrip = (by: number) =>
+    boxMeanOf(lu.gradY, iw, xi0, cl(by - 3, lu.h), xi1, cl(by + 3, lu.h));
+  return Math.min(vStrip(x), vStrip(x + s), hStrip(y), hStrip(y + s));
 }
 
 // 264-bit descriptor of the crop-inset region of cell (x, y, w, h),
@@ -230,10 +269,14 @@ function findPeaks(prof: Float64Array): Peak[] {
   return peaks;
 }
 
-// top pitch candidates by peak-spacing votes; match quality in the probe
-// phase decides between them (vote counts alone are ambiguous: icon width
-// and grid pitch both collect votes)
-function pitchCandidates(peaks: Peak[], lo: number, hi: number, take: number): number[] {
+interface GapCluster {
+  center: number;
+  votes: number;
+}
+
+// non-overlapping peak-spacing vote clusters (icon edges vote the icon
+// width; grid neighbours vote the pitch)
+function gapClusters(peaks: Peak[], lo: number, hi: number, take: number): GapCluster[] {
   const votes = new Map<number, number>();
   for (let i = 0; i < peaks.length; i += 1) {
     for (let j = i + 1; j < peaks.length; j += 1) {
@@ -242,18 +285,40 @@ function pitchCandidates(peaks: Peak[], lo: number, hi: number, take: number): n
       if (d >= lo) votes.set(d, (votes.get(d) || 0) + 1);
     }
   }
-  const windows: { pitch: number; total: number }[] = [];
+  const windows: GapCluster[] = [];
   votes.forEach((_, d) => {
     let total = 0;
     for (let o = -3; o <= 3; o += 1) total += votes.get(d + o) || 0;
-    windows.push({ pitch: d, total });
+    windows.push({ center: d, votes: total });
   });
-  windows.sort((a, b) => b.total - a.total);
-  const picked: number[] = [];
+  windows.sort((a, b) => b.votes - a.votes);
+  const picked: GapCluster[] = [];
   for (const w of windows) {
     if (picked.length >= take) break;
-    if (picked.every((p) => Math.abs(p - w.pitch) > 6)) picked.push(w.pitch);
+    if (picked.every((p) => Math.abs(p.center - w.center) > 6)) picked.push(w);
   }
+  return picked;
+}
+
+// candidate icon sizes: gap clusters present in BOTH axes. The icon's own
+// left/right and top/bottom edges vote its width on each axis, while grid
+// pitch can differ per axis (gacha results: columns 145 apart, rows 194,
+// icons still ~104) so pitch clusters usually appear in only one.
+function sizeCandidates(cx: GapCluster[], cy: GapCluster[], take: number): number[] {
+  const both: GapCluster[] = [];
+  cx.forEach((a) => {
+    const b = cy.find((c) => Math.abs(c.center - a.center) <= 8);
+    if (b) both.push({ center: Math.round((a.center + b.center) / 2), votes: a.votes + b.votes });
+  });
+  both.sort((a, b) => b.votes - a.votes);
+  const picked = both.slice(0, take).map((c) => c.center);
+  // degenerate screenshots (one row of icons) may vote too thinly on one
+  // axis; fall back to the strongest single-axis clusters
+  cx.forEach((a) => {
+    if (picked.length < take && picked.every((p) => Math.abs(p - a.center) > 6)) {
+      picked.push(a.center);
+    }
+  });
   return picked;
 }
 
@@ -282,6 +347,28 @@ function bestCellMatch(
     }
   }
   return best;
+}
+
+// two-stage: coarse geometry sweep, then a +-2 refinement around its best
+function bestCellMatch2(
+  db: IconHashDb, lu: Luma, cx: number, cy: number, pitch: number,
+  coarse: Geometry[], scratch: Uint32Array,
+): { dist: number; index: number; geom: Geometry } | null {
+  const rough = bestCellMatch(db, lu, cx, cy, pitch, coarse, scratch);
+  if (!rough) return null;
+  const refine: Geometry[] = [];
+  for (const ds of [-2, 0, 2]) {
+    for (const dx of [-2, 0, 2]) {
+      for (const dy of [-2, 0, 2]) {
+        refine.push({
+          dx: rough.geom.dx + dx,
+          dy: rough.geom.dy + dy,
+          ds: rough.geom.ds + ds,
+        });
+      }
+    }
+  }
+  return bestCellMatch(db, lu, cx, cy, pitch, refine, scratch) || rough;
 }
 
 const yieldToUi = () => new Promise<void>((resolve) => { setTimeout(resolve, 0); });
@@ -316,36 +403,37 @@ export async function scanLuma(
   debug?.(`peaksY: ${peaksY.map((p) => p.pos).join(",")}`);
   const scratch = new Uint32Array(WORDS_PER_HASH);
 
-  // cell corners for a given pitch: real grid corners form arithmetic
-  // chains spaced one pitch apart, UI chrome peaks do not. Peaks on the
-  // longest chains win; if nothing chains (single row/column screenshots)
-  // fall back to peaks with any partner one pitch or one icon width away.
-  // One corner is extrapolated beyond each chain end -- edge rows/columns
-  // cut by the image border lack their own peak but still match (the
-  // descriptor only samples the crop-inset interior of the cell).
-  const corners = (peaks: Peak[], pitch: number, limit: number): Peak[] => {
-    const used = new Set<Peak>();
+  // cell corners along one axis, for one pitch candidate: real grid
+  // corners form arithmetic chains spaced one pitch apart, UI chrome
+  // peaks do not. Chains of >=3 win; extrapolate one corner past each
+  // chain end (edge rows/columns cut by the image border lack their own
+  // peak but still match -- the descriptor only samples the crop-inset
+  // interior of the cell). Falls back to peaks with any partner one pitch
+  // or one icon width away when nothing chains (single icon rows).
+  const cornersFor = (peaks: Peak[], pitch: number, limit: number) => {
+    // chains may overlap (no peak consumption): a junk chain grabbing a
+    // shared peak must not break the real lattice's chain
     const chains: Peak[][] = [];
     peaks.forEach((start) => {
-      if (used.has(start)) return;
       const chain = [start];
       for (;;) {
         const want = chain[chain.length - 1].pos + pitch;
         let next: Peak | null = null;
         peaks.forEach((p) => {
-          if (!used.has(p) && Math.abs(p.pos - want) <= 8
+          if (Math.abs(p.pos - want) <= 10
             && (!next || Math.abs(p.pos - want) < Math.abs(next.pos - want))) next = p;
         });
         if (!next) break;
         chain.push(next);
       }
-      if (chain.length >= 2) chain.forEach((p) => used.add(p));
       chains.push(chain);
     });
     const longest = Math.max(...chains.map((c) => c.length));
     let found: Peak[];
     if (longest >= 3) {
-      found = chains.filter((c) => c.length >= 3).flat().sort((a, b) => a.pos - b.pos);
+      const members = new Map<number, Peak>();
+      chains.filter((c) => c.length >= 3).flat().forEach((p) => members.set(p.pos, p));
+      found = [...members.values()].sort((a, b) => a.pos - b.pos);
     } else {
       found = peaks.filter((a) => peaks.some((b) => {
         const gap = Math.abs(b.pos - a.pos);
@@ -355,21 +443,50 @@ export async function scanLuma(
     const extra: Peak[] = [];
     if (found.length) {
       [found[0].pos - pitch, found[found.length - 1].pos + pitch].forEach((pos) => {
-        if (pos >= -0.1 * pitch && pos + 0.75 * pitch <= limit
+        if (pos >= -0.1 * pitch && pos + 0.7 * pitch <= limit
           && found.every((f) => Math.abs(f.pos - pos) > 6)) {
           extra.push({ pos: Math.round(pos), height: 0 });
         }
       });
     }
-    return [...found, ...extra];
+    return { longest, corners: [...found, ...extra] };
   };
-  const cellsFor = (pitch: number) => {
+
+  // per-axis corners for a given icon size: union the chain corners of
+  // every eligible cluster -- clusters below 0.9 x size are sub-lattices
+  // of inner frame edges (icons cannot overlap), and no single cluster is
+  // authoritative (gacha results: the true 145px column lattice and a
+  // zigzag mixed-edge lattice both chain; only the union holds every real
+  // corner). Junk corners just fail to match. The partner fallback only
+  // applies when nothing chains at all (single icon rows).
+  const unionCorners = (peaks: Peak[], clusters: GapCluster[], s: number, limit: number) => {
+    const eligible = clusters.filter((c) => c.center >= 0.9 * s && c.center <= 3 * s);
+    const members = new Map<number, Peak>();
+    eligible.forEach((c) => {
+      const r = cornersFor(peaks, c.center, limit);
+      if (r.longest >= 3) r.corners.forEach((p) => members.set(p.pos, p));
+    });
+    if (!members.size && eligible.length) {
+      cornersFor(peaks, eligible[0].center, limit).corners.forEach((p) => members.set(p.pos, p));
+    }
+    return [...members.values()].sort((a, b) => a.pos - b.pos);
+  };
+
+  const clustersX = gapClusters(peaksX, 48, 300, 10);
+  const clustersY = gapClusters(peaksY, 48, 300, 10);
+  if (!clustersX.length || !clustersY.length) return [];
+
+  const cellsFor = (s: number) => {
+    const cols = unionCorners(peaksX, clustersX, s, lu.w);
+    const rows = unionCorners(peaksY, clustersY, s, lu.h);
+    debug?.(`s=${s} cols ${cols.map((p) => p.pos).join(",")}`);
+    debug?.(`s=${s} rows ${rows.map((p) => p.pos).join(",")}`);
     const cells: { cx: number; cy: number; strength: number }[] = [];
-    corners(peaksY, pitch, lu.h).forEach((row) => {
-      corners(peaksX, pitch, lu.w).forEach((col) => {
+    rows.forEach((row) => {
+      cols.forEach((col) => {
         // the sampled crop-inset region must stay (nearly) inside the image
-        if (col.pos >= -0.1 * pitch && col.pos + 0.9 * pitch <= lu.w + 2
-          && row.pos >= -0.1 * pitch && row.pos + 0.75 * pitch <= lu.h + 2) {
+        if (col.pos >= -0.12 * s && col.pos + 0.95 * s <= lu.w + 4
+          && row.pos >= -0.12 * s && row.pos + 0.75 * s <= lu.h + 4) {
           cells.push({ cx: col.pos, cy: row.pos, strength: col.height + row.height });
         }
       });
@@ -377,51 +494,42 @@ export async function scanLuma(
     return cells;
   };
 
-  // probe phase, run per pitch candidate: exhaustive geometry sweep on the
-  // strongest-edged cells; actual match quality picks the winning pitch
-  const probe = async (pitch: number, maxProbes: number, stopGood: number) => {
+  // probe phase, run per size candidate: exhaustive geometry sweep on the
+  // strongest-edged cells; actual match quality picks the winning size
+  const probe = async (s: number, maxProbes: number, stopGood: number) => {
     const geoms: Geometry[] = [];
-    for (let ds = -Math.round(pitch * 0.2); ds <= Math.round(pitch * 0.05); ds += 2) {
-      for (let dx = -8; dx <= 8; dx += 2) {
-        for (let dy = -8; dy <= 8; dy += 2) geoms.push({ dx, dy, ds });
+    for (let ds = -Math.round(s * 0.15); ds <= Math.round(s * 0.15); ds += 4) {
+      for (let dx = -8; dx <= 8; dx += 4) {
+        for (let dy = -8; dy <= 8; dy += 4) geoms.push({ dx, dy, ds });
       }
     }
-    const cells = cellsFor(pitch);
-    // round-robin over columns (strongest first) so UI chrome with strong
-    // edges cannot crowd every real icon column out of the probe budget
-    const byCol = new Map<number, typeof cells>();
-    cells.forEach((c) => byCol.set(c.cx, [...(byCol.get(c.cx) || []), c]));
-    const colOrder = [...byCol.values()]
-      .map((list) => list.sort((a, b) => b.strength - a.strength))
-      .sort((a, b) => b[0].strength - a[0].strength);
-    const ranked: typeof cells = [];
-    for (let k = 0; ranked.length < Math.min(maxProbes, cells.length); k += 1) {
-      const before = ranked.length;
-      colOrder.forEach((list) => {
-        if (k < list.length && ranked.length < maxProbes) ranked.push(list[k]);
-      });
-      if (ranked.length === before) break;
-    }
+    const cells = cellsFor(s);
+    // probe the cells with the strongest icon-frame evidence first: the
+    // weakest-border score demotes UI chrome, whose cells almost never
+    // show a full rectangle of edges
+    const ranked = cells
+      .map((c) => ({ ...c, frame: borderScore(lu, c.cx, c.cy, s) }))
+      .sort((a, b) => b.frame - a.frame)
+      .slice(0, maxProbes);
     const hits: { dist: number; geom: Geometry }[] = [];
     for (let i = 0; i < ranked.length; i += 1) {
-      const hit = bestCellMatch(db, lu, ranked[i].cx, ranked[i].cy, pitch, geoms, scratch);
+      const hit = bestCellMatch2(db, lu, ranked[i].cx, ranked[i].cy, s, geoms, scratch);
       if (hit) hits.push({ dist: hit.dist, geom: hit.geom });
       if (hits.filter((p) => p.dist <= AUTO_ACCEPT_DIST).length >= stopGood) break;
       if (i % 2 === 1) await yieldToUi();
     }
     hits.sort((a, b) => a.dist - b.dist);
-    return { pitch, cells, hits };
+    return { s, cells, hits };
   };
 
-  // evaluate every pitch candidate: the icon-width cluster often collects
-  // more spacing votes than the true pitch, so only actual match quality
-  // can separate them (a decisive <=25 probe hit ends the search early)
-  const candidates = pitchCandidates(peaksX, 48, 300, 3);
-  debug?.(`pitch candidates: ${candidates.join(",")}`);
+  // size candidates: dual-axis width clusters. Actual match quality picks
+  // the winner (a decisive <=25 probe hit ends the search early).
+  const candidates = sizeCandidates(clustersX, clustersY, 3);
+  debug?.(`size candidates: ${candidates.join(",")}`);
   let bestProbe: Awaited<ReturnType<typeof probe>> | null = null;
   for (let i = 0; i < candidates.length; i += 1) {
     const result = await probe(candidates[i], 60, 4);
-    debug?.(`pitch ${result.pitch}: ${result.cells.length} cells, probe hits `
+    debug?.(`size ${result.s}: probe hits `
       + result.hits.slice(0, 6).map((h) => `${h.dist}@(${h.geom.dx},${h.geom.dy},${h.geom.ds})`).join(" "));
     onProgress?.((0.5 * (i + 1)) / candidates.length);
     if (result.hits.length && (!bestProbe || result.hits[0].dist < bestProbe.hits[0].dist)) {
@@ -430,38 +538,35 @@ export async function scanLuma(
     if (bestProbe && bestProbe.hits[0].dist <= 25) break;
   }
   if (!bestProbe || !bestProbe.hits.length) return [];
-  const { pitch, cells, hits: probeHits } = bestProbe;
+  const { s, cells, hits: probeHits } = bestProbe;
   const good = probeHits.filter((p) => p.dist <= AUTO_ACCEPT_DIST);
   const consensusFrom = good.length ? good : probeHits.slice(0, 1);
-  const gdx = median(consensusFrom.map((p) => p.geom.dx));
-  const gdy = median(consensusFrom.map((p) => p.geom.dy));
   const gds = median(consensusFrom.map((p) => p.geom.ds));
 
-  // final phase: all cells, jitter around the consensus geometry (wide
-  // enough to absorb pitch drift on extrapolated edge rows/columns)
+  // final phase: full position sweep per cell (only the size comes from
+  // the probe consensus) -- per-cell alignment is immune to lattices that
+  // mix outer- and inner-frame edges, whose offsets differ per column
   const fineGeoms: Geometry[] = [];
   for (const js of [-2, 0, 2]) {
-    for (const jx of [-6, -4, -2, 0, 2, 4, 6]) {
-      for (const jy of [-6, -4, -2, 0, 2, 4, 6]) {
-        fineGeoms.push({ dx: gdx + jx, dy: gdy + jy, ds: gds + js });
+    for (let jx = -10; jx <= 10; jx += 4) {
+      for (let jy = -10; jy <= 10; jy += 4) {
+        fineGeoms.push({ dx: jx, dy: jy, ds: gds + js });
       }
     }
   }
-  const raw: (IconMatch & { cx: number; cy: number })[] = [];
+  const raw: IconMatch[] = [];
   for (let i = 0; i < cells.length; i += 1) {
     const { cx, cy } = cells[i];
-    const hit = bestCellMatch(db, lu, cx, cy, pitch, fineGeoms, scratch);
+    const hit = bestCellMatch2(db, lu, cx, cy, s, fineGeoms, scratch);
     if (hit && hit.dist <= SUGGEST_DIST) {
       raw.push({
         unitId: db.ids[hit.index],
         tier: db.tiers[hit.index],
         dist: hit.dist,
-        cx,
-        cy,
         rect: {
           x: cx + hit.geom.dx,
           y: cy + hit.geom.dy,
-          size: pitch + hit.geom.ds,
+          size: s + hit.geom.ds,
         },
       });
     }
@@ -469,16 +574,17 @@ export async function scanLuma(
     if (i % 8 === 7) await yieldToUi();
   }
 
-  // non-maximum suppression: best match wins any half-pitch neighbourhood
+  // non-maximum suppression on matched rectangles: neighbouring lattice
+  // cells can align onto the same icon, the best match wins it
   raw.sort((a, b) => a.dist - b.dist);
-  const kept: (IconMatch & { cx: number; cy: number })[] = [];
+  const kept: IconMatch[] = [];
   raw.forEach((m) => {
-    if (!kept.some((k) => Math.abs(k.cx - m.cx) < pitch * 0.5 && Math.abs(k.cy - m.cy) < pitch * 0.5)) {
+    if (!kept.some((k) => Math.abs(k.rect.x - m.rect.x) < s * 0.5 && Math.abs(k.rect.y - m.rect.y) < s * 0.5)) {
       kept.push(m);
     }
   });
-  kept.sort((a, b) => a.cy - b.cy || a.cx - b.cx);
-  return kept.map(({ cx: _cx, cy: _cy, ...m }) => m);
+  kept.sort((a, b) => a.rect.y - b.rect.y || a.rect.x - b.rect.x);
+  return kept;
 }
 
 export async function scanScreenshotFile(
