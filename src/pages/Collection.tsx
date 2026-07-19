@@ -5,6 +5,7 @@ import { UnitImage } from "../components";
 import { loadJSONFile, useLocalisation, useUnits } from "../data";
 import { useUiStore } from "../store";
 import type { UnitIndexEntry } from "../types";
+import ScreenshotImport from "./CollectionScan";
 
 const CODE_PREFIX = "AIGC3.";
 const V2_CODE_PREFIX = "AIGC2.";
@@ -728,6 +729,20 @@ export default function Collection() {
     }
   };
 
+  const scanIsOwned = (unit: UnitIndexEntry) =>
+    isCollectionPrince(unit) ? princeSet.has(unit.dot_id) : ownedSet.has(unit.id);
+  const applyScan = (units: UnitIndexEntry[]) => {
+    const unitIds = units.filter((unit) => !isCollectionPrince(unit)).map((unit) => unit.id);
+    const dots = units.filter(isCollectionPrince).map((unit) => unit.dot_id);
+    if (unitIds.length) setOwned((current) => uniqueSorted([...current, ...unitIds]));
+    if (dots.length) setPrinceDots((current) => uniqueSorted([...current, ...dots]));
+    setMessage(
+      `Added ${unitIds.length} unit${unitIds.length === 1 ? "" : "s"}`
+      + (dots.length ? ` and ${dots.length} Prince icon${dots.length === 1 ? "" : "s"}` : "")
+      + " from screenshots."
+    );
+  };
+
   if (loading) return <p className="loading">Loading collection…</p>;
 
   return (
@@ -821,6 +836,13 @@ export default function Collection() {
         </div>
         {message && <p className="collection-message">{message}</p>}
       </details>
+
+      <ScreenshotImport
+        byId={byId ?? null}
+        unitName={collectionName}
+        isOwned={scanIsOwned}
+        onApply={applyScan}
+      />
 
       {shownPrinces.length > 0 && (
         <details className="collection-group collection-prince-group" open>

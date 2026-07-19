@@ -1552,6 +1552,31 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 .collection-transfer button:hover:not(:disabled) { border-color: var(--accent); }
 .collection-transfer button:disabled { opacity: 0.45; cursor: default; }
 .collection-message { margin: 8px 0 0; color: var(--accent); font-size: 12px; }
+.collection-scan-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
+.collection-scan-controls input[type="file"] { font-size: 12px; color: var(--muted); }
+.collection-scan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.collection-scan-tile {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.collection-scan-tile.on { border-color: var(--accent); }
+.collection-scan-tile.owned { opacity: 0.55; cursor: default; }
+.collection-scan-crop,
+.collection-scan-icon { width: 40px; height: 40px; border-radius: 5px; flex: none; object-fit: cover; }
+.collection-scan-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.collection-scan-name a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .collection-group {
   margin: 20px 0 26px;
   padding: 12px;
