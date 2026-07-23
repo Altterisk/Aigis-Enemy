@@ -207,7 +207,7 @@ export interface Stage {
   modifiers?: Effect[];
   popups?: string[];
   dialogue?: DialogueSection[];
-  story_talk?: boolean;
+  story_talk?: boolean; // legacy exports; availability now uses one mission list
   enemies?: StageEnemy[];
   hard?: {
     multiplier?: number;

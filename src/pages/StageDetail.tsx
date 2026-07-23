@@ -447,7 +447,8 @@ export default function StageDetail() {
   const races = useRaceLabels();
   const spcfg = useSpecialtyConfig();
   const [tab, setTab] = useState<"enemies" | "dialogue">("enemies");
-  const storyTalk = useStoryTalk(stage?.mission_id, !!stage?.story_talk);
+  const { available: hasStoryTalk, talk: storyTalk } =
+    useStoryTalk(stage?.mission_id);
   const [bannerFailed, setBannerFailed] = useState(false);
   if (loading) return <p className="loading">Loading…</p>;
   if (!stage) return <p>Stage not found. <Link to="/stages">Back</Link></p>;
@@ -456,7 +457,7 @@ export default function StageDetail() {
   const dialogue = stage.dialogue ?? [];
   const storySections = storyTalk?.sections ?? [];
   const dialogueCount = dialogue.length + storySections.length;
-  const hasDialogue = dialogueCount > 0 || !!stage.story_talk;
+  const hasDialogue = dialogueCount > 0 || hasStoryTalk;
   const activeTab = hasDialogue ? tab : "enemies";
 
   return (

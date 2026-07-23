@@ -91,19 +91,32 @@ export function useStageDetail(questId: number) {
 }
 
 // Per-mission out-of-battle story talk (enter/clear scenes), loaded on demand.
-// Only fetched when the stage says it exists (story_talk flag).
-export function useStoryTalk(missionId: number | null | undefined, enabled: boolean) {
-  const [talk, set] = useState<StoryTalk | null>(null);
+// Availability is a compact mission-id list instead of a flag duplicated into
+// every stage belonging to that mission.
+export function useStoryTalk(missionId: number | null | undefined) {
+  const [state, set] = useState<{
+    available: boolean;
+    talk: StoryTalk | null;
+  }>({ available: false, talk: null });
   useEffect(() => {
     let alive = true;
-    set(null);
-    if (!enabled || missionId == null) return;
-    loadJSON<StoryTalk>(`talk/${missionId}`)
-      .then((t) => { if (alive) set(t); })
-      .catch(() => { if (alive) set(null); });
+    set({ available: false, talk: null });
+    if (missionId == null) return;
+    loadJSON<number[]>("story_talk_missions")
+      .then((ids) => {
+        if (!ids.includes(missionId)) return null;
+        if (alive) set({ available: true, talk: null });
+        return loadJSON<StoryTalk>(`talk/${missionId}`);
+      })
+      .then((talk) => {
+        if (alive && talk) set({ available: true, talk });
+      })
+      .catch(() => {
+        if (alive) set({ available: false, talk: null });
+      });
     return () => { alive = false; };
-  }, [missionId, enabled]);
-  return talk;
+  }, [missionId]);
+  return state;
 }
 
 // Per-unit quotes + affection/trust scenes, loaded on demand. Units without
