@@ -121,6 +121,14 @@ export default function Buffs() {
     sortie_def: "Sortie DEF Buff", deploy_def: "Deployment DEF Buff",
     war_god_blessing_atk: "War God Blessing ATK Buff",
     war_god_blessing_def: "War God Blessing DEF Buff",
+    bard_hp_stack_1: "Bard HP Buff (stack 1)",
+    bard_atk_stack_1: "Bard ATK Buff (stack 1)",
+    bard_def_stack_1: "Bard DEF Buff (stack 1)",
+    bard_mr_stack_1: "Bard MR Buff (stack 1)",
+    bard_hp_stack_2: "Bard-like Token HP Buff (stack 2)",
+    bard_atk_stack_2: "Bard-like Token ATK Buff (stack 2)",
+    bard_def_stack_2: "Bard-like Token DEF Buff (stack 2)",
+    bard_mr_stack_2: "Bard-like Token MR Buff (stack 2)",
     makai_reduction: "Makai Effect Reduction (ability 73/74/75)",
     makai_immunity: "Makai Adaptation (ability 112/113)",
     tenkai_reduction: "Tenkai Effect Reduction (ability 181/182/183)",
@@ -129,6 +137,20 @@ export default function Buffs() {
     special_limit: "Doesn't count against deployment limit (special property 13)",
     missile_timestop: "100% slow missile (time stop on hit)",
     field_hpcut: "Max-HP damage field",
+  };
+  const groupName = (
+    grp: string,
+    nsK: BuffRow["ns"],
+    t: number,
+  ): string => {
+    const known = GRP_NAME[grp];
+    if (known) return known;
+    const stack = /^ability_(\d+)_stack_(\d+)$/.exec(grp);
+    if (stack) {
+      const name = labelOf(nsK, t)?.name || `ability ${t}`;
+      return `${name} (stack ${stack[2]})`;
+    }
+    return grp;
   };
   const groupKey = (r: BuffRow) => r.grp ?? `${r.ns}:${r.t}`;
 
@@ -217,14 +239,14 @@ export default function Buffs() {
       )}
       <div className={`buff-groups${isEffect ? " buff-groups-wide" : ""}`}>
         {groups.map((g) => {
-          const lab = g.grp ? undefined : labelOf(g.nsK, g.t);
+          const lab = labelOf(g.nsK, g.t);
           const isExpanded = expanded.has(g.k);
           const shown = isExpanded ? g.ranked : g.ranked.slice(0, GROUP_PREVIEW);
           return (
             <section key={g.k} className="buff-group">
               <header className="buff-group-head">
                 <span className="buff-group-title">
-                  {g.grp ? GRP_NAME[g.grp] || g.grp : lab?.name || `type ${g.t}`}
+                  {g.grp ? groupName(g.grp, g.nsK, g.t) : lab?.name || `type ${g.t}`}
                 </span>
                 <span className="buff-group-meta">
                   {g.grp ? g.nsK : `${g.nsK} ${g.t}`} · {g.ranked.length} units

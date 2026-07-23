@@ -565,7 +565,9 @@ export interface BuffRow {
   // "deploy_def"; 223/224 (War God Blessing ATK/DEF) get their own
   // "war_god_blessing_atk"/"war_god_blessing_def" group instead, a separate
   // mechanic from Sortie/Deployment buffs. Rows without this stay grouped
-  // by ns:t as before.
+  // by ns:t as before. Bard ability 304-307 groups also include Param 4,
+  // their non-stacking ID (1 = normal Bard, 2 = Bard-like token).
+  // Flat aura abilities 194-196 likewise use Param 4 as their stack ID.
   grp?: string;
 }
 
