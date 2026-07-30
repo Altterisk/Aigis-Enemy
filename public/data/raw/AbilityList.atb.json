@@ -19422,5 +19422,205 @@
   "AbilityTextID": 2209,
   "_ConfigID": 3561,
   "AbilityID": 2427
+ },
+ {
+  "AbilityName": "浜辺の騎士道",
+  "AbilityPower": 0,
+  "AbilityType": 2595,
+  "AbilityTextID": 2210,
+  "_ConfigID": 3563,
+  "AbilityID": 2428
+ },
+ {
+  "AbilityName": "真夏巫女の守護結界",
+  "AbilityPower": 0,
+  "AbilityType": 2596,
+  "AbilityTextID": 2211,
+  "_ConfigID": 3564,
+  "AbilityID": 2429
+ },
+ {
+  "AbilityName": "",
+  "AbilityPower": 0,
+  "AbilityType": 2597,
+  "AbilityTextID": 0,
+  "_ConfigID": 3565,
+  "AbilityID": 2430
+ },
+ {
+  "AbilityName": "語るは夏と海の詩",
+  "AbilityPower": 0,
+  "AbilityType": 2598,
+  "AbilityTextID": 2212,
+  "_ConfigID": 3566,
+  "AbilityID": 2431
+ },
+ {
+  "AbilityName": "響き渡れ、真夏の詩",
+  "AbilityPower": 0,
+  "AbilityType": 2599,
+  "AbilityTextID": 2213,
+  "_ConfigID": 3567,
+  "AbilityID": 2432
+ },
+ {
+  "AbilityName": "砂浜の見張り番",
+  "AbilityPower": 0,
+  "AbilityType": 2600,
+  "AbilityTextID": 2214,
+  "_ConfigID": 3568,
+  "AbilityID": 2433
+ },
+ {
+  "AbilityName": "到来を告げる",
+  "AbilityPower": 0,
+  "AbilityType": 2601,
+  "AbilityTextID": 2215,
+  "_ConfigID": 3569,
+  "AbilityID": 2434
+ },
+ {
+  "AbilityName": "白と悪魔とワンピース",
+  "AbilityPower": 0,
+  "AbilityType": 2602,
+  "AbilityTextID": 2216,
+  "_ConfigID": 3571,
+  "AbilityID": 2435
+ },
+ {
+  "AbilityName": "邪悪にして楚々",
+  "AbilityPower": 0,
+  "AbilityType": 2603,
+  "AbilityTextID": 2217,
+  "_ConfigID": 3572,
+  "AbilityID": 2436
+ },
+ {
+  "AbilityName": "夏を導く女皇様",
+  "AbilityPower": 0,
+  "AbilityType": 2604,
+  "AbilityTextID": 2218,
+  "_ConfigID": 3574,
+  "AbilityID": 2437
+ },
+ {
+  "AbilityName": "真夏に輝く女皇様",
+  "AbilityPower": 0,
+  "AbilityType": 2605,
+  "AbilityTextID": 2219,
+  "_ConfigID": 3575,
+  "AbilityID": 2438
+ },
+ {
+  "AbilityName": "渚をひとりじめ",
+  "AbilityPower": 0,
+  "AbilityType": 2606,
+  "AbilityTextID": 2220,
+  "_ConfigID": 3576,
+  "AbilityID": 2439
+ },
+ {
+  "AbilityName": "白き騎士の夏休み",
+  "AbilityPower": 0,
+  "AbilityType": 2607,
+  "AbilityTextID": 2221,
+  "_ConfigID": 3577,
+  "AbilityID": 2440
+ },
+ {
+  "AbilityName": "水陸両用",
+  "AbilityPower": 0,
+  "AbilityType": 2608,
+  "AbilityTextID": 2222,
+  "_ConfigID": 3578,
+  "AbilityID": 2441
+ },
+ {
+  "AbilityName": "潜水機竜",
+  "AbilityPower": 0,
+  "AbilityType": 2609,
+  "AbilityTextID": 2223,
+  "_ConfigID": 3579,
+  "AbilityID": 2442
+ },
+ {
+  "AbilityName": "納涼天尊",
+  "AbilityPower": 0,
+  "AbilityType": 2610,
+  "AbilityTextID": 2224,
+  "_ConfigID": 3580,
+  "AbilityID": 2443
+ },
+ {
+  "AbilityName": "柔弱は剛強に勝る",
+  "AbilityPower": 0,
+  "AbilityType": 2611,
+  "AbilityTextID": 2225,
+  "_ConfigID": 3581,
+  "AbilityID": 2444
+ },
+ {
+  "AbilityName": "雷鼓と風袋",
+  "AbilityPower": 0,
+  "AbilityType": 2612,
+  "AbilityTextID": 2226,
+  "_ConfigID": 3583,
+  "AbilityID": 2445
+ },
+ {
+  "AbilityName": "",
+  "AbilityPower": 0,
+  "AbilityType": 2613,
+  "AbilityTextID": 0,
+  "_ConfigID": 3585,
+  "AbilityID": 2446
+ },
+ {
+  "AbilityName": "夏よ大華を知れ",
+  "AbilityPower": 0,
+  "AbilityType": 2614,
+  "AbilityTextID": 2227,
+  "_ConfigID": 3587,
+  "AbilityID": 2447
+ },
+ {
+  "AbilityName": "神獣の模型",
+  "AbilityPower": 0,
+  "AbilityType": 40,
+  "AbilityTextID": 2228,
+  "_ConfigID": 0,
+  "AbilityID": 2448
+ },
+ {
+  "AbilityName": "そして心は歌を知る",
+  "AbilityPower": 0,
+  "AbilityType": 2615,
+  "AbilityTextID": 2229,
+  "_ConfigID": 3588,
+  "AbilityID": 2449
+ },
+ {
+  "AbilityName": "氷原の歌姫",
+  "AbilityPower": 0,
+  "AbilityType": 2616,
+  "AbilityTextID": 2230,
+  "_ConfigID": 3593,
+  "AbilityID": 2450
+ },
+ {
+  "AbilityName": "守護霊獣オンステージ",
+  "AbilityPower": 0,
+  "AbilityType": 2617,
+  "AbilityTextID": 2231,
+  "_ConfigID": 3595,
+  "AbilityID": 2451
+ },
+ {
+  "AbilityName": "フルメタル鮫肌装甲",
+  "AbilityPower": 0,
+  "AbilityType": 2618,
+  "AbilityTextID": 2232,
+  "_ConfigID": 3598,
+  "AbilityID": 2452
  }
 ]

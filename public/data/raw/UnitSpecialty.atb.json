@@ -13338,5 +13338,185 @@
   "Value_Param3": 0,
   "Value_Param4": 0,
   "Command": ""
+ },
+ {
+  "ID_Card": 2834,
+  "Type_Specialty": 13,
+  "Value_Specialty": 1,
+  "Value_Param1": 0,
+  "Value_Param2": 0,
+  "Value_Param3": 0,
+  "Value_Param4": 0,
+  "Command": ""
+ },
+ {
+  "ID_Card": 2838,
+  "Type_Specialty": 34,
+  "Value_Specialty": 0,
+  "Value_Param1": 0,
+  "Value_Param2": 0,
+  "Value_Param3": 0,
+  "Value_Param4": 0,
+  "Command": "SetMissile(\"cc0=1202\",\"cc2=1202\",\"cc3=1202\",\"cc4=1202\" );"
+ },
+ {
+  "ID_Card": 2835,
+  "Type_Specialty": 34,
+  "Value_Specialty": 0,
+  "Value_Param1": 0,
+  "Value_Param2": 0,
+  "Value_Param3": 0,
+  "Value_Param4": 0,
+  "Command": "SetMissile(\"cc0=1634\",\"cc2=1634\",\"cc3=1634\",\"cc4=1634\" );"
+ },
+ {
+  "ID_Card": 2841,
+  "Type_Specialty": 34,
+  "Value_Specialty": 0,
+  "Value_Param1": 0,
+  "Value_Param2": 0,
+  "Value_Param3": 0,
+  "Value_Param4": 0,
+  "Command": "SetMissile(\"cc0=1635\",\"cc2=1635\",\"cc3=1635\",\"cc4=1635\" );"
+ },
+ {
+  "ID_Card": 2846,
+  "Type_Specialty": 13,
+  "Value_Specialty": 1,
+  "Value_Param1": 0,
+  "Value_Param2": 0,
+  "Value_Param3": 0,
+  "Value_Param4": 0,
+  "Command": ""
+ },
+ {
+  "ID_Card": 0,
+  "Type_Specialty": 35,
+  "Value_Specialty": 1,
+  "Value_Param1": 0,
+  "Value_Param2": 0,
+  "Value_Param3": 0,
+  "Value_Param4": 0,
+  "Command": ""
+ },
+ {
+  "ID_Card": 2847,
+  "Type_Specialty": 13,
+  "Value_Specialty": 1,
+  "Value_Param1": 0,
+  "Value_Param2": 0,
+  "Value_Param3": 0,
+  "Value_Param4": 0,
+  "Command": ""
+ },
+ {
+  "ID_Card": 0,
+  "Type_Specialty": 35,
+  "Value_Specialty": 1,
+  "Value_Param1": 0,
+  "Value_Param2": 0,
+  "Value_Param3": 0,
+  "Value_Param4": 0,
+  "Command": ""
+ },
+ {
+  "ID_Card": 2848,
+  "Type_Specialty": 13,
+  "Value_Specialty": 1,
+  "Value_Param1": 0,
+  "Value_Param2": 0,
+  "Value_Param3": 0,
+  "Value_Param4": 0,
+  "Command": ""
+ },
+ {
+  "ID_Card": 0,
+  "Type_Specialty": 35,
+  "Value_Specialty": 1,
+  "Value_Param1": 0,
+  "Value_Param2": 0,
+  "Value_Param3": 0,
+  "Value_Param4": 0,
+  "Command": ""
+ },
+ {
+  "ID_Card": 2845,
+  "Type_Specialty": 13,
+  "Value_Specialty": 1,
+  "Value_Param1": 0,
+  "Value_Param2": 0,
+  "Value_Param3": 0,
+  "Value_Param4": 0,
+  "Command": ""
+ },
+ {
+  "ID_Card": 2856,
+  "Type_Specialty": 13,
+  "Value_Specialty": 1,
+  "Value_Param1": 0,
+  "Value_Param2": 0,
+  "Value_Param3": 0,
+  "Value_Param4": 0,
+  "Command": ""
+ },
+ {
+  "ID_Card": 2855,
+  "Type_Specialty": 13,
+  "Value_Specialty": 1,
+  "Value_Param1": 0,
+  "Value_Param2": 0,
+  "Value_Param3": 0,
+  "Value_Param4": 0,
+  "Command": ""
+ },
+ {
+  "ID_Card": 0,
+  "Type_Specialty": 35,
+  "Value_Specialty": 1,
+  "Value_Param1": 0,
+  "Value_Param2": 0,
+  "Value_Param3": 0,
+  "Value_Param4": 0,
+  "Command": ""
+ },
+ {
+  "ID_Card": 0,
+  "Type_Specialty": 18,
+  "Value_Specialty": 1,
+  "Value_Param1": 0,
+  "Value_Param2": 0,
+  "Value_Param3": 0,
+  "Value_Param4": 0,
+  "Command": ""
+ },
+ {
+  "ID_Card": 2857,
+  "Type_Specialty": 13,
+  "Value_Specialty": 1,
+  "Value_Param1": 0,
+  "Value_Param2": 0,
+  "Value_Param3": 0,
+  "Value_Param4": 0,
+  "Command": ""
+ },
+ {
+  "ID_Card": 2858,
+  "Type_Specialty": 12,
+  "Value_Specialty": 1200,
+  "Value_Param1": 0,
+  "Value_Param2": 0,
+  "Value_Param3": 0,
+  "Value_Param4": 0,
+  "Command": "1;"
+ },
+ {
+  "ID_Card": 2861,
+  "Type_Specialty": 13,
+  "Value_Specialty": 1,
+  "Value_Param1": 0,
+  "Value_Param2": 0,
+  "Value_Param3": 0,
+  "Value_Param4": 0,
+  "Command": ""
  }
 ]

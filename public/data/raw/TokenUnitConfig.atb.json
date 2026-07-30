@@ -10448,5 +10448,93 @@
   "Param_CardID": 2810,
   "Param_SetIndex": 0,
   "Param_SummonTotalMax": 12
+ },
+ {
+  "ID_Class": 151020,
+  "Param_SummonMax": 1,
+  "Param_SummonUnit": 2845,
+  "Param_SummonRecast": 10,
+  "Param_SummonCost": 0,
+  "Param_SummonLimit": 3,
+  "Param_CardID": 2842,
+  "Param_SetIndex": 0,
+  "Param_SummonTotalMax": 1
+ },
+ {
+  "ID_Class": 136930,
+  "Param_SummonMax": 5,
+  "Param_SummonUnit": 2846,
+  "Param_SummonRecast": 3,
+  "Param_SummonCost": 0,
+  "Param_SummonLimit": 0,
+  "Param_CardID": 2838,
+  "Param_SetIndex": 0,
+  "Param_SummonTotalMax": 5
+ },
+ {
+  "ID_Class": 136970,
+  "Param_SummonMax": 5,
+  "Param_SummonUnit": 2847,
+  "Param_SummonRecast": 3,
+  "Param_SummonCost": 0,
+  "Param_SummonLimit": 0,
+  "Param_CardID": 2838,
+  "Param_SetIndex": 0,
+  "Param_SummonTotalMax": 5
+ },
+ {
+  "ID_Class": 136980,
+  "Param_SummonMax": 5,
+  "Param_SummonUnit": 2848,
+  "Param_SummonRecast": 3,
+  "Param_SummonCost": 0,
+  "Param_SummonLimit": 0,
+  "Param_CardID": 2838,
+  "Param_SetIndex": 0,
+  "Param_SummonTotalMax": 5
+ },
+ {
+  "ID_Class": 304720,
+  "Param_SummonMax": 5,
+  "Param_SummonUnit": 2856,
+  "Param_SummonRecast": 5,
+  "Param_SummonCost": 5,
+  "Param_SummonLimit": 5,
+  "Param_CardID": 2853,
+  "Param_SetIndex": 0,
+  "Param_SummonTotalMax": 5
+ },
+ {
+  "ID_Class": 167920,
+  "Param_SummonMax": 5,
+  "Param_SummonUnit": 2855,
+  "Param_SummonRecast": 3,
+  "Param_SummonCost": 0,
+  "Param_SummonLimit": 0,
+  "Param_CardID": 2852,
+  "Param_SetIndex": 0,
+  "Param_SummonTotalMax": 5
+ },
+ {
+  "ID_Class": 304920,
+  "Param_SummonMax": 2,
+  "Param_SummonUnit": 2857,
+  "Param_SummonRecast": 5,
+  "Param_SummonCost": 3,
+  "Param_SummonLimit": 15,
+  "Param_CardID": 2854,
+  "Param_SetIndex": 0,
+  "Param_SummonTotalMax": 4
+ },
+ {
+  "ID_Class": 168100,
+  "Param_SummonMax": 1,
+  "Param_SummonUnit": 2861,
+  "Param_SummonRecast": 5,
+  "Param_SummonCost": 1,
+  "Param_SummonLimit": 8,
+  "Param_CardID": 2858,
+  "Param_SetIndex": 0,
+  "Param_SummonTotalMax": 1
  }
 ]

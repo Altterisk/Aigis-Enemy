@@ -5621,6 +5621,61 @@
   "_Range_05": 0
  },
  {
+  "Data_ID": 304500,
+  "Type_BattleStyle": 21,
+  "_Param_01": 0,
+  "_Param_02": 0,
+  "_Range_01": 330,
+  "_Range_02": 330,
+  "_Range_03": 330,
+  "_Range_04": 330,
+  "_Range_05": 330
+ },
+ {
+  "Data_ID": 304600,
+  "Type_BattleStyle": 21,
+  "_Param_01": 0,
+  "_Param_02": 0,
+  "_Range_01": 240,
+  "_Range_02": 240,
+  "_Range_03": 240,
+  "_Range_04": 240,
+  "_Range_05": 240
+ },
+ {
+  "Data_ID": 304700,
+  "Type_BattleStyle": 1,
+  "_Param_01": 0,
+  "_Param_02": 0,
+  "_Range_01": 0,
+  "_Range_02": 0,
+  "_Range_03": 0,
+  "_Range_04": 0,
+  "_Range_05": 0
+ },
+ {
+  "Data_ID": 304800,
+  "Type_BattleStyle": 4,
+  "_Param_01": 0,
+  "_Param_02": 0,
+  "_Range_01": 200,
+  "_Range_02": 200,
+  "_Range_03": 220,
+  "_Range_04": 260,
+  "_Range_05": 220
+ },
+ {
+  "Data_ID": 304900,
+  "Type_BattleStyle": 4,
+  "_Param_01": 0,
+  "_Param_02": 0,
+  "_Range_01": 240,
+  "_Range_02": 240,
+  "_Range_03": 240,
+  "_Range_04": 240,
+  "_Range_05": 240
+ },
+ {
   "Data_ID": 10000,
   "Type_BattleStyle": 7,
   "_Param_01": 0,
@@ -9165,6 +9220,61 @@
  {
   "Data_ID": 250300,
   "Type_BattleStyle": 23,
+  "_Param_01": 0,
+  "_Param_02": 0,
+  "_Range_01": 0,
+  "_Range_02": 0,
+  "_Range_03": 0,
+  "_Range_04": 0,
+  "_Range_05": 0
+ },
+ {
+  "Data_ID": 167800,
+  "Type_BattleStyle": 7,
+  "_Param_01": 0,
+  "_Param_02": 0,
+  "_Range_01": 0,
+  "_Range_02": 0,
+  "_Range_03": 0,
+  "_Range_04": 0,
+  "_Range_05": 0
+ },
+ {
+  "Data_ID": 167900,
+  "Type_BattleStyle": 28,
+  "_Param_01": 0,
+  "_Param_02": 0,
+  "_Range_01": 0,
+  "_Range_02": 0,
+  "_Range_03": 0,
+  "_Range_04": 0,
+  "_Range_05": 0
+ },
+ {
+  "Data_ID": 168000,
+  "Type_BattleStyle": 7,
+  "_Param_01": 0,
+  "_Param_02": 0,
+  "_Range_01": 0,
+  "_Range_02": 0,
+  "_Range_03": 0,
+  "_Range_04": 0,
+  "_Range_05": 0
+ },
+ {
+  "Data_ID": 168100,
+  "Type_BattleStyle": 7,
+  "_Param_01": 1654,
+  "_Param_02": 0,
+  "_Range_01": 250,
+  "_Range_02": 250,
+  "_Range_03": 250,
+  "_Range_04": 250,
+  "_Range_05": 250
+ },
+ {
+  "Data_ID": 238000,
+  "Type_BattleStyle": 1,
   "_Param_01": 0,
   "_Param_02": 0,
   "_Range_01": 0,
