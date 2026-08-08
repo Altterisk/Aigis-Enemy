@@ -430,6 +430,23 @@ section h3 { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
   font-weight: 600;
 }
 .effects .dot-calc { color: #e0af68; font-weight: 600; }
+.selection-rule {
+  display: inline-block;
+  margin-left: 7px;
+  padding: 1px 5px;
+  border: 1px solid #7c5ea8;
+  border-radius: 4px;
+  color: #c9a7ff;
+  background: #211b2d;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.selection-rule--forced_priority {
+  border-color: #c26a73;
+  color: #ff9eaa;
+  background: #2b1a20;
+  font-weight: 600;
+}
 
 .commands { margin-top: 8px; font-size: 12px; }
 .commands summary { cursor: pointer; color: #e0b341; }
@@ -956,9 +973,15 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 .buff-group-title { font-weight: 700; }
 .buff-group-meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .buff-group-meta .unverified { color: #e0af68; font-style: normal; }
+.buff-group-rule {
+  margin: -2px 0 8px;
+  color: #c9a7ff;
+  font-size: 12px;
+}
 .buff-table { width: 100%; }
 .buff-table th, .buff-table td { padding: 4px 8px; }
 .buff-table td.buff-val { white-space: nowrap; }
+.buff-priority { display: block; color: #c9a7ff; font-size: 11px; font-weight: 500; }
 .buff-table td.buff-cond { max-width: 340px; overflow-wrap: anywhere; }
 .buff-mod { color: #e0af68; margin-left: 2px; cursor: help; }
 .buff-more {

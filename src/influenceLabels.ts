@@ -2,7 +2,58 @@
 // hot-reloads this file, no Python export needed. python/aigis/
 // unit_influence_map.py holds the fuller investigation notes per id if
 // deeper context is needed, but is not read at runtime.
-import type { UnitInfluenceLabels } from "./types";
+import type { InfluenceSelectionRule, UnitInfluenceLabels } from "./types";
+
+interface InfluenceSelectionConfig {
+  rule?: InfluenceSelectionRule;
+  groupModes?: Record<number, InfluenceSelectionRule>;
+  requiresParam4?: boolean;
+}
+
+// Common engine-selection metadata. These rules belong to influence types,
+// not to individual units; per-unit JSON keeps only values and raw group
+// fields. `groupModes` handles the one conditional case without pretending
+// Type_ChangeFunction is a universal overwrite enum.
+const INFLUENCE_SELECTION: {
+  skill: Record<number, InfluenceSelectionConfig>;
+  ability: Record<number, InfluenceSelectionConfig>;
+} = {
+  skill: {
+    2: { rule: "highest_value" }, 3: { rule: "highest_value" },
+    4: { rule: "highest_value" }, 5: { rule: "highest_value" },
+    6: { rule: "highest_value" }, 89: { rule: "highest_value" },
+    90: { rule: "highest_value" }, 103: { rule: "highest_value" },
+    200: { rule: "highest_value" }, 204: { rule: "highest_value" },
+    233: { rule: "shared_healing_slot" },
+    234: { groupModes: { 3: "forced_priority" } },
+    235: { rule: "new_instance" },
+    236: { rule: "replaces_existing" },
+  },
+  ability: {
+    70: { rule: "additive" }, 82: { rule: "additive" },
+    87: { rule: "additive_then_sortie_multiplicative" },
+    89: { rule: "highest_duration" }, 90: { rule: "highest_duration" },
+    194: { rule: "highest_within_stack_id", requiresParam4: true },
+    195: { rule: "highest_within_stack_id", requiresParam4: true },
+    196: { rule: "highest_within_stack_id", requiresParam4: true },
+    220: { rule: "shared_healing_slot" },
+    305: { rule: "highest_value" },
+  },
+};
+
+export function influenceSelectionRule(
+  namespace: "skill" | "ability",
+  influenceType?: number,
+  groupChangeFunction?: number,
+  params?: number[] | null,
+): InfluenceSelectionRule | undefined {
+  if (influenceType == null) return undefined;
+  const config = INFLUENCE_SELECTION[namespace][influenceType];
+  if (!config) return undefined;
+  if (config.requiresParam4 && !params?.[3]) return undefined;
+  const mode = groupChangeFunction == null ? undefined : groupChangeFunction & 3;
+  return (mode == null ? undefined : config.groupModes?.[mode]) ?? config.rule;
+}
 
 export const INFLUENCE_LABELS: UnitInfluenceLabels = {
   "skill": {
@@ -43,7 +94,7 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "tpl": "{add} hits"
     },
     "8": {
-      "name": "Splash mod",
+      "name": "Damage-area modifier",
       "verified": true,
       "note": "wiki-maintainer-sourced (community-compiled, not our own in-game test)."
     },
@@ -81,10 +132,49 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "note": "PAD = post-attack delay, the pause after an attack before the next one can start. Probably shares 170's add+1 offset (PAD is set to add+1, not add directly) -- not yet independently confirmed for this id."
     },
     "15": {
-      "name": "Set PAD (flat)",
+      "name": "Support-effect increase",
       "verified": true,
-      "note": "mul3 is the flat post-attack-delay value in frames, not a multiplier.",
-      "tpl": "to {mul3f}"
+      "note": "Official influence name 支援効果アップ. No current carriers are available to decode its parameters; the earlier PAD label conflicts with the official registry."
+    },
+    "16": {
+      "name": "Dancer ATK support",
+      "verified": false,
+      "note": "official influence name: 攻撃支援(踊り子); no current carriers available for parameter verification."
+    },
+    "17": {
+      "name": "Dancer DEF support",
+      "verified": false,
+      "note": "official influence name: 防御支援(踊り子); no current carriers available for parameter verification."
+    },
+    "18": {
+      "name": "Healing-power buff",
+      "verified": false,
+      "note": "official influence name: 治癒力向上; no current carriers available for parameter verification."
+    },
+    "20": {
+      "name": "MR modifier 2",
+      "verified": false,
+      "note": "official influence name: 魔法耐性アップ2; no current carriers available to establish how it differs from skill influence 19."
+    },
+    "26": {
+      "name": "Convert to magic damage",
+      "verified": false,
+      "note": "official influence name: 魔法攻撃化; no current carriers available for parameter verification."
+    },
+    "27": {
+      "name": "Morale boost increase",
+      "verified": false,
+      "note": "official influence name: 士気高揚アップ; no current carriers available for parameter verification."
+    },
+    "28": {
+      "name": "Anna ATK support",
+      "verified": false,
+      "note": "official influence name: 攻撃支援(アンナ専用); no current carriers available for parameter verification."
+    },
+    "29": {
+      "name": "Anna DEF support",
+      "verified": false,
+      "note": "official influence name: 防御支援(アンナ専用); no current carriers available for parameter verification."
     },
     "19": {
       "name": "Magic resist",
@@ -92,14 +182,14 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "note": "multiplicative of base MR (percent)."
     },
     "21": {
-      "name": "Missile",
+      "name": "Change projectile",
       "verified": true,
-      "note": "wiki-maintainer-sourced (community-compiled, not our own in-game test)."
+      "note": "official name チェンジミサイル and carrier rows identify the replacement projectile by id."
     },
     "22": {
-      "name": "Ranged target count",
+      "name": "Simultaneous target count",
       "verified": true,
-      "note": "wiki-maintainer-sourced.",
+      "note": "official name 同時攻撃数アップ; used by both simultaneous attacks and simultaneous healing.",
       "tpl": "{add}"
     },
     "30": {
@@ -109,15 +199,15 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "tpl": "{add}% chance"
     },
     "31": {
-      "name": "Heal HP",
+      "name": "Restore HP on skill activation",
       "verified": true,
       "note": "wiki-maintainer-sourced. mul3 is the percent directly, not a x-multiplier.",
       "tpl": "{mul3pct}"
     },
     "32": {
-      "name": "Generate unit points",
+      "name": "Generate UP",
       "verified": true,
-      "note": "wiki-maintainer-sourced (community-compiled, not our own in-game test).",
+      "note": "official influence name コスト回復; carrier text gives the generated deployment cost directly.",
       "tpl": "generates {mul3} UP"
     },
     "33": {
@@ -181,21 +271,21 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "tpl": "-{mul3pct} HP"
     },
     "44": {
-      "name": "Melee attack area (?)",
+      "name": "Toggle collision",
       "verified": true,
-      "note": "wiki-maintainer-sourced (community-compiled, not our own in-game test). add is a constant 1 flag across every carrier  -- no 'value 1' text needed.",
+      "note": "official influence name コリジョン切り替え; carried by flight-mode skills. add is a constant 1 flag, so no value text is needed.",
       "tpl": ""
     },
     "45": {
-      "name": "Fixed damage",
+      "name": "Damage override",
       "verified": true,
-      "note": "Verified.",
+      "note": "official influence name ダメージ変更; covers fixed-damage values and zero/no-damage attack modes.",
       "tpl": "{add}"
     },
     "46": {
-      "name": "Heal status",
+      "name": "Cure status ailments",
       "verified": true,
-      "note": "cures a status ailment (a binary heal, not a scaling value) -- mul3 is a filler 100 on the one sample seen, not a meaningful multiplier, so suppressed rather than shown as a misleading x1.00.",
+      "note": "official influence name 状態異常治療; carrier text explicitly cures or prevents status ailments. mul3 is filler 100 and is suppressed.",
       "tpl": ""
     },
     "47": {
@@ -272,6 +362,16 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "note": "wiki-maintainer-sourced (community-compiled, not our own in-game test). add is a constant 1 flag across every carrier  -- no 'value 1' text needed.",
       "tpl": ""
     },
+    "62": {
+      "name": "Curse-effect increase",
+      "verified": false,
+      "note": "official influence name 呪術効果アップ; no current carriers available for parameter verification."
+    },
+    "63": {
+      "name": "Curse instant-kill effect increase",
+      "verified": false,
+      "note": "official influence name 呪術即死アップ; no current carriers available for parameter verification."
+    },
     "64": {
       "name": "Heal by ATK",
       "verified": true,
@@ -292,6 +392,31 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "name": "Bonus damage vs ground",
       "verified": true,
       "note": "wiki-maintainer-sourced (community-compiled, not our own in-game test)."
+    },
+    "73": {
+      "name": "Change projectile 2",
+      "verified": false,
+      "note": "official influence name チェンジミサイル2; no current carriers available for parameter verification."
+    },
+    "74": {
+      "name": "Restore token HP",
+      "verified": false,
+      "note": "official influence name 回復(トークン); no current carriers available for parameter verification."
+    },
+    "78": {
+      "name": "Damage-nullification proc chance",
+      "verified": false,
+      "note": "official influence name ダメージ無効上昇(アビリティ); no current carriers available for parameter verification."
+    },
+    "80": {
+      "name": "Special-attack effect increase",
+      "verified": false,
+      "note": "official influence name 特攻効果上昇(アビリティ); no current carriers available for parameter verification."
+    },
+    "82": {
+      "name": "Instant-kill proc chance",
+      "verified": false,
+      "note": "official influence name 即死発動率上昇(アビリティ); no current carriers available for parameter verification."
     },
     "71": {
       "name": "Attack heals nearby allies",
@@ -322,9 +447,29 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "tpl": "{x} (rarity {add})"
     },
     "88": {
-      "name": "Paralysis",
+      "name": "Paralyzing attacks",
       "verified": true,
-      "note": "wiki-maintainer-sourced."
+      "note": "official influence name 麻痺属性化; carrier text applies paralysis buildup over several attacks."
+    },
+    "92": {
+      "name": "Cannot activate skill",
+      "verified": false,
+      "note": "official influence name スキル発動不可; no current carriers available for parameter verification."
+    },
+    "94": {
+      "name": "Remove true-damage attribute",
+      "verified": false,
+      "note": "official influence name 貫通属性解除; no current carriers available for parameter verification."
+    },
+    "97": {
+      "name": "Magic-damage proc chance",
+      "verified": false,
+      "note": "official influence name 魔法属性(確率発動); no current carriers available for parameter verification."
+    },
+    "99": {
+      "name": "Drain 2",
+      "verified": false,
+      "note": "official influence name ドレイン2; no current carriers available to establish how it differs from skill influence 35."
     },
     "89": {
       "name": "ATK Buff (Type-C, conditional)",
@@ -377,16 +522,16 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "note": "user-confirmed: internal engine mechanism, no known player-facing effect. Hidden from the UI by default."
     },
     "107": {
-      "name": "Permanent flag (unconfirmed)",
-      "verified": false,
-      "note": "investigated: all 496 occurrences are byte-identical -- mul/mul2/mul3=0, add=1, no expression/ExtendProperty ever. Shape matches the user's 'permanent flag?' hypothesis (a one-shot boolean toggle) but WHAT it flags is still unconfirmed. add is always 1 -- no 'value 1' text needed.",
+      "name": "Permanent skill",
+      "verified": true,
+      "note": "Official name スキル永続化 and current carrier text identify this as making the skill permanent. add is a constant 1 flag, so no value text is needed.",
       "tpl": ""
     },
     "121": {
-      "name": "Unknown",
+      "name": "Skill-text override",
       "verified": true,
       "hidden": true,
-      "note": "user-confirmed: no observed effect. Hidden from the UI by default."
+      "note": "Official name スキルテキスト変更 identifies this internal skill-text override. Hidden from the UI by default because it has no separate player-facing effect."
     },
     "141": {
       "name": "Permanent ATK modification",
@@ -401,7 +546,7 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
     "195": {
       "name": "Attack once",
       "verified": true,
-      "note": "matches Leticia's text '一度だけ...攻撃' (attacks only once). add is a constant 1 flag across every carrier -- no 'value 1' text needed.",
+      "note": "Official 攻撃停止 and current carrier texts identify one-shot skills that stop attacking after the single attack. add=1 is a flag and needs no value text.",
       "tpl": ""
     },
     "120": {
@@ -417,9 +562,9 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "tpl": "for {mul2s}"
     },
     "110": {
-      "name": "No known effect",
+      "name": "Ignore skill-duration extensions",
       "verified": true,
-      "note": "Verified. add is a constant 1 flag across every carrier  -- no 'value 1' text needed.",
+      "note": "Official name スキル時間延長無視 identifies this flag. add is always 1, so no value text is needed.",
       "tpl": ""
     },
     "81": {
@@ -431,7 +576,7 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
     "179": {
       "name": "Cannot be set to auto-use",
       "verified": true,
-      "note": "Verified."
+      "note": "Official name このスキルは自動発動の対象外にする; this excludes the skill from automatic activation."
     },
     "83": {
       "name": "Permanent HP modification",
@@ -439,19 +584,19 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "note": "Verified."
     },
     "156": {
-      "name": "BGM play",
+      "name": "Execute skill command",
       "verified": true,
-      "note": "Verified."
+      "note": "Official name スキルコマンド. Current carriers include explicit event-command rows as well as skill-specific command flags, so the former BGM-only label was too narrow."
     },
     "145": {
       "name": "Dancer ATK share modifier",
       "verified": true,
-      "note": "modifies the Dancer ATK share (ability influence 115's shared percent): mul3 is a multiplier applied to that percent, add is a flat amount added to it."
+      "note": "Official 応援(攻撃+); current Dancer skills multiply their ATK support contribution."
     },
     "146": {
       "name": "Dancer DEF share modifier",
       "verified": true,
-      "note": "modifies the Dancer DEF share (ability influence 116's shared percent): mul3 is a multiplier applied to that percent, add is a flat amount added to it."
+      "note": "Official 応援(防御+); current Dancer skills multiply their DEF support contribution."
     },
     "106": {
       "name": "Taunt",
@@ -466,9 +611,9 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "tpl": "{add} allies"
     },
     "167": {
-      "name": "Permanent ranged attack target count change",
+      "name": "Permanent target-count change",
       "verified": true,
-      "note": "sets ranged attack target count to add (same 'modification' shape as 118's block count). Not a duplicate of 96 (heal target count) -- this is ranged attack targets. Diana (Swimsuit)'s add=1.",
+      "note": "Official 同時攻撃数アップ(永続). Current carriers use it for both attack and healing target counts; add stores the resulting target count.",
       "tpl": "to {add}"
     },
     "203": {
@@ -495,15 +640,21 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "note": "Verified."
     },
     "43": {
-      "name": "Unknown",
+      "name": "Enable collision",
       "verified": true,
       "hidden": true,
-      "note": "user-confirmed: no observed effect. Hidden from the UI by default."
+      "note": "Official influence name コリジョン有効. It has no known direct player-facing text and remains hidden by default."
     },
     "125": {
-      "name": "Heal allies on skill end",
+      "name": "Restore all allies' HP on skill end",
       "verified": true,
-      "note": "Verified."
+      "note": "A flag-only, target=all effect, distinct from the percentage-bearing skill influence 124."
+    },
+    "124": {
+      "name": "Restore HP on skill end",
+      "verified": true,
+      "note": "mul3 is the percent of maximum HP restored when the skill ends; target selects the recipient.",
+      "tpl": "{mul3pct}"
     },
     "103": {
       "name": "Enemy ATK debuff",
@@ -536,8 +687,8 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
     },
     "215": {
       "name": "Target receives reduced damage (true)",
-      "verified": false,
-      "note": "By elimination (still unverified): 214 surveyed as magic and 216 surveyed as physical (see their notes) -- no skill carries 215 alone (0 singleton carriers found) to confirm textually, so 215 = true/fixed damage is the remaining slot in the trio, not yet text-confirmed like the other two. Assumed to share 214/216's mul3-is-the-percent-directly shape.",
+      "verified": true,
+      "note": "Official name 貫通ダメージ軽減 confirms true/piercing-damage reduction. It shares the trio's direct-percent mul3 shape.",
       "tpl": "-{mul3pct}"
     },
     "216": {
@@ -558,9 +709,9 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "tpl": "after {mul2s}"
     },
     "76": {
-      "name": "Disable ranged attack / healing while blocked (unconfirmed detail)",
-      "verified": false,
-      "note": "'need more investigation' -- direction given but not yet checked against data."
+      "name": "Remove forced action",
+      "verified": true,
+      "note": "Official 強制行動の解除. Carrier text says the unit no longer focuses exclusively on healing, removing its class-forced action."
     },
     "134": {
       "name": "Target auto-uses skill",
@@ -591,15 +742,14 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "note": "sets PAD permanently to add+1 (not a reduction delta). Aleese (Swimsuit)'s add=5, so PAD is set to 6."
     },
     "24": {
-      "name": "Set multi-hit (unconfirmed detail)",
+      "name": "Projectile interval",
       "verified": false,
-      "note": "add is a small integer (e.g. 7 on Sieglinde (Swimsuit), whose text describes a rapid-fire ranged attack) -- likely the hit count, not yet confirmed in-game.",
-      "tpl": "{add} hits (unconfirmed)"
+      "note": "Official influence name MSインターバル. Carrier rows store small integers, but the unit and parameter are not yet text-confirmed."
     },
     "25": {
-      "name": "Skill Duration Increase",
+      "name": "Skill duration increase",
       "verified": true,
-      "note": "expressed two different ways per row: mul3 set = duration to mul3% of normal (a two-way modifier, mul3=120 = 120% duration); mul3 absent = add is a flat +seconds amount instead. Rendering is special-cased in skillRowValue since it depends on which field is populated."
+      "note": "Two row shapes are in use: non-neutral mul3 sets duration to that percent of normal; neutral mul3=100 with add uses add as a flat number of seconds. Rendering is special-cased in skillRowValue."
     },
     "151": {
       "name": "Revive condition",
@@ -619,19 +769,19 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "tpl": "{addf}"
     },
     "183": {
-      "name": "Flat HP multiplier (chef)",
+      "name": "Chef HP support multiplier",
       "verified": true,
-      "note": "Verified (part of a 183/184/185 chef HP/ATK/DEF trio)."
+      "note": "Official 料理支援(最大HP+); current Chef texts say the ability's per-second increase values are multiplied."
     },
     "184": {
-      "name": "Flat ATK multiplier (chef)",
+      "name": "Chef ATK support multiplier",
       "verified": true,
-      "note": "Verified (part of a 183/184/185 chef HP/ATK/DEF trio)."
+      "note": "Official 料理支援(攻撃力+); current Chef texts say the ability's per-second increase values are multiplied."
     },
     "185": {
-      "name": "Flat DEF multiplier (chef)",
+      "name": "Chef DEF support multiplier",
       "verified": true,
-      "note": "Verified (part of a 183/184/185 chef HP/ATK/DEF trio)."
+      "note": "Official 料理支援(防御力+); current Chef texts say the ability's per-second increase values are multiplied."
     },
     "118": {
       "name": "Permanent block count modification",
@@ -650,33 +800,33 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "note": "Verified."
     },
     "147": {
-      "name": "Unknown",
+      "name": "Ignore counterattacks",
       "verified": true,
       "hidden": true,
-      "note": "no known player-facing effect. Hidden from the UI by default."
+      "note": "Official name 反撃無効 identifies this internal attack flag. Hidden from the UI by default because carrier text does not expose it separately."
     },
     "68": {
-      "name": "Visual only",
+      "name": "Field projectile (visual)",
       "verified": true,
       "hidden": true,
       "note": "cosmetic/visual effect, no gameplay impact. Hidden from the UI by default."
     },
     "69": {
-      "name": "Visual only",
+      "name": "Field effect (visual)",
       "verified": true,
       "hidden": true,
       "note": "cosmetic/visual effect, no gameplay impact. Hidden from the UI by default."
     },
     "70": {
-      "name": "Visual only",
+      "name": "Field sound (audio)",
       "verified": true,
       "hidden": true,
       "note": "cosmetic/visual effect, no gameplay impact. Hidden from the UI by default."
     },
     "58": {
-      "name": "Cross slash",
+      "name": "Field damage",
       "verified": true,
-      "note": "Verified."
+      "note": "official influence name フィールド(ダメージ). Carriers include cross-shaped, radial, and full-range one-shot damage fields, so the former Cross slash label was too narrow."
     },
     "159": {
       "name": "Heal unhealable units",
@@ -695,9 +845,10 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "tpl": ""
     },
     "227": {
-      "name": "Unknown (NPC-only observed)",
-      "verified": false,
-      "note": "all example units observed so far are NPC (non-playable-summon) units -- 'investigate further later', not yet confirmed."
+      "name": "Skill aura effect (visual)",
+      "verified": true,
+      "hidden": true,
+      "note": "Official name スキルオーラエフェクト指定 identifies this as the skill aura's visual-effect selector. Hidden because it has no separate gameplay effect."
     },
     "226": {
       "name": "Scholar debuff multiplier",
@@ -723,19 +874,19 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "tpl": ""
     },
     "72": {
-      "name": "Multi-hit chance",
+      "name": "Multihit proc chance",
       "verified": true,
-      "note": "mul3 is a multiplier of the base chance, add is a flat +percent added on top. Rendered in skillRowValue since either field can be absent and mul3=100 is a no-op."
+      "note": "Official マルチショット上昇(アビリティ). mul3 is a multiplier of the base chance and add is a flat percentage-point increase."
     },
     "77": {
-      "name": "Critical hit chance",
+      "name": "Critical-hit proc chance",
       "verified": true,
-      "note": "mul3 is a multiplier of the base chance, add is a flat +percent added on top. Rendered in skillRowValue since either field can be absent and mul3=100 is a no-op."
+      "note": "Official クリティカル上昇(アビリティ). mul3 is a multiplier of the base chance and add is a flat percentage-point increase."
     },
     "79": {
-      "name": "Multi-target chance",
+      "name": "Special-attack proc chance",
       "verified": true,
-      "note": "mul3 is a multiplier of the base chance, add is a flat +percent added on top. Rendered in skillRowValue since either field can be absent and mul3=100 is a no-op."
+      "note": "Official 特攻発動率上昇(アビリティ). Applies to abilities with random/special attack effects; mul3 is multiplicative and add is flat."
     },
     "91": {
       "name": "Cannot be healed",
@@ -744,9 +895,9 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "tpl": ""
     },
     "155": {
-      "name": "Set lifelink value",
+      "name": "Lifelinker damage-share value",
       "verified": true,
-      "note": "sets the value used by ability influence 130 (Lifelinker damage share). add is the value.",
+      "note": "Official ライフセーバー[上昇]; current Lifelinker carrier text and ability influence 130 confirm that add sets the damage-share percentage.",
       "tpl": "{add}%"
     },
     "236": {
@@ -755,10 +906,10 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "note": "pairs with ABILITY_INFLUENCE type 221."
     },
     "23": {
-      "name": "Projectile change (meteor)",
+      "name": "Projectile delay",
       "verified": true,
       "hidden": true,
-      "note": "visual projectile swap, no known gameplay impact. Hidden from the UI by default."
+      "note": "Official influence name MSディレイ. Official skill 21 is the separate projectile-change mechanic; this row stores delay-like values and remains hidden by default."
     },
     "138": {
       "name": "Class/ability DEF debuff multiplier",
@@ -766,58 +917,63 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "note": "same mechanic as 137 (Class/ability ATK debuff multiplier) but for DEF."
     },
     "233": {
-      "name": "Healing amplification",
+      "name": "Healing received increase",
       "verified": true,
-      "note": "Verified."
+      "note": "Same effect category as ability influence 220; they do not stack with each other. mul3 is the resulting percent (130 = 1.3x healing received)."
+    },
+    "234": {
+      "name": "Further healing received increase",
+      "verified": true,
+      "note": "A separate further modifier from skill influence 233 / ability influence 220. mul3 is the multiplier x100 -- 帝国聖盾騎士クリッペ's アダマントシールド carries mul3=130 for its 自身が受ける回復量をさらに1.3倍上昇. target/expression picks who it applies to (self via IsOwnerUnit, nearby allies, or a genus)."
     },
     "252": {
-      "name": "Bard gradual-increase tick-time decrease (HP)",
+      "name": "Bard HP support interval modifier",
       "verified": true,
-      "note": "252=HP 253=ATK; 254 DEF / 255 MR assumed per the 4-slot HP/ATK/DEF/MR order rule. add is the tick-time change in frames (Prucia's add=-60); mul3 on this row is 100 (neutral/Power-filled), not the value -- was rendering as a meaningless x1.00 via the generic mul3 fallback.",
+      "note": "Official 歌支援インターバル変動(最大HP); Prucia's text confirms faster gradual HP-support growth. add is the interval change in frames.",
       "tpl": "{addf}"
     },
     "253": {
-      "name": "Bard gradual-increase tick-time decrease (ATK)",
+      "name": "Bard ATK support interval modifier",
       "verified": true,
-      "note": "252=HP 253=ATK; 254 DEF / 255 MR assumed per the 4-slot HP/ATK/DEF/MR order rule. add is the tick-time change in frames (Amie's add=-60); mul3 on this row is 100 (neutral/Power-filled), not the value -- was rendering as a meaningless x1.00 via the generic mul3 fallback.",
+      "note": "Official 歌支援インターバル変動(攻撃力); current Bard texts confirm faster gradual ATK-support growth. add is the interval change in frames.",
       "tpl": "{addf}"
     },
     "254": {
-      "name": "Bard gradual-increase tick-time decrease (DEF)",
+      "name": "Bard DEF support interval modifier",
       "verified": true,
-      "note": "252=HP 253=ATK; 254 DEF / 255 MR assumed per the 4-slot HP/ATK/DEF/MR order rule. add is the tick-time change in frames (Amie's add=-60); mul3 on this row is 100 (neutral/Power-filled), not the value -- was rendering as a meaningless x1.00 via the generic mul3 fallback.",
+      "note": "Official 歌支援インターバル変動(防御力); current Bard texts confirm faster gradual DEF-support growth. add is the interval change in frames.",
       "tpl": "{addf}"
     },
     "255": {
-      "name": "Bard gradual-increase tick-time decrease (MR)",
+      "name": "Bard MR support interval modifier",
       "verified": true,
-      "note": "252=HP 253=ATK; 254 DEF / 255 MR assumed per the 4-slot HP/ATK/DEF/MR order rule. add is the tick-time change in frames (Tristella (Black)'s add=-120); mul3 on this row is 100 (neutral/Power-filled), not the value -- was rendering as a meaningless x1.00 via the generic mul3 fallback.",
+      "note": "Official 歌支援インターバル変動(魔法耐性); current Bard texts confirm faster gradual MR-support growth. add is the interval change in frames.",
       "tpl": "{addf}"
     },
     "248": {
       "name": "Bard gradual-increase max-cap boost (HP)",
       "verified": true,
-      "note": "248=HP 249=ATK; 250 DEF / 251 MR assumed per the 4-slot HP/ATK/DEF/MR order rule."
+      "note": "Official 歌支援上限値アップ(最大HP); Prucia's text confirms the Bard HP support cap multiplier."
     },
     "249": {
       "name": "Bard gradual-increase max-cap boost (ATK)",
       "verified": true,
-      "note": "248=HP 249=ATK; 250 DEF / 251 MR assumed per the 4-slot HP/ATK/DEF/MR order rule."
+      "note": "Official 歌支援上限値アップ(攻撃力); current Bard texts confirm the ATK support cap multiplier."
     },
     "250": {
       "name": "Bard gradual-increase max-cap boost (DEF)",
       "verified": true,
-      "note": "248=HP 249=ATK; 250 DEF / 251 MR assumed per the 4-slot HP/ATK/DEF/MR order rule."
+      "note": "Official 歌支援上限値アップ(防御力); current Bard texts confirm the DEF support cap multiplier."
     },
     "251": {
       "name": "Bard gradual-increase max-cap boost (MR)",
       "verified": true,
-      "note": "248=HP 249=ATK; 250 DEF / 251 MR assumed per the 4-slot HP/ATK/DEF/MR order rule."
+      "note": "Official 歌支援上限値アップ(魔法耐性); current Tristella/Uscias text confirms the MR support cap multiplier."
     },
     "165": {
-      "name": "Unknown",
-      "verified": false,
-      "note": "no meaning given yet, flagged unknown."
+      "name": "Permanent projectile change",
+      "verified": true,
+      "note": "Official チェンジミサイル(永続). Faust and Hu Ximei texts confirm the projectile/attack form persists until the next skill."
     },
     "193": {
       "name": "Detonate token",
@@ -871,7 +1027,7 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "note": "a charge-up skill. The ExtendProperty key 切り替わりスキルリスト (\"switch-to skill id\") holds the charged-tier skill id -- aigis.unit.UnitDB.skill() now follows this the same way it follows type-49 swaps, appending the charged stage with via='charge'. Verified example: 3748 聖剣ガラティン charges into 3749 聖剣ガラティン【天頂】, which swaps back to 3748 via its own type-49 row."
     },
     "268": {
-      "name": "Stop Attacking",
+      "name": "Stop attacking",
       "verified": true,
       "note": "the unit stops performing normal attacks for the skill's duration, replaced by whatever the skill's other rows describe instead (e.g. Rina's pure self-ATK-buff-no-attacking, or a stationary damage field powered by a fired missile as seen with Tram (Triumphal Black)'s ability influence 210). add is a constant 4 flag across every carrier observed -- no 'value 4' text needed.",
       "tpl": ""
@@ -899,38 +1055,39 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "tpl": "{add} HP"
     },
     "148": {
-      "name": "Reset token skill cooldown",
+      "name": "Reset target skill duration",
       "verified": true,
-      "note": "Verified. Only 1-2 example units observed -- hard to verify further. add is a constant 1 flag across every carrier  -- no 'value 1' text needed.",
+      "note": "Official スキル再起 and both current carrier texts say the targeted token's skill effect duration is reset. add=1 is a flag and needs no value text.",
       "tpl": ""
     },
     "257": {
-      "name": "Modify ATK share from token",
+      "name": "Increase ATK shared to parent unit",
       "verified": true,
-      "note": "part of a 257/258 ATK/DEF token-share pair. Only 2 example units observed. add is the share change (Shinno Akugorou (Black)'s add=27); mul3 on this row is 100 (neutral/Power-filled), not the value -- was rendering as a meaningless x1.00 via the generic mul3 fallback.",
+      "note": "Official 親ユニットにステータス加算(攻撃力+); Shinno Akugorou's text confirms increased ATK contribution from the overlaid token to its parent/owner. add is the share change.",
       "tpl": "+{add}%"
     },
     "258": {
-      "name": "Modify DEF share from token",
+      "name": "Increase DEF shared to parent unit",
       "verified": true,
-      "note": "part of a 257/258 ATK/DEF token-share pair. Only 2 example units observed. add is the share change (Shinno Akugorou (Black)'s add=27); mul3 on this row is 100 (neutral/Power-filled), not the value -- was rendering as a meaningless x1.00 via the generic mul3 fallback.",
+      "note": "Official 親ユニットにステータス加算(防御力+); Shinno Akugorou's text confirms increased DEF contribution from the overlaid token to its parent/owner. add is the share change.",
       "tpl": "+{add}%"
     },
     "263": {
-      "name": "Multi-hit delay",
+      "name": "Gradual UP consumption",
       "verified": true,
-      "note": "add is a constant 1 flag across every carrier -- no 'value 1' text needed; the actual interval is on the row's インターバル extend key, shown separately.",
+      "note": "Official 徐々にコスト減少. Both current Tram carriers explicitly consume deployment cost gradually while active; インターバル=30 is the consumption tick interval.",
       "tpl": ""
     },
     "264": {
-      "name": "Multi-hit damage multiplier",
+      "name": "ATK buff during gradual UP consumption",
       "verified": true,
-      "note": "Verified. Only 2 example units observed."
+      "note": "Official 攻撃アップ(徐々にコスト減少用). The same Tram skills carry ordinary ATK multipliers (mul3=130/210) alongside skill influence 263."
     },
     "166": {
-      "name": "Reset permanent change (unconfirmed)",
-      "verified": false,
-      "note": "hypothesis only, 'can't test much' -- only 1 unit (#873, Hu Ximei) has this id, left unverified. Her add=2 lines up with her text's '2連射' (2-round burst), which doesn't obviously match this hypothesis -- may actually be a multi-hit count. Needs another carrier to resolve."
+      "name": "Permanent attack-count change",
+      "verified": true,
+      "note": "Official 複数回攻撃(永続). Hu Ximei's add=2 row matches her persistent 2-shot text; the zero row resets it on the alternate skill.",
+      "tpl": "to {add}"
     },
     "206": {
       "name": "Cost-consumption-based MR buff",
@@ -939,20 +1096,441 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "tpl": "+{mul3pct}"
     },
     "150": {
-      "name": "Reset block count (unconfirmed)",
-      "verified": false,
-      "note": "hypothesis only, flagged with '?'. Only 1 example unit observed."
+      "name": "Restore flight state",
+      "verified": true,
+      "note": "Official 飛行状態フラグ and Isabelle's current text say she becomes able to fly again."
     },
     "101": {
-      "name": "Unknown",
-      "verified": false,
-      "note": "no meaning given yet. Only 1 example unit observed."
+      "name": "Revert awakened skill",
+      "verified": true,
+      "note": "Official name スキル覚醒解除 and Rakshasa's current skill text say the awakened skill changes back to 鬼神の刻."
     },
     "102": {
-      "name": "Killing enemy restores token",
+      "name": "Restore token on enemy kill",
       "verified": true,
-      "note": "confirmed via Metus's text '敵を倒すとトークン所持数回復' (killing an enemy restores token count), matching this row exactly. add is a constant 1 flag across the only carrier observed so far -- no 'value 1' text needed.",
+      "note": "Official name トークン回復 and Metus's current text identify killing an enemy as the trigger for restoring token stock. add is a constant 1 flag, so no value text is needed.",
       "tpl": ""
+    },
+    "109": {
+      "name": "Execute command",
+      "verified": false,
+      "note": "Official name コマンド実行; no current carrier text is available to establish the command semantics."
+    },
+    "111": {
+      "name": "Convert skill-duration extension to reduction",
+      "verified": false,
+      "note": "Conservative translation of official name スキル時間延長を短縮に変換; no current carriers."
+    },
+    "112": {
+      "name": "Skill-duration reduction",
+      "verified": false,
+      "note": "Official name スキル時間短縮; no current carriers."
+    },
+    "113": {
+      "name": "Special field",
+      "verified": false,
+      "note": "Official name 特殊フィールド; no current carriers."
+    },
+    "114": {
+      "name": "Utsusemi",
+      "verified": false,
+      "note": "Official name 空蝉の術; no current carrier text is available to establish the exact mechanic."
+    },
+    "117": {
+      "name": "Base block-count modifier",
+      "verified": false,
+      "note": "Official name 基礎ブロック数変化; no current carriers."
+    },
+    "119": {
+      "name": "Revert base block-count change",
+      "verified": false,
+      "note": "Official name 基礎ブロック数変化解除; no current carriers."
+    },
+    "123": {
+      "name": "Status-ailment mitigation",
+      "verified": false,
+      "note": "Official name 状態異常軽減; no current carriers."
+    },
+    "126": {
+      "name": "Substitution effect",
+      "verified": false,
+      "note": "Official name 身代わり効果; no current carriers."
+    },
+    "127": {
+      "name": "HP-increase effect",
+      "verified": false,
+      "note": "Official name HP上昇効果; no current carriers."
+    },
+    "128": {
+      "name": "ATK contribution",
+      "verified": false,
+      "note": "Conservative translation of official name 攻撃力(寄付); no current carriers."
+    },
+    "129": {
+      "name": "ATK contribution +",
+      "verified": false,
+      "note": "Conservative translation of official name 攻撃力(寄付+); no current carriers."
+    },
+    "130": {
+      "name": "DEF contribution",
+      "verified": false,
+      "note": "Conservative translation of official name 防御力(寄付); no current carriers."
+    },
+    "131": {
+      "name": "DEF contribution +",
+      "verified": false,
+      "note": "Conservative translation of official name 防御力(寄付+); no current carriers."
+    },
+    "132": {
+      "name": "Doom",
+      "verified": false,
+      "note": "Official name 死の宣告; no current carriers."
+    },
+    "135": {
+      "name": "Curse (ATK)",
+      "verified": false,
+      "note": "Official name 呪術(攻撃); no current carriers."
+    },
+    "136": {
+      "name": "Curse (DEF)",
+      "verified": false,
+      "note": "Official name 呪術(防御); no current carriers."
+    },
+    "143": {
+      "name": "Support (ATK)",
+      "verified": false,
+      "note": "Official name 応援(攻撃); no current carriers."
+    },
+    "144": {
+      "name": "Support (DEF)",
+      "verified": false,
+      "note": "Official name 応援(防御); no current carriers."
+    },
+    "149": {
+      "name": "Disable skill restart",
+      "verified": false,
+      "note": "Official name スキル再起無効; no current carriers."
+    },
+    "154": {
+      "name": "Life Saver (base)",
+      "verified": false,
+      "note": "Official name ライフセーバー[基本]; no current carriers."
+    },
+    "157": {
+      "name": "Ability-based skill-duration extension",
+      "verified": false,
+      "note": "Official name スキル延長[アビリティ]; no current carriers."
+    },
+    "158": {
+      "name": "Ability-based skill-duration reduction",
+      "verified": false,
+      "note": "Official name スキル短縮[アビリティ]; no current carriers."
+    },
+    "164": {
+      "name": "Ignore taunt",
+      "verified": false,
+      "note": "Official name アテンションを無視する; no current carriers."
+    },
+    "168": {
+      "name": "Permanent block-count increase",
+      "verified": false,
+      "note": "Official name ブロック数アップ(永続); no current carriers."
+    },
+    "172": {
+      "name": "UP penalty",
+      "verified": false,
+      "note": "Official name コストペナルティ; no current carriers."
+    },
+    "174": {
+      "name": "Astrology DEF scaling",
+      "verified": false,
+      "note": "Official name 占星術(防御力); no current carriers."
+    },
+    "175": {
+      "name": "Astrology MR scaling",
+      "verified": false,
+      "note": "Official name 占星術(魔耐); no current carriers."
+    },
+    "180": {
+      "name": "Chef support (max HP)",
+      "verified": false,
+      "note": "Official name 料理支援(最大HP); no current carriers."
+    },
+    "181": {
+      "name": "Chef support (ATK)",
+      "verified": false,
+      "note": "Official name 料理支援(攻撃力); no current carriers."
+    },
+    "182": {
+      "name": "Chef support (DEF)",
+      "verified": false,
+      "note": "Official name 料理支援(防御力); no current carriers."
+    },
+    "186": {
+      "name": "Curse instant-kill threshold",
+      "verified": false,
+      "note": "Official name 呪術(即死閾値); no current carriers."
+    },
+    "188": {
+      "name": "Retreat-support marker",
+      "verified": false,
+      "hidden": true,
+      "note": "Official name 離脱支援(マーカー); no current carriers and no separate player-facing effect is established."
+    },
+    "189": {
+      "name": "Retreat support (max HP)",
+      "verified": false,
+      "note": "Official name 離脱支援(最大HP); no current carriers."
+    },
+    "190": {
+      "name": "Retreat support (ATK)",
+      "verified": false,
+      "note": "Official name 離脱支援(攻撃力); no current carriers."
+    },
+    "191": {
+      "name": "Retreat support (DEF)",
+      "verified": false,
+      "note": "Official name 離脱支援(防御力); no current carriers."
+    },
+    "192": {
+      "name": "Retreat support (MR)",
+      "verified": false,
+      "note": "Official name 離脱支援(魔法耐性); no current carriers."
+    },
+    "194": {
+      "name": "Self-destruct",
+      "verified": false,
+      "note": "Official name 自爆; no current carriers."
+    },
+    "197": {
+      "name": "Tenkai effect reduction (ATK)",
+      "verified": false,
+      "note": "Official name 天界抑止力軽減[攻撃]; no current carriers."
+    },
+    "198": {
+      "name": "Tenkai effect reduction (DEF)",
+      "verified": false,
+      "note": "Official name 天界抑止力軽減[防御]; no current carriers."
+    },
+    "199": {
+      "name": "Tenkai effect reduction (MR)",
+      "verified": false,
+      "note": "Official name 天界抑止力軽減[魔耐]; no current carriers."
+    },
+    "201": {
+      "name": "Charge: ATK",
+      "verified": false,
+      "note": "Official name チャージ：攻撃; no current carriers."
+    },
+    "202": {
+      "name": "Attack command",
+      "verified": false,
+      "note": "Official name 攻撃指示; no current carriers."
+    },
+    "207": {
+      "name": "Curse (MR)",
+      "verified": false,
+      "note": "Official name 呪術(魔耐); no current carriers."
+    },
+    "208": {
+      "name": "Inspiration (ATK)",
+      "verified": false,
+      "note": "Official name 鼓舞(攻撃); no current carriers."
+    },
+    "209": {
+      "name": "Inspiration (DEF)",
+      "verified": false,
+      "note": "Official name 鼓舞(防御); no current carriers."
+    },
+    "210": {
+      "name": "Inspiration (MR)",
+      "verified": false,
+      "note": "Official name 鼓舞(魔耐); no current carriers."
+    },
+    "211": {
+      "name": "Encouragement (ATK)",
+      "verified": false,
+      "note": "Official name 激励(攻撃); no current carriers."
+    },
+    "212": {
+      "name": "Encouragement (DEF)",
+      "verified": false,
+      "note": "Official name 激励(防御); no current carriers."
+    },
+    "213": {
+      "name": "Encouragement (MR)",
+      "verified": false,
+      "note": "Official name 激励(魔耐); no current carriers."
+    },
+    "218": {
+      "name": "Enemy physical-ATK debuff",
+      "verified": false,
+      "note": "Official name 敵の物理攻撃力を低下; no current carriers."
+    },
+    "219": {
+      "name": "Enemy magic-ATK debuff",
+      "verified": false,
+      "note": "Official name 敵の魔法攻撃力を低下; no current carriers."
+    },
+    "220": {
+      "name": "Enemy true-ATK debuff",
+      "verified": false,
+      "note": "Official name 敵の貫通攻撃力を低下; no current carriers."
+    },
+    "221": {
+      "name": "Preserve forced-retreat delay",
+      "verified": false,
+      "note": "Official name 強制撤退遅延時間保持; no current carriers."
+    },
+    "222": {
+      "name": "Preserve forced-retreat UP refund",
+      "verified": false,
+      "note": "Official name 強制撤退還元コスト保持; no current carriers."
+    },
+    "223": {
+      "name": "Goddess's blessing (ATK)",
+      "verified": false,
+      "note": "Official name 女神の加護[攻撃]; no current carriers."
+    },
+    "224": {
+      "name": "Goddess's blessing (DEF)",
+      "verified": false,
+      "note": "Official name 女神の加護[防御]; no current carriers."
+    },
+    "225": {
+      "name": "Goddess's blessing (MR)",
+      "verified": false,
+      "note": "Official name 女神の加護[魔耐]; no current carriers."
+    },
+    "230": {
+      "name": "Gimmick MR buff",
+      "verified": false,
+      "note": "Official name 魔法耐性アップ(ギミック); no current carriers."
+    },
+    "231": {
+      "name": "Skill cooldown reduction on enemy kill",
+      "verified": false,
+      "note": "Official name 敵撃破でスキル待ち時間短縮; no current carriers."
+    },
+    "232": {
+      "name": "Skill-duration extension on enemy kill",
+      "verified": false,
+      "note": "Official name 敵撃破でスキル使用時間延長; no current carriers."
+    },
+    "237": {
+      "name": "In-range status-ailment mitigation",
+      "verified": false,
+      "note": "Official name 状態異常軽減(射程内); no current carriers."
+    },
+    "238": {
+      "name": "Enemy attack-delay increase",
+      "verified": false,
+      "note": "Official name 敵攻撃待ち時間増加; no current carriers."
+    },
+    "239": {
+      "name": "Bard support (max HP)",
+      "verified": false,
+      "note": "Official name 歌支援(最大HP); no current carriers."
+    },
+    "240": {
+      "name": "Bard support (ATK)",
+      "verified": false,
+      "note": "Official name 歌支援(攻撃力); no current carriers."
+    },
+    "241": {
+      "name": "Bard support (DEF)",
+      "verified": false,
+      "note": "Official name 歌支援(防御力); no current carriers."
+    },
+    "242": {
+      "name": "Bard support (MR)",
+      "verified": false,
+      "note": "Official name 歌支援(魔法耐性); no current carriers."
+    },
+    "243": {
+      "name": "Bard support multiplier (max HP)",
+      "verified": false,
+      "note": "Official name 歌支援(最大HP+); no current carriers."
+    },
+    "244": {
+      "name": "Bard support multiplier (ATK)",
+      "verified": false,
+      "note": "Official name 歌支援(攻撃力+); no current carriers."
+    },
+    "245": {
+      "name": "Bard support multiplier (DEF)",
+      "verified": false,
+      "note": "Official name 歌支援(防御力+); no current carriers."
+    },
+    "246": {
+      "name": "Bard support multiplier (MR)",
+      "verified": false,
+      "note": "Official name 歌支援(魔法耐性+); no current carriers."
+    },
+    "256": {
+      "name": "Add max HP to parent unit",
+      "verified": false,
+      "note": "Official name 親ユニットにステータス加算(最大HP+); no current carriers."
+    },
+    "259": {
+      "name": "Add MR to parent unit",
+      "verified": false,
+      "note": "Official name 親ユニットにステータス加算(魔法耐性+); no current carriers."
+    },
+    "260": {
+      "name": "Distribute own damage",
+      "verified": false,
+      "note": "Official name 自身のダメージを分散; no current carriers."
+    },
+    "261": {
+      "name": "Swap ATK and DEF",
+      "verified": false,
+      "note": "Official name 攻防力入れ替え; no current carriers."
+    },
+    "265": {
+      "name": "DEF buff during gradual UP consumption",
+      "verified": false,
+      "note": "Official name 防御アップ(徐々にコスト減少用); no current carriers."
+    },
+    "266": {
+      "name": "MR buff during gradual UP consumption",
+      "verified": false,
+      "note": "Official name 魔法耐性アップ(徐々にコスト減少用); no current carriers."
+    },
+    "269": {
+      "name": "Weather-interference ATK buff (allies in range)",
+      "verified": false,
+      "note": "Official name 天候干渉(攻撃)(射程内味方); no current carriers."
+    },
+    "270": {
+      "name": "Weather-interference range buff (allies in range)",
+      "verified": false,
+      "note": "Official name 天候干渉(射程)(射程内味方); no current carriers."
+    },
+    "271": {
+      "name": "Overheal",
+      "verified": false,
+      "note": "Official name オーバーヒール; no current carriers."
+    },
+    "272": {
+      "name": "Overheal +",
+      "verified": false,
+      "note": "Official name オーバーヒール+; no current carriers."
+    },
+    "273": {
+      "name": "ATK buff for overhealed targets",
+      "verified": false,
+      "note": "Official name 攻撃アップ(オーバーヒール対象のみ); no current carriers."
+    },
+    "274": {
+      "name": "DEF buff for overhealed targets",
+      "verified": false,
+      "note": "Official name 防御アップ(オーバーヒール対象のみ); no current carriers."
+    },
+    "275": {
+      "name": "MR buff for overhealed targets",
+      "verified": false,
+      "note": "Official name 魔法耐性アップ(オーバーヒール対象のみ); no current carriers."
     }
   },
   "ability": {
@@ -1540,7 +2118,7 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
     "220": {
       "name": "Healing received increase",
       "verified": true,
-      "note": "user-tested: Healing received increase\np1 is the percent to amp to",
+      "note": "Same effect category as skill influence 233; they do not stack with each other. p1 is the resulting percent.",
       "tpl": "→ {p1}%"
     },
     "125": {
@@ -1583,7 +2161,7 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "note": "gradual ATK increase over time; default direction is while NOT attacking, but extend key 増減反転=1 inverts it to increase after each attack instead -- the direction is folded into the displayed name via abilityLabelName, not shown as a buried extend annotation. Details (interval, value increase, cap, decay on attack) are in extra params, all in percent of ATK."
     },
     "173": {
-      "name": "Magic Attack",
+      "name": "Magic attack conversion",
       "verified": true,
       "note": "similar to ability 128, applies to the stat box's attack attribute when self/inherent."
     },
@@ -1651,7 +2229,7 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "tpl": "-{p1}%"
     },
     "205": {
-      "name": "Scholar debuff",
+      "name": "Enemy ATK/DEF/MR debuff over time",
       "verified": true,
       "note": "user-tested: scholar debuff, type is in extra\np1 is initial value\np2 is gain per tick\np3 is inteval by frames\np4 is cap",
       "tpl": "{p1} initial, +{p2} / {p3f}, cap {p4}"
@@ -2630,3 +3208,254 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
     }
   }
 };
+
+// Canonical display terminology. These overrides change wording only; decoded
+// mechanics, verification state, notes, and value templates remain untouched.
+const CANONICAL_SKILL_NAMES: Record<string, string> = {
+  "2": "ATK buff (Type-A)",
+  "3": "ATK buff (Type-B, global)",
+  "4": "DEF buff (Type-A)",
+  "5": "DEF buff (Type-B, global)",
+  "8": "Damage-area modifier",
+  "9": "Physical attack evasion",
+  "10": "Ranged attack evasion",
+  "14": "Set PAD",
+  "15": "Support-effect increase",
+  "19": "MR modifier",
+  "35": "Attack restores HP (percent)",
+  "40": "Auto-revive (percent HP)",
+  "50": "Auto-use skill",
+  "53": "Ground-only area attack",
+  "57": "Counterattack when blocking (physical)",
+  "59": "Enemy MR reduction",
+  "60": "Enemy DEF reduction",
+  "64": "Restore HP based on ATK",
+  "65": "Generate UP over time",
+  "66": "Bonus damage against flying enemies",
+  "67": "Bonus damage against ground enemies",
+  "83": "Permanent HP modifier",
+  "84": "Unit cost modifier",
+  "85": "ATK modifier by rarity",
+  "86": "Lose HP on skill end (rarity-scaled)",
+  "87": "DEF modifier by rarity",
+  "89": "ATK buff (Type-C, conditional)",
+  "90": "DEF buff (Type-C, conditional)",
+  "95": "Current-HP percentage damage",
+  "100": "On-hit HP-drain multiplier",
+  "102": "Restore token on enemy kill",
+  "108": "Lose HP (percent)",
+  "115": "Attacks cannot reduce enemy HP to 0",
+  "118": "Permanent block-count modifier",
+  "133": "Force target ally to retreat",
+  "134": "Target automatically uses skill",
+  "141": "Permanent ATK modifier",
+  "142": "Permanent DEF modifier",
+  "148": "Reset target skill duration",
+  "156": "Execute skill command",
+  "159": "Restore HP to normally unhealable units",
+  "160": "Treat death as retreat",
+  "161": "Redeploy after death",
+  "170": "Permanent PAD reduction",
+  "173": "Scaling attack",
+  "176": "Scaling multihit count",
+  "177": "Scaling target count",
+  "178": "Transform into selected unit (percentage of stats)",
+  "179": "Cannot use skills automatically",
+  "196": "Deep-sea effect reduction",
+  "200": "Range buff (multiplicative)",
+  "203": "Maximum UP consumption",
+  "204": "UP-consuming ATK buff",
+  "205": "UP-consuming DEF buff",
+  "206": "UP-consumption-based MR buff",
+  "257": "Increase ATK shared to parent unit",
+  "258": "Increase DEF shared to parent unit",
+  "263": "Gradual UP consumption",
+  "264": "ATK buff during gradual UP consumption"
+};
+
+const CANONICAL_ABILITY_NAMES: Record<string, string> = {
+  "1": "ATK modifier on hit",
+  "2": "ATK modifier against dragons",
+  "3": "ATK modifier against yokai",
+  "4": "ATK modifier against undead",
+  "5": "ATK modifier against demons",
+  "6": "ATK modifier against armored enemies",
+  "11": "Enemy HP/ATK modifier",
+  "12": "HP modifier",
+  "13": "ATK modifier",
+  "14": "DEF modifier",
+  "15": "MR modifier",
+  "16": "Skill duration modifier",
+  "17": "Restore HP",
+  "20": "Physical attack evasion",
+  "23": "Assassination",
+  "25": "Targeting priority change",
+  "28": "Weather ATK modifier",
+  "29": "Weather range-reduction resistance",
+  "30": "Regeneration",
+  "32": "Regeneration modifier",
+  "34": "Status-ailment reduction",
+  "35": "Assassination modifier",
+  "36": "Attack restores HP (percent)",
+  "37": "Damage received restores ally HP",
+  "38": "Instantly kill enemies below HP threshold",
+  "45": "Skill cooldown reduction",
+  "46": "ATK modifier against flying enemies",
+  "49": "DEF bonus at low HP",
+  "55": "Token count modifier",
+  "62": "Initial skill timer modifier",
+  "64": "Deprecated enemy-type filter",
+  "65": "Cannot be healed",
+  "70": "Sortie/deployment ATK buff",
+  "71": "Sortie/deployment DEF buff",
+  "73": "Makai effect reduction",
+  "74": "Makai effect reduction",
+  "75": "Makai effect reduction",
+  "76": "MR modifier (new)",
+  "77": "Ally regeneration",
+  "82": "Sortie HP buff",
+  "83": "Conditional ATK buff (invisible)",
+  "84": "Conditional DEF buff (invisible)",
+  "85": "Self damage reduction",
+  "87": "Ally HP buff",
+  "91": "Reduce PAD",
+  "97": "First unit does not count toward deployment limit",
+  "99": "Skill EXP from synthesis",
+  "104": "Cost-reduction EXP from synthesis",
+  "105": "Possession EXP from synthesis",
+  "107": "Weather effect resistance",
+  "110": "ATK modifier per unit",
+  "111": "DEF modifier per unit",
+  "114": "Makai adaptation (MR)",
+  "115": "Dancer ATK bonus",
+  "116": "Dancer DEF bonus",
+  "118": "Self skill cooldown reduction",
+  "124": "Allied ranged attacks prioritize blocked enemies",
+  "127": "Block count",
+  "128": "Magic attack",
+  "129": "Zhenren damage redirection",
+  "133": "Deployment-spot duration",
+  "134": "Deployment-spot HP buff",
+  "135": "Deployment-spot ATK buff",
+  "136": "Deployment-spot DEF buff",
+  "137": "Deployment-spot MR buff (flat)",
+  "145": "Can be placed anywhere (outside deployment spots)",
+  "148": "One unit per team",
+  "150": "Chef-type flat HP buff",
+  "151": "Chef-type flat ATK buff",
+  "152": "Chef-type flat DEF buff",
+  "154": "Lukifer death-buff marker",
+  "155": "Lukifer death HP buff",
+  "156": "Lukifer death ATK buff",
+  "157": "Lukifer death DEF buff",
+  "158": "Lukifer death MR buff (flat)",
+  "159": "Permanent-stat-gain marker",
+  "160": "Permanent HP gain on condition",
+  "161": "Permanent ATK gain on condition",
+  "162": "Permanent DEF gain on condition",
+  "163": "Permanent MR gain on condition",
+  "164": "Death-count-based HP/ATK/DEF buff",
+  "165": "Death-count-based ATK buff",
+  "166": "Death-count-based DEF buff",
+  "167": "Death-count-based MR buff",
+  "169": "Generate UP on skill activation",
+  "170": "Gradual UP increase while skill is active",
+  "171": "Conditional healing output increase",
+  "172": "Restore token HP on skill activation",
+  "174": "Healing output increase",
+  "176": "Deep-sea effect reduction",
+  "177": "Deep-sea ATK modifier",
+  "178": "Deep-sea DEF modifier",
+  "191": "Gradual ATK increase while not attacking",
+  "192": "Allied ranged attacks prioritize blocked enemies",
+  "194": "Conqueror-like flat ATK buff",
+  "195": "Conqueror-like flat DEF buff",
+  "196": "Conqueror-type MR buff (flat)",
+  "197": "Conqueror-type ATK buff",
+  "198": "Conqueror-type DEF buff",
+  "199": "Conqueror-type MR buff (percent)",
+  "200": "Grant barrier",
+  "206": "Deploy alternative unit",
+  "207": "Placement HP modifier",
+  "210": "Alternate attack attribute between hits",
+  "211": "Conditional skill cooldown reduction",
+  "214": "Synthesis EXP multiplier",
+  "215": "Additional team restriction",
+  "217": "Grant barrier on skill activation",
+  "218": "Grant barrier (flat)",
+  "219": "Deployment-spot unit",
+  "221": "Enemy damage taken increase",
+  "223": "Sortie/deployment ATK buff (deploy invoke)",
+  "224": "Sortie/deployment DEF buff (deploy invoke)",
+  "236": "Mech unit (deploy unit to pilot)",
+  "240": "Set PAD",
+  "260": "Conditional range buff",
+  "263": "Percentage UP cost reduction",
+  "265": "Block-based HP buff",
+  "266": "Block-based ATK buff",
+  "267": "Block-based DEF buff",
+  "268": "Block-based MR buff (percent)",
+  "270": "Chronosia token PAD reduction",
+  "274": "Taunt ranged attacks",
+  "276": "Status-ailment reduction (in range)",
+  "277": "Grant regeneration",
+  "284": "HP increase on dodge",
+  "285": "ATK increase on dodge",
+  "287": "MR increase on dodge (flat)",
+  "290": "Restore token HP based on damage dealt",
+  "294": "HP-lost-based ATK buff",
+  "295": "HP-lost-based DEF buff",
+  "296": "HP-lost-based MR buff (flat)",
+  "297": "Grant life steal",
+  "298": "Automatically deploy token",
+  "302": "Bard PAD reduction",
+  "303": "Bard-like PAD increase",
+  "312": "Catalyst skill",
+  "317": "Move main unit's range circle",
+  "326": "Distribute damage to allies in range",
+  "335": "Current-UP-based ATK buff",
+  "336": "Current-UP-based DEF buff",
+  "339": "Current-UP-based range buff (flat)",
+  "341": "Weather range modifier (allies in range)",
+  "342": "Base life count cannot decrease",
+  "343": "Zero initial skill timer",
+  "0": "No effect",
+  "42": "Spinning slash",
+  "51": "Rogue salvage / redeploy",
+  "56": "Spinning slash (ground area)",
+  "66": "Redeploy after withdrawal",
+  "98": "Death sentence / delayed revival",
+  "93": "ATK donation modifier",
+  "94": "ATK donation modifier (+)",
+  "95": "DEF donation modifier",
+  "96": "DEF donation modifier (+)",
+  "117": "Nullify counterattacks",
+  "123": "Nullify evasion",
+  "131": "Debuff",
+  "173": "Magic attack conversion",
+  "187": "Conditional regeneration",
+  "202": "Deployment-spot range buff",
+  "205": "Enemy ATK/DEF/MR debuff over time",
+  "313": "Share attached unit HP to main unit",
+  "314": "Share attached unit ATK to main unit",
+  "315": "Share attached unit DEF to main unit",
+  "316": "Share attached unit MR to main unit",
+  "340": "Weather ATK modifier (allies in range)",
+  "344": "Overheal",
+  "345": "Overheal-target ATK modifier",
+  "346": "Overheal-target DEF modifier",
+  "347": "Overheal-target MR modifier"
+};
+
+for (const [id, name] of Object.entries(CANONICAL_SKILL_NAMES)) {
+  const label = INFLUENCE_LABELS.skill[id];
+  if (label) label.name = name;
+}
+for (const [id, name] of Object.entries(CANONICAL_ABILITY_NAMES)) {
+  const label = INFLUENCE_LABELS.ability[id] ?? (INFLUENCE_LABELS.ability[id] = {
+    name,
+    verified: false,
+    note: "official recovered name; no current carrier evidence."
+  });
+  label.name = name;
+}

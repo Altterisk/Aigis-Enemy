@@ -362,6 +362,17 @@ export interface AbilityInfluence {
   extend?: InfluenceExtend;
 }
 
+export type InfluenceSelectionRule =
+  | "highest_value"
+  | "highest_duration"
+  | "forced_priority"
+  | "additive"
+  | "additive_then_sortie_multiplicative"
+  | "highest_within_stack_id"
+  | "shared_healing_slot"
+  | "new_instance"
+  | "replaces_existing";
+
 export interface SkillStage {
   id: number;
   name?: string;
@@ -379,6 +390,9 @@ export interface SkillStage {
   cooldown?: number;
   level_max?: number;
   influences?: SkillInfluence[];
+  // Raw group-scoped Type_ChangeFunction, stored once rather than repeated
+  // on every influence row.
+  group_change_function?: number;
   // from influence type 122 "Add ability config" rows -- the skill also
   // grants these (different id space, kept separate from `influences`).
   linked_ability_influences?: AbilityInfluence[];
@@ -569,6 +583,9 @@ export interface BuffRow {
   // their non-stacking ID (1 = normal Bard, 2 = Bard-like token).
   // Flat aura abilities 194-196 likewise use Param 4 as their stack ID.
   grp?: string;
+  // Engine comparison key when it is not the displayed effect value. For
+  // on-hit debuffs this is duration in frames.
+  selection_priority?: number;
 }
 
 // influence_type id -> label (skill/ability namespaces are separate).

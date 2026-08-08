@@ -15,6 +15,13 @@ test("unit detail renders stats and gallery sections", async ({ page }) => {
   await expect(page.locator(".unit-stat-table tbody tr").first()).toBeVisible();
 });
 
+test("Eterna SAW exposes its forced healing-priority rule", async ({ page }) => {
+  await page.goto("/#/units/2864");
+  const rule = page.locator(".selection-rule--forced_priority").first();
+  await expect(rule).toContainText("forced priority");
+  await expect(rule).toContainText("group mode 23");
+});
+
 // regression for the hand-translated names that had no wiki page
 const HAND_NAMED: [number, string][] = [
   [2850, "Xuhua (Swimsuit)"],

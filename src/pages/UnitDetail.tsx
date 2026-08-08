@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useUnitDetail, useUnitInfluenceLabels, useLocalisation, useTexts, usePrinceTitles, useMissiles, useAbilityConfigs, useUnitSpeech, unitImageUrl, unitAnimUrl } from "../data";
 import { UnitImage, missileText, fillLabel, HumanText, fmtFrames, ColorCodedText } from "../components";
+import { influenceSelectionRule } from "../influenceLabels";
 import type {
   Unit,
   UnitClass,
@@ -11,6 +12,7 @@ import type {
   SkillInfluence,
   AbilityInfluence,
   UnitInfluenceLabel,
+  InfluenceSelectionRule,
   InfluenceExtend,
   SkillStage,
   Missile,
@@ -18,6 +20,36 @@ import type {
   UnitSpeech,
   SpeechScene,
 } from "../types";
+
+const SELECTION_RULE_TEXT: Record<InfluenceSelectionRule, string> = {
+  highest_value: "highest value applies",
+  highest_duration: "longest duration applies; value does not decide the winner",
+  forced_priority: "forced priority: replaces the existing further-healing effect even when lower",
+  additive: "stacks additively with the same buff family",
+  additive_then_sortie_multiplicative: "adds with this buff family, then multiplies with sortie HP buffs",
+  highest_within_stack_id: "highest value applies within the same stack ID",
+  shared_healing_slot: "shares one healing-received slot with skill 233 / ability 220; they do not stack",
+  new_instance: "creates a new instance instead of replacing an existing one",
+  replaces_existing: "replaces an existing instance from this effect family",
+};
+
+function SelectionRule({
+  rule, groupChangeFunction,
+}: {
+  rule?: InfluenceSelectionRule; groupChangeFunction?: number;
+}) {
+  if (!rule) return null;
+  const raw = rule === "forced_priority" && groupChangeFunction != null
+    ? ` Type_ChangeFunction ${groupChangeFunction} selects forced-priority mode ${groupChangeFunction & 3}.`
+    : "";
+  return (
+    <span className={`selection-rule selection-rule--${rule}`} title={`${SELECTION_RULE_TEXT[rule]}.${raw}`}>
+      {SELECTION_RULE_TEXT[rule]}
+      {rule === "forced_priority" && groupChangeFunction != null
+        ? ` (group mode ${groupChangeFunction})` : ""}
+    </span>
+  );
+}
 
 // published missiles.json lookup, provided once at the page root so deeply
 // nested rows (ExtendProps, CommandFacts -- both several components removed
@@ -506,16 +538,17 @@ function skillRowValue(inf: SkillInfluence, label?: UnitInfluenceLabel): string 
     if (inf.add) parts.push(`+${inf.add}%`);
     return parts.length ? parts.join(" ") : null;
   }
-  // id 25 (Skill Duration Increase): expressed EITHER way per row -- mul3
-  // set = duration to mul3% of normal; mul3 absent, add set = duration +
-  // add seconds directly (not frames).
+  // id 25 (Skill duration increase): a non-neutral mul3 sets duration to a
+  // percentage of normal. Flat-second rows retain a neutral mul3=100 and put
+  // the actual increase in add, so add must take precedence in that shape.
   if (inf.influence_type === 25) {
-    if (inf.mul3 != null) {
+    if (inf.add) return `+${inf.add}s`;
+    if (inf.mul3 != null && inf.mul3 !== 100) {
       const capped = inf.mul3_cap != null && inf.mul3_cap !== inf.mul3
         ? `${inf.mul3}% → ${inf.mul3_cap}% at max level` : `${inf.mul3}%`;
       return `to ${capped} of normal`;
     }
-    if (inf.add != null) return `+${inf.add}s`;
+    return null;
   }
   // id 56 (Time stop): mul is the scope, not a value -- 1000 = all enemies
   // (a global sentinel), -1 = enemies within range only. Prefix the
@@ -573,8 +606,11 @@ function skillRowValue(inf: SkillInfluence, label?: UnitInfluenceLabel): string 
 }
 
 function SkillInfluenceRow({
-  inf, i, label, siblings,
-}: { inf: SkillInfluence; i: number; label?: UnitInfluenceLabel; siblings?: SkillInfluence[] }) {
+  inf, i, label, siblings, groupChangeFunction,
+}: {
+  inf: SkillInfluence; i: number; label?: UnitInfluenceLabel;
+  siblings?: SkillInfluence[]; groupChangeFunction?: number;
+}) {
   if (label?.hidden) return null;
   const parts = [
     `type ${inf.influence_type}`,
@@ -601,6 +637,10 @@ function SkillInfluenceRow({
       <code>{parts.join(" · ")}</code>
       <InfluenceLabel label={label} nameOverride={nameOverride} />
       {value && <span className="meaning"> {value}</span>}
+      <SelectionRule
+        rule={influenceSelectionRule("skill", inf.influence_type, groupChangeFunction)}
+        groupChangeFunction={groupChangeFunction}
+      />
       {ts && ts.per_sec != null && (
         <span className="meaning">
           {" "}{ts.direction && ts.direction < 0 ? "-" : "+"}
@@ -799,6 +839,7 @@ function AbilityInfluenceRow({
         </code>
         <InfluenceLabel label={label} nameOverride={abilityLabelName(inf)} />
         {filled && <span className="meaning"> {filled}</span>}
+        <SelectionRule rule={influenceSelectionRule("ability", inf.influence_type, undefined, inf.params)} />
       </span>
       {rate && <span className="dot-calc"> {rate}</span>}
       {inf.missiles && Object.entries(inf.missiles).map(([mid, m]) => (
@@ -1049,6 +1090,7 @@ function SkillStageRow({
                   inf={inf} i={j} key={j}
                   label={inf.influence_type != null ? labels[String(inf.influence_type)] : undefined}
                   siblings={s.influences}
+                  groupChangeFunction={s.group_change_function}
                 />
               ))}
             </ul>

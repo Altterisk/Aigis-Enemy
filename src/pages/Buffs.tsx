@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { loadJSONFile, useUnitInfluenceLabels, useLocalisation } from "../data";
 import { HumanText, fmtFrames } from "../components";
-import type { BuffRow, UnitInfluenceLabel } from "../types";
+import type { BuffRow, InfluenceSelectionRule, UnitInfluenceLabel } from "../types";
+import { influenceSelectionRule } from "../influenceLabels";
 
 const STATS = [
   { k: "ATK", label: "ATK" },
@@ -38,6 +39,17 @@ const EFFECTS = [
 type StatKey = (typeof STATS)[number]["k"] | (typeof EFFECTS)[number]["k"];
 
 const GROUP_PREVIEW = 10; // rows shown per type before "show all"
+
+const buffSelectionRule = (r: BuffRow): InfluenceSelectionRule | undefined =>
+  r.ns === "special" ? undefined : influenceSelectionRule(r.ns, r.t);
+
+const RULE_TEXT: Partial<Record<InfluenceSelectionRule, string>> = {
+  highest_value: "Highest value applies; these rows do not stack within the group.",
+  highest_duration: "Longest duration takes priority; effect value does not decide the winner.",
+  additive: "Rows in this group stack additively.",
+  additive_then_sortie_multiplicative: "These add with each other, then multiply with sortie HP buffs.",
+  highest_within_stack_id: "Only the highest value within the same stack ID applies.",
+};
 
 // skill mul3 values are normally "percent of base" TOTAL multipliers (130 =
 // x1.3) -- EXCEPT 204/205 (UP-Consuming ATK/DEF buff), whose value is a
@@ -171,14 +183,22 @@ export default function Buffs() {
         const nsK = list[0].ns;
         const t = list[0].t;
         const seen = new Set<number>();
+        // Functional groups can combine legacy/new ids (e.g. sortie ATK
+        // ability 13 + 70); take the confirmed rule from any member rather
+        // than depending on which id happened to be exported first.
+        const rule = list
+          .map(buffSelectionRule)
+          .find((candidate) => candidate != null);
         const ranked = list
-          .sort((a, b) => (isSetPad(a) ? a.v - b.v : b.v - a.v))
+          .sort((a, b) => rule === "highest_duration"
+            ? (b.selection_priority ?? 0) - (a.selection_priority ?? 0)
+            : (isSetPad(a) ? a.v - b.v : b.v - a.v))
           .filter((r) => {
             if (seen.has(r.u)) return false;
             seen.add(r.u);
             return true;
           });
-        return { k, grp, nsK, t, ranked };
+        return { k, grp, nsK, t, rule, ranked };
       })
       .sort((a, b) => b.ranked.length - a.ranked.length);
   }, [rows, stat]);
@@ -253,6 +273,9 @@ export default function Buffs() {
                   {lab && !lab.verified && <em className="unverified"> unverified</em>}
                 </span>
               </header>
+              {g.rule && RULE_TEXT[g.rule] && (
+                <p className="buff-group-rule">{RULE_TEXT[g.rule]}</p>
+              )}
               <table className="grid buff-table">
                 <thead>
                   <tr>
@@ -267,6 +290,9 @@ export default function Buffs() {
                       <td className="num buff-val" title={rawTitle(r)}>
                         <strong>{fmtValue(r)}</strong>
                         {r.mod?.length ? <span className="buff-mod">*</span> : null}
+                        {buffSelectionRule(r) === "highest_duration" && r.selection_priority != null && (
+                          <span className="buff-priority">priority: {fmtFrames(r.selection_priority)}</span>
+                        )}
                       </td>
                       <td><Link to={`/units/${r.u}`}>#{r.u} {r.n}</Link></td>
                       <td className="muted small">

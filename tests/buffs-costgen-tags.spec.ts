@@ -24,6 +24,13 @@ test("a large buff group expands and collapses", async ({ page }) => {
   await expect(more).toContainText("expand");
 });
 
+test("on-hit debuffs visibly rank by duration instead of reduction", async ({ page }) => {
+  await page.goto("/#/buffs?stat=DEF_DEBUFF");
+  const group = page.locator(".buff-group", { hasText: "Reduce enemy DEF on hit" });
+  await expect(group).toContainText("Longest duration takes priority");
+  await expect(group.locator(".buff-priority").first()).toContainText("priority:");
+});
+
 test("costgen adds a unit from the search dropdown", async ({ page }) => {
   await page.goto("/#/costgen");
   const search = page.getByPlaceholder("add unit (name / id)…");
