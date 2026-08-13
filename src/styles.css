@@ -594,6 +594,19 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   border-radius: 6px;
   background: var(--panel2);
 }
+.unit-icon-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.unit-icon-mini {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 5px;
+  background: var(--panel2);
+  flex-shrink: 0;
+}
 .unit-hero { display: flex; gap: 20px; align-items: flex-start; }
 .unit-hero-art { display: flex; flex-direction: column; gap: 8px; align-items: center; }
 .unit-art-img {

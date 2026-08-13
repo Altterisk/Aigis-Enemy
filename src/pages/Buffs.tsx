@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { loadJSONFile, useUnitInfluenceLabels, useLocalisation, useUnits } from "../data";
-import { HumanText, fmtFrames } from "../components";
+import { HumanText, UnitIconLink, fmtFrames } from "../components";
 import type { BuffRow, InfluenceSelectionRule, UnitInfluenceLabel } from "../types";
 import { influenceSelectionRule } from "../influenceLabels";
 
@@ -436,7 +436,7 @@ export default function Buffs() {
                           <span className="buff-priority">priority: {fmtFrames(r.selection_priority)}</span>
                         )}
                       </td>
-                      <td><Link to={`/units/${r.u}`}>#{r.u} {r.n}</Link></td>
+                      <td><UnitIconLink id={r.u} name={r.n} /></td>
                       <td className="muted small">
                         {typeof r.tgt === "string" ? <HumanText text={r.tgt} /> : (r.tgt ?? "-")}
                       </td>

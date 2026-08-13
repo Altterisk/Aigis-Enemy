@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useUnits, useLocalisation, useTexts, loadJSONFile } from "../data";
-import { ColorCodedText, UnitImage } from "../components";
+import { ColorCodedText, UnitIconLink, UnitImage } from "../components";
 import type { Localisation, TagMention, TagMentions, Texts } from "../types";
 
 const SOURCE_TYPES = [
@@ -56,7 +56,7 @@ function MentionTable({ rows, kind, loc, texts }: {
                   </>
                 ) : <span className="muted">-</span>}
               </td>
-              <td><Link to={`/units/${row.unit}`}>#{row.unit} {row.name}</Link></td>
+              <td><UnitIconLink id={row.unit} name={row.name} /></td>
             </tr>
           );
         })}

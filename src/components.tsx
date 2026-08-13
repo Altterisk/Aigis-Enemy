@@ -181,6 +181,17 @@ export function UnitImage({
   );
 }
 
+// Unit icon + link, used wherever a table row names the unit an effect
+// belongs to (buff ranking rows, tag-page skill/ability/class mentions).
+export function UnitIconLink({ id, name }: { id: number; name?: string | null }) {
+  return (
+    <Link className="unit-icon-link" to={`/units/${id}`}>
+      <UnitImage kind="icon" id={id} className="unit-icon-mini" alt="" />
+      <span>#{id} {name}</span>
+    </Link>
+  );
+}
+
 export function Sprite({
   patternId,
   size = 56,
