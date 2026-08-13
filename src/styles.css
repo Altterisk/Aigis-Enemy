@@ -930,6 +930,16 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   border-radius: 6px;
 }
 .buff-toolbar select:hover { border-color: var(--accent); }
+.buff-target-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.buff-target-filter select { min-width: 150px; }
 .stat-tab {
   padding: 5px 12px;
   border: 1px solid var(--line);
@@ -997,6 +1007,8 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 .buff-more:hover { color: var(--text); border-color: var(--accent); }
 @media (max-width: 700px) {
   .buff-groups { grid-template-columns: 1fr; }
+  .buff-target-filter { width: 100%; margin-left: 0; }
+  .buff-target-filter select { flex: 1; max-width: none; }
   .stat-tab { padding: 4px 9px; font-size: 12px; }
   .buff-table { font-size: 12px; }
   .buff-table th, .buff-table td { padding: 3px 6px; }

@@ -24,6 +24,18 @@ test("a large buff group expands and collapses", async ({ page }) => {
   await expect(more).toContainText("expand");
 });
 
+test("buff ranking filters rows by target category and keeps it in the URL", async ({ page }) => {
+  await page.goto("/#/buffs");
+  const target = page.getByLabel("Target filter");
+  await target.selectOption("faction");
+  await expect(page).toHaveURL(/target=faction/);
+  await expect(page.locator(".buff-group").first()).toBeVisible();
+  await expect(page.locator(".buff-table tbody tr").first().locator("td").nth(3)).toContainText("assigned to");
+
+  await page.reload();
+  await expect(target).toHaveValue("faction");
+});
+
 test("on-hit debuffs visibly rank by duration instead of reduction", async ({ page }) => {
   await page.goto("/#/buffs?stat=DEF_DEBUFF");
   const group = page.locator(".buff-group", { hasText: "Reduce enemy DEF on hit" });

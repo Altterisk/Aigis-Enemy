@@ -38,6 +38,32 @@ const EFFECTS = [
 ] as const;
 type StatKey = (typeof STATS)[number]["k"] | (typeof EFFECTS)[number]["k"];
 
+const TARGET_FILTERS = [
+  { k: "all", label: "All targets" },
+  { k: "range", label: "In range / nearby" },
+  { k: "faction", label: "Faction" },
+  { k: "class", label: "Class" },
+  { k: "identity", label: "Race / identity" },
+  { k: "position", label: "Melee / ranged" },
+  { k: "self", label: "Self" },
+  { k: "enemy", label: "Enemies" },
+] as const;
+type TargetFilter = (typeof TARGET_FILTERS)[number]["k"];
+
+function matchesTargetFilter(row: BuffRow, filter: TargetFilter): boolean {
+  if (filter === "all") return true;
+  const target = String(row.tgt ?? "").toLowerCase();
+  switch (filter) {
+    case "range": return /in range|nearby|within range|enemy_in_range/.test(target);
+    case "faction": return target.includes("assigned to");
+    case "class": return target.includes("[[class:") || target.includes("class type");
+    case "identity": return /identity|race|genus|element\/tag/.test(target);
+    case "position": return /melee unit|ranged unit/.test(target);
+    case "self": return /^self\b/.test(target);
+    case "enemy": return target.includes("enemy");
+  }
+}
+
 const GROUP_PREVIEW = 10; // rows shown per type before "show all"
 
 const buffSelectionRule = (r: BuffRow): InfluenceSelectionRule | undefined =>
@@ -112,9 +138,17 @@ export default function Buffs() {
   const rawStat = params.get("stat") || "ATK";
   const stat: StatKey = ([...STATS, ...EFFECTS].some((s) => s.k === rawStat)
     ? rawStat : "ATK") as StatKey;
+  const rawTarget = params.get("target") || "all";
+  const targetFilter: TargetFilter = (TARGET_FILTERS.some((f) => f.k === rawTarget)
+    ? rawTarget : "all") as TargetFilter;
   const setStat = (k: StatKey) => {
     const next = new URLSearchParams(params);
     if (k === "ATK") next.delete("stat"); else next.set("stat", k);
+    setParams(next, { replace: true });
+  };
+  const setTargetFilter = (k: TargetFilter) => {
+    const next = new URLSearchParams(params);
+    if (k === "all") next.delete("target"); else next.set("target", k);
     setParams(next, { replace: true });
   };
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -171,7 +205,7 @@ export default function Buffs() {
   const groups = useMemo(() => {
     const by = new Map<string, BuffRow[]>();
     (rows || []).forEach((r) => {
-      if (r.stat !== stat) return;
+      if (r.stat !== stat || !matchesTargetFilter(r, targetFilter)) return;
       const k = groupKey(r);
       let list = by.get(k);
       if (!list) by.set(k, (list = []));
@@ -201,7 +235,7 @@ export default function Buffs() {
         return { k, grp, nsK, t, rule, ranked };
       })
       .sort((a, b) => b.ranked.length - a.ranked.length);
-  }, [rows, stat]);
+  }, [rows, stat, targetFilter]);
 
   if (failed) {
     return <p className="muted">buff_index.json not found — re-run export_units.py.</p>;
@@ -236,6 +270,18 @@ export default function Buffs() {
             {s.label}
           </button>
         ))}
+        <label className="buff-target-filter">
+          <span>Target</span>
+          <select
+            aria-label="Target filter"
+            value={targetFilter}
+            onChange={(e) => setTargetFilter(e.target.value as TargetFilter)}
+          >
+            {TARGET_FILTERS.map((f) => (
+              <option key={f.k} value={f.k}>{f.label}</option>
+            ))}
+          </select>
+        </label>
         <span className="count">{groups.length} effect types</span>
       </div>
       <div className="toolbar buff-toolbar buff-toolbar-effects">
@@ -258,6 +304,9 @@ export default function Buffs() {
         </p>
       )}
       <div className={`buff-groups${isEffect ? " buff-groups-wide" : ""}`}>
+        {groups.length === 0 && (
+          <p className="muted">No rows match this target filter.</p>
+        )}
         {groups.map((g) => {
           const lab = labelOf(g.nsK, g.t);
           const isExpanded = expanded.has(g.k);
