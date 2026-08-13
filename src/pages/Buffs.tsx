@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { loadJSONFile, useUnitInfluenceLabels, useLocalisation } from "../data";
+import { loadJSONFile, useUnitInfluenceLabels, useLocalisation, useUnits } from "../data";
 import { HumanText, fmtFrames } from "../components";
 import type { BuffRow, InfluenceSelectionRule, UnitInfluenceLabel } from "../types";
 import { influenceSelectionRule } from "../influenceLabels";
@@ -38,30 +38,48 @@ const EFFECTS = [
 ] as const;
 type StatKey = (typeof STATS)[number]["k"] | (typeof EFFECTS)[number]["k"];
 
-const TARGET_FILTERS = [
-  { k: "all", label: "All targets" },
-  { k: "range", label: "In range / nearby" },
-  { k: "faction", label: "Faction" },
-  { k: "class", label: "Class" },
-  { k: "identity", label: "Race / identity" },
-  { k: "position", label: "Melee / ranged" },
-  { k: "self", label: "Self" },
-  { k: "enemy", label: "Enemies" },
-] as const;
-type TargetFilter = (typeof TARGET_FILTERS)[number]["k"];
+const TARGET_SCOPE_OPTIONS = [
+  { value: "range", label: "In range / nearby" },
+  { value: "all", label: "All" },
+  { value: "self", label: "Self" },
+  { value: "enemy", label: "Enemies" },
+];
 
-function matchesTargetFilter(row: BuffRow, filter: TargetFilter): boolean {
-  if (filter === "all") return true;
-  const target = String(row.tgt ?? "").toLowerCase();
-  switch (filter) {
-    case "range": return /in range|nearby|within range|enemy_in_range/.test(target);
-    case "faction": return target.includes("assigned to");
-    case "class": return target.includes("[[class:") || target.includes("class type");
-    case "identity": return /identity|race|genus|element\/tag/.test(target);
-    case "position": return /melee unit|ranged unit/.test(target);
-    case "self": return /^self\b/.test(target);
-    case "enemy": return target.includes("enemy");
-  }
+function targetScopeMatches(target: string, scope: string): boolean {
+  const text = target.toLowerCase();
+  if (scope === "range") return /in range|nearby|within range|enemy_in_range/.test(text);
+  if (scope === "all") return /^all\b/.test(text);
+  if (scope === "self") return /^self\b/.test(text);
+  return text.includes("enemy");
+}
+
+function TargetCheckboxGroup({
+  title, options, selected, onToggle,
+}: {
+  title: string;
+  options: { value: string; label: string }[];
+  selected: string[];
+  onToggle: (value: string) => void;
+}) {
+  if (!options.length) return null;
+  return (
+    <div className="filter-group">
+      <div className="filter-group-title">{title}</div>
+      <div className="filter-group-options">
+        {options.map((option) => (
+          <label key={option.value} className={`cg-pill${selected.includes(option.value) ? " on" : ""}`}>
+            <input
+              type="checkbox"
+              value={option.value}
+              checked={selected.includes(option.value)}
+              onChange={() => onToggle(option.value)}
+            />
+            {option.label}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 const GROUP_PREVIEW = 10; // rows shown per type before "show all"
@@ -133,22 +151,36 @@ export default function Buffs() {
   const [failed, setFailed] = useState(false);
   const labels = useUnitInfluenceLabels();
   const loc = useLocalisation();
+  const { units } = useUnits();
   // selected tab lives in the URL so back/forward and shared links restore it
   const [params, setParams] = useSearchParams();
   const rawStat = params.get("stat") || "ATK";
   const stat: StatKey = ([...STATS, ...EFFECTS].some((s) => s.k === rawStat)
     ? rawStat : "ATK") as StatKey;
-  const rawTarget = params.get("target") || "all";
-  const targetFilter: TargetFilter = (TARGET_FILTERS.some((f) => f.k === rawTarget)
-    ? rawTarget : "all") as TargetFilter;
   const setStat = (k: StatKey) => {
     const next = new URLSearchParams(params);
     if (k === "ATK") next.delete("stat"); else next.set("stat", k);
     setParams(next, { replace: true });
   };
-  const setTargetFilter = (k: TargetFilter) => {
+  const csv = (key: string): string[] => {
+    const value = params.get(key);
+    return value ? value.split(",").filter(Boolean) : [];
+  };
+  const targetScope = csv("targetScope");
+  const targetFaction = csv("targetFaction");
+  const targetRace = csv("targetRace");
+  const targetAttr = csv("targetAttr");
+  const targetSeason = csv("targetSeason");
+  const targetClass = csv("targetClass");
+  const targetFilterCount = targetScope.length + targetFaction.length + targetRace.length
+    + targetAttr.length + targetSeason.length + targetClass.length;
+  const [showTargetFilters, setShowTargetFilters] = useState(false);
+  const toggleTarget = (key: string, selected: string[], value: string) => {
     const next = new URLSearchParams(params);
-    if (k === "all") next.delete("target"); else next.set("target", k);
+    const values = selected.includes(value)
+      ? selected.filter((item) => item !== value)
+      : [...selected, value];
+    if (values.length) next.set(key, values.join(",")); else next.delete(key);
     setParams(next, { replace: true });
   };
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -160,6 +192,52 @@ export default function Buffs() {
 
   const labelOf = (nsK: string, t: number): UnitInfluenceLabel | undefined =>
     (nsK === "skill" ? labels?.skill : labels?.ability)?.[String(t)];
+
+  const targetOptions = useMemo(() => {
+    const tagValues = new Set<string>();
+    const classValues = new Set<string>();
+    (rows || []).forEach((row) => {
+      if (row.stat !== stat) return;
+      const target = String(row.tgt ?? "");
+      for (const match of target.matchAll(/\[\[tag:([^\]]+)\]\]/g)) tagValues.add(match[1]);
+      for (const match of target.matchAll(/\[\[class:([^\]]+)\]\]/g)) classValues.add(match[1]);
+    });
+    const factions = new Set<string>();
+    const races = new Set<string>();
+    const attrs = new Set<string>();
+    const seasons = new Set<string>();
+    (units || []).forEach((unit) => {
+      if (unit.faction && tagValues.has(unit.faction)) factions.add(unit.faction);
+      if (unit.race && tagValues.has(unit.race)) races.add(unit.race);
+      (unit.identity_tags || []).forEach((tag) => {
+        if (tagValues.has(tag)) attrs.add(tag);
+      });
+      if (unit.genus && tagValues.has(unit.genus)) seasons.add(unit.genus);
+    });
+    const options = (values: Set<string>, translations?: Record<string, string>) =>
+      [...values]
+        .map((value) => ({ value, label: translations?.[value] || value }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    return {
+      factions: options(factions, loc?.races),
+      races: options(races, loc?.races),
+      attrs: options(attrs, loc?.tags),
+      seasons: options(seasons, loc?.tags),
+      classes: options(classValues, loc?.classes),
+    };
+  }, [rows, units, loc, stat]);
+
+  const targetMatches = (row: BuffRow): boolean => {
+    const target = String(row.tgt ?? "");
+    if (targetScope.length && !targetScope.some((scope) => targetScopeMatches(target, scope))) return false;
+    const hasTag = (values: string[]) => values.some((value) => target.includes(`[[tag:${value}]]`));
+    if (targetFaction.length && !hasTag(targetFaction)) return false;
+    if (targetRace.length && !hasTag(targetRace)) return false;
+    if (targetAttr.length && !hasTag(targetAttr)) return false;
+    if (targetSeason.length && !hasTag(targetSeason)) return false;
+    if (targetClass.length && !targetClass.some((value) => target.includes(`[[class:${value}]]`))) return false;
+    return true;
+  };
 
   // display names for rows carrying a `grp` override.
   const GRP_NAME: Record<string, string> = {
@@ -205,7 +283,7 @@ export default function Buffs() {
   const groups = useMemo(() => {
     const by = new Map<string, BuffRow[]>();
     (rows || []).forEach((r) => {
-      if (r.stat !== stat || !matchesTargetFilter(r, targetFilter)) return;
+      if (r.stat !== stat || !targetMatches(r)) return;
       const k = groupKey(r);
       let list = by.get(k);
       if (!list) by.set(k, (list = []));
@@ -235,7 +313,7 @@ export default function Buffs() {
         return { k, grp, nsK, t, rule, ranked };
       })
       .sort((a, b) => b.ranked.length - a.ranked.length);
-  }, [rows, stat, targetFilter]);
+  }, [rows, stat, targetScope, targetFaction, targetRace, targetAttr, targetSeason, targetClass]);
 
   if (failed) {
     return <p className="muted">buff_index.json not found — re-run export_units.py.</p>;
@@ -270,18 +348,10 @@ export default function Buffs() {
             {s.label}
           </button>
         ))}
-        <label className="buff-target-filter">
-          <span>Target</span>
-          <select
-            aria-label="Target filter"
-            value={targetFilter}
-            onChange={(e) => setTargetFilter(e.target.value as TargetFilter)}
-          >
-            {TARGET_FILTERS.map((f) => (
-              <option key={f.k} value={f.k}>{f.label}</option>
-            ))}
-          </select>
-        </label>
+        <button className="filter-toggle-btn buff-target-toggle" onClick={() => setShowTargetFilters(!showTargetFilters)}>
+          {showTargetFilters ? "hide target filters ▲" : "target filters ▼"}
+          {targetFilterCount ? ` (${targetFilterCount})` : ""}
+        </button>
         <span className="count">{groups.length} effect types</span>
       </div>
       <div className="toolbar buff-toolbar buff-toolbar-effects">
@@ -295,6 +365,29 @@ export default function Buffs() {
           </button>
         ))}
       </div>
+      {showTargetFilters && (
+        <div className="filter-panel buff-target-panel">
+          <TargetCheckboxGroup title="Scope" options={TARGET_SCOPE_OPTIONS} selected={targetScope} onToggle={(v) => toggleTarget("targetScope", targetScope, v)} />
+          <TargetCheckboxGroup title="Affiliation" options={targetOptions.factions} selected={targetFaction} onToggle={(v) => toggleTarget("targetFaction", targetFaction, v)} />
+          <TargetCheckboxGroup title="Race" options={targetOptions.races} selected={targetRace} onToggle={(v) => toggleTarget("targetRace", targetRace, v)} />
+          <TargetCheckboxGroup title="Attribute" options={targetOptions.attrs} selected={targetAttr} onToggle={(v) => toggleTarget("targetAttr", targetAttr, v)} />
+          <TargetCheckboxGroup title="Season" options={targetOptions.seasons} selected={targetSeason} onToggle={(v) => toggleTarget("targetSeason", targetSeason, v)} />
+          <TargetCheckboxGroup title="Class" options={targetOptions.classes} selected={targetClass} onToggle={(v) => toggleTarget("targetClass", targetClass, v)} />
+          {targetFilterCount > 0 && (
+            <button
+              className="filter-clear-btn"
+              onClick={() => {
+                const next = new URLSearchParams(params);
+                ["targetScope", "targetFaction", "targetRace", "targetAttr", "targetSeason", "targetClass"]
+                  .forEach((key) => next.delete(key));
+                setParams(next, { replace: true });
+              }}
+            >
+              clear target filters
+            </button>
+          )}
+        </div>
+      )}
       {isEffect && (
         <p className="muted small">
           Innate abilities and effects granted to allies (self-only skill rows

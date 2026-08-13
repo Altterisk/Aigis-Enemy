@@ -25,6 +25,13 @@ test("Eterna SAW exposes its forced healing-priority rule", async ({ page }) => 
 // regression for the hand-translated names that had no wiki page
 const HAND_NAMED: [number, string][] = [
   [2850, "Xuhua (Swimsuit)"],
+  [2858, "FM/DHMZ Shark"],
+  [2859, "Chibi Iyo"],
+  [2860, "Chibi Satin"],
+  [2862, "Martan (Yukata)"],
+  [2863, "Lich (Yukata)"],
+  [2864, "Eterna (Yukata)"],
+  [2867, "Chibi Ricardo"],
   [1646, "Hlidskjalf"],
   [2781, "Chibi Tsukiko"],
   [1724, "Allegro"],

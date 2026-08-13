@@ -274,8 +274,8 @@ export interface Localisation {
 
 // Machine-translated skill/ability/class DESCRIPTIONS (data/texts.json, built
 // by python/translate_descriptions.py), keyed by the raw JP text. Kept out of
-// localisation.json -- that one is fetched on every page, this is ~1.6 MB and
-// only the unit detail page needs it.
+// localisation.json -- that one is fetched on every page, while this is
+// ~1.6 MB and is loaded only by unit/tag detail pages.
 export interface Texts {
   skill_texts: Record<string, string>;
   ability_texts: Record<string, string>;
@@ -554,7 +554,11 @@ export interface TagMention {
   unit: number;
   name?: string | null;
   slot: string;
-  kind: string;
+  kind: "skill" | "ability" | "class";
+  source_id?: number;
+  source_name?: string | null;
+  source_name_en?: string | null;
+  effect?: string | null;
 }
 export type TagMentions = Record<string, { unit?: TagMention[]; enemy?: TagMention[] }>;
 

@@ -1,16 +1,78 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { useUnits, useLocalisation, loadJSONFile } from "../data";
-import { UnitImage } from "../components";
-import type { TagMentions } from "../types";
+import { useUnits, useLocalisation, useTexts, loadJSONFile } from "../data";
+import { ColorCodedText, UnitImage } from "../components";
+import type { Localisation, TagMention, TagMentions, Texts } from "../types";
+
+const SOURCE_TYPES = [
+  { kind: "skill", label: "Skills" },
+  { kind: "ability", label: "Abilities" },
+  { kind: "class", label: "Classes" },
+] as const;
+
+function MentionTable({ rows, kind, loc, texts }: {
+  rows: TagMention[];
+  kind: TagMention["kind"];
+  loc: Localisation | null;
+  texts: Texts;
+}) {
+  const translatedName = (row: TagMention) => {
+    if (row.source_name_en) return row.source_name_en;
+    if (!row.source_name) return row.slot;
+    if (kind === "skill") return loc?.skills[row.source_name] || row.source_name;
+    if (kind === "ability") return loc?.abilities[row.source_name] || row.source_name;
+    return loc?.classes[row.source_name] || row.source_name;
+  };
+  const translatedEffect = (row: TagMention) => {
+    if (!row.effect) return undefined;
+    if (kind === "skill") return texts.skill_texts[row.effect];
+    if (kind === "ability") return texts.ability_texts[row.effect];
+    return texts.class_texts[row.effect];
+  };
+  return (
+    <table className="grid tag-effect-table">
+      <thead><tr><th>Name</th><th>Effect</th><th>Owner unit</th></tr></thead>
+      <tbody>
+        {rows.map((row, index) => {
+          const sourceName = translatedName(row);
+          const effectEn = translatedEffect(row);
+          return (
+            <tr key={`${row.unit}-${row.slot}-${index}`}>
+              <td>
+                {sourceName}
+                {row.source_name && sourceName !== row.source_name && (
+                  <div className="muted small">{row.source_name}</div>
+                )}
+                {row.source_id && <span className="muted small"> #{row.source_id}</span>}
+                <div className="muted small">{row.slot}</div>
+              </td>
+              <td className="tag-effect-text">
+                {row.effect ? (
+                  <>
+                    {effectEn && <div title="machine translated">{effectEn}</div>}
+                    <div className={effectEn ? "muted small" : undefined}>
+                      <ColorCodedText text={row.effect} />
+                    </div>
+                  </>
+                ) : <span className="muted">-</span>}
+              </td>
+              <td><Link to={`/units/${row.unit}`}>#{row.unit} {row.name}</Link></td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
 
 // /tags/:tag -- one page per JP tag (faction / race / big-race / attribute /
-// season): every unit carrying the tag, plus every skill/ability whose
-// condition mentions it (tag_mentions.json, same data the unit list used).
+// season): every unit carrying the tag, plus detailed tables for every
+// skill, ability, and class whose condition mentions it.
 export default function TagPage() {
   const { tag = "" } = useParams();
   const { loading, units } = useUnits();
   const loc = useLocalisation();
+  const texts = useTexts();
   const [mentions, setMentions] = useState<TagMentions | null>(null);
 
   useEffect(() => {
@@ -38,19 +100,21 @@ export default function TagPage() {
         return (
           <details className="tag-mentions" key={bucket} open>
             <summary>
-              {list.length} skills / abilities{" "}
+              {list.length} effects{" "}
               {bucket === "unit"
                 ? `condition on ally/unit tag ${tagEn}`
                 : `target ENEMIES tagged ${tagEn} (enemy race/element namespace)`}
             </summary>
-            <ul className="admin-examples">
-              {list.map((m, i) => (
-                <li key={i}>
-                  <Link to={`/units/${m.unit}`}>#{m.unit} {m.name}</Link>
-                  <span className="muted"> — {m.slot} ({m.kind})</span>
-                </li>
-              ))}
-            </ul>
+            {SOURCE_TYPES.map(({ kind, label }) => {
+              const rows = list.filter((mention) => mention.kind === kind);
+              if (!rows.length) return null;
+              return (
+                <details className="tag-effect-section" key={kind}>
+                  <summary>{label} <span className="muted small">({rows.length})</span></summary>
+                  <MentionTable rows={rows} kind={kind} loc={loc} texts={texts} />
+                </details>
+              );
+            })}
           </details>
         );
       })}

@@ -24,16 +24,23 @@ test("a large buff group expands and collapses", async ({ page }) => {
   await expect(more).toContainText("expand");
 });
 
-test("buff ranking filters rows by target category and keeps it in the URL", async ({ page }) => {
+test("buff ranking filters rows by a concrete target affiliation and keeps it in the URL", async ({ page }) => {
   await page.goto("/#/buffs");
-  const target = page.getByLabel("Target filter");
-  await target.selectOption("faction");
-  await expect(page).toHaveURL(/target=faction/);
+  await page.getByRole("button", { name: "target filters" }).click();
+  const affiliation = page.locator(".filter-group", { hasText: "Affiliation" });
+  const choice = affiliation.locator("input").first();
+  const value = await choice.getAttribute("value");
+  await affiliation.locator("label").first().click();
+  await expect(page).toHaveURL(/targetFaction=/);
   await expect(page.locator(".buff-group").first()).toBeVisible();
-  await expect(page.locator(".buff-table tbody tr").first().locator("td").nth(3)).toContainText("assigned to");
+  await expect(
+    page.locator(".buff-table tbody tr").first().locator("td").nth(3)
+      .locator(`a[href*="tag=${encodeURIComponent(value || "")}"]`)
+  ).toBeVisible();
 
   await page.reload();
-  await expect(target).toHaveValue("faction");
+  await page.getByRole("button", { name: /target filters/ }).click();
+  await expect(affiliation.locator("input").first()).toBeChecked();
 });
 
 test("on-hit debuffs visibly rank by duration instead of reduction", async ({ page }) => {
@@ -59,4 +66,21 @@ test("tag page lists mentions for a known tag", async ({ page }) => {
   await page.goto(`/#/tags/${encodeURIComponent("獣人")}`);
   await expect(page.locator("h2")).toBeVisible();
   await expect(page.locator(".tag-mentions").first()).toBeVisible();
+  const classSection = page.locator(".tag-effect-section", { hasText: "Classes" }).first();
+  await expect(classSection).toBeVisible();
+  await expect(classSection).not.toHaveAttribute("open", "");
+  await classSection.locator("summary").click();
+  await expect(classSection.locator("thead")).toContainText("Name");
+  await expect(classSection.locator("thead")).toContainText("Effect");
+  await expect(classSection.locator("thead")).toContainText("Owner unit");
+  await expect(classSection.locator("tbody tr").first()).toContainText("Tsayu");
+});
+
+test("class-trait tag effects respect a carrier-specific CardID condition", async ({ page }) => {
+  await page.goto(`/#/tags/${encodeURIComponent("サマー")}`);
+  const classSection = page.locator(".tag-effect-section", { hasText: "Classes" }).first();
+  await classSection.locator("summary").click();
+  await expect(classSection).toContainText("Vidya (Swimsuit)");
+  await expect(classSection).not.toContainText("Vidya (Black)");
+  await expect(classSection).not.toContainText("Vidya (Platinum)");
 });

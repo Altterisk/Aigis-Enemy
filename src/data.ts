@@ -232,8 +232,8 @@ export function useLocalisation(): Localisation | null {
 }
 
 // Machine-translated skill/ability/class descriptions (data/texts.json).
-// Separate from useLocalisation: this file is ~1.6 MB, so only the pages that
-// render descriptions pay for it. Missing file -> empty maps (JP shows).
+// Separate from useLocalisation: this file is ~1.6 MB, so only unit/tag detail
+// pages that render descriptions pay for it. Missing file -> empty maps (JP shows).
 const EMPTY_TEXTS: Texts = { skill_texts: {}, ability_texts: {}, class_texts: {} };
 
 export function useTexts(): Texts {
