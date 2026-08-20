@@ -1451,7 +1451,7 @@ function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, 
                       {" "}· range {range188}
                     </span>
                   )}
-                  {cl.missile && (
+                  {cl.missile && missileText(cl.missile) && (
                     <div className="muted small" title="the class's own missile">
                       {missileText(cl.missile)}
                     </div>
@@ -1899,6 +1899,26 @@ export default function UnitDetail() {
         </details>
       )}
 
+      {unit.specials && unit.specials.length > 0 && (
+        <section>
+          <h3>Special properties</h3>
+          <ul className="effects">
+            {unit.specials.map((s, i) => (
+              <li key={i}>
+                <code>type {s.type} · value {s.value}</code>
+                {s.params && s.params.length > 0 && (
+                  <span className="params"> [{s.params.join(", ")}]</span>
+                )}
+                {s.name && <span className="meaning"> {s.name}</span>}
+                {s.type === 34 ? (
+                  <CommandFacts cmd={s.command} kind="specialty" />
+                ) : s.command && <span className="expr" title={s.command}> {s.command}</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section>
         <h3>Stats</h3>
         <StatsTable unit={unit} classMap={loc?.classes} />
@@ -2047,25 +2067,6 @@ export default function UnitDetail() {
         </section>
       )}
 
-      {unit.specials && unit.specials.length > 0 && (
-        <section>
-          <h3>Special properties</h3>
-          <ul className="effects">
-            {unit.specials.map((s, i) => (
-              <li key={i}>
-                <code>type {s.type} · value {s.value}</code>
-                {s.params && s.params.length > 0 && (
-                  <span className="params"> [{s.params.join(", ")}]</span>
-                )}
-                {s.name && <span className="meaning"> {s.name}</span>}
-                {s.type === 34 ? (
-                  <CommandFacts cmd={s.command} kind="specialty" />
-                ) : s.command && <span className="expr" title={s.command}> {s.command}</span>}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </div>
     </TextsContext.Provider>
     </AbilityConfigsContext.Provider>

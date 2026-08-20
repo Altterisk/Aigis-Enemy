@@ -1701,7 +1701,7 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "note": "p1 is a constant flag (always 1). p2=100 is plain resist (immune to the range cut from bad weather); p2>100 is a real range buff during bad weather; p2<100 would be a real (lesser) reduction still applying (no real carrier seen yet, same shape as ability 28). Rendered in AbilityInfluenceRow to word all three cases correctly."
     },
     "30": {
-      "name": "Regenerate HP",
+      "name": "Regen on death",
       "verified": true,
       "note": "user-tested: param 1 is value, param 2 is frame to generate value, calc per sec in display",
       "tpl": "{p1} / {p2f}"
@@ -1891,7 +1891,7 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "tpl": "revive after {p2f}"
     },
     "67": {
-      "name": "Reincarnate (regeneration)",
+      "name": "Regen on death",
       "verified": true,
       "note": "user-tested: p1 is hp to regen, p2 is frame to regen value",
       "tpl": "{p1} HP / {p2f}"
@@ -3427,10 +3427,8 @@ const CANONICAL_ABILITY_NAMES: Record<string, string> = {
   "343": "Zero initial skill timer",
   "0": "No effect",
   "42": "Spinning slash",
-  "51": "Rogue salvage / redeploy",
   "56": "Spinning slash (ground area)",
   "66": "Redeploy after withdrawal",
-  "98": "Death sentence / delayed revival",
   "93": "ATK donation modifier",
   "94": "ATK donation modifier (+)",
   "95": "DEF donation modifier",
