@@ -424,6 +424,9 @@ function extendText(
       return `priority: ${PRI[String(v)] || v}`;
     }
     case "優先方向": return String(v) === "降順" ? "highest first" : `order: ${v}`;
+    // 天候 (skill influence 276) holds the weather's CfgTypeWeatherList
+    // CfgName, the same identifier shown on the enemy pages.
+    case "天候": return `weather: ${v}`;
     case "スキル系オプション": return SKILL_OPTION_TEXT[String(v)] || `option: ${v}`;
     case "オプション": return OPTION_TEXT[String(v)] || `option: ${v}`;
     // War God Blessing family: each applicable school is its own boolean flag

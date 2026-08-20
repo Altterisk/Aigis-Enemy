@@ -667,3 +667,34 @@ export interface UnitIndexEntry {
   s_inf?: number[];
   a_inf?: number[];
 }
+
+// ---------------------------------------------------------------- weather
+// data/weather.json (python/aigis/weather.py). One record per weather with
+// its raw WeatherConfig entries; `param`/`add` apply as
+// `new = old * param / 100 + add`, and a missing (target, effect) pair means
+// 100/0 = no change. Labels for target/effect/specialty live in the page.
+export interface WeatherRow {
+  target: number; // 1 = enemy side, 2 = ally side
+  effect: number; // 1/5 speed, 2 range, 3 UP-recovery interval, 4 ATK
+  param: number;
+  add: number;
+}
+export interface WeatherEntry {
+  id: number;
+  name: string | null;
+  specialty: number[]; // resist categories (UnitSpecialty 1/2/3)
+  effect_id: number; // visual effect id
+  rows: WeatherRow[];
+}
+export interface WeatherSource {
+  unit: number;
+  unit_name?: string | null;
+  unit_name_en?: string | null;
+  skill?: string | null;
+  skill_en?: string | null;
+  weather: string;
+}
+export interface WeatherData {
+  weathers: WeatherEntry[];
+  sources: WeatherSource[];
+}

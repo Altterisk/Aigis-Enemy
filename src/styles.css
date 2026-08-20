@@ -1844,3 +1844,46 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   .collection-group-meta { width: 100%; justify-content: flex-end; }
   .collection-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
 }
+
+/* ===================== /weather ===================== */
+.weather-page h2 { margin-bottom: 4px; }
+.weather-page h3 { margin: 0 0 8px; font-size: 15px; }
+
+.wx-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 14px 0;
+}
+
+.wx-table td { vertical-align: top; }
+.wx-col-id { width: 48px; color: var(--muted); }
+.wx-badge { margin-left: 6px; vertical-align: middle; }
+.wx-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.wx-chip {
+  padding: 1px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel2);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.wx-chip.wx-down { border-color: #6b3f4a; color: #f7a8b6; }
+.wx-chip.wx-up { border-color: #3f5a6b; color: #9ecbe0; }
+
+.wx-source-table { width: auto; min-width: 420px; }
+
+@media (max-width: 900px) {
+  .wx-table { display: block; overflow-x: auto; }
+  .wx-source-table { min-width: 0; }
+}
+
+.wx-banner {
+  display: block;
+  height: 26px;
+  width: auto;
+  image-rendering: auto;
+  margin-bottom: 2px;
+}
+.wx-name { display: flex; align-items: center; gap: 4px; }

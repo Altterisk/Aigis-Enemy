@@ -1531,6 +1531,12 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "name": "MR buff for overhealed targets",
       "verified": false,
       "note": "Official name 魔法耐性アップ(オーバーヒール対象のみ); no current carriers."
+    },
+    "276": {
+      "name": "Generate weather",
+      "verified": true,
+      "note": "user-confirmed: creates weather. Official name 天候変化. The extend key 天候 names which weather by its CfgTypeWeatherList CfgName (IceLightning = weather 32). The engine's handler reads that key and nothing else: it first clears every weather source already registered (the carrier text 悪天候を上書きする), then registers its own as PlayerSkill_<skill id>, which the end-of-skill path erases again by the same name. mul/mul2/mul3/add are never read for this type, so the shipped mul3=300 is inert and no value is rendered.",
+      "tpl": ""
     }
   },
   "ability": {
@@ -2171,10 +2177,10 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "note": "Verified (supersedes the earlier 'unknown, give me more value' note)."
     },
     "282": {
-      "name": "Chance to attack again",
+      "name": "On-hit MR debuff",
       "verified": true,
-      "note": "user-tested: chance to attack again\np1 is percent, investigate p2",
-      "tpl": "{p1}% chance"
+      "note": "user-confirmed: on-hit MR debuff. p1 is the percent MR reduction, p2 is the duration in frames -- same shape as 89 (ATK) and 90 (DEF), and 288 is the War God Blessing version. Carried by the 魔法剣士 class line (20/30/40% for 120f) and the 錬金術士 line (50/60/70% for 840-880f); 遺宝狩りカーヴィヤ (units/2870) carries [90, 300] against ability text 攻撃した敵の魔法耐性を一定時間90％減少.",
+      "tpl": "-{p1}% for {p2f}"
     },
     "223": {
       "name": "War God Blessing ATK Buff",

@@ -20,6 +20,7 @@ import type {
   AbilityInfluence,
   StoryTalk,
   UnitSpeech,
+  WeatherData,
 } from "./types";
 import { INFLUENCE_LABELS } from "./influenceLabels";
 import { RACE_LABELS, TAG_LABELS } from "./tagLabels";
@@ -314,6 +315,17 @@ export function bannerUrl(missionId: number | string): string {
 // require a Python re-export.
 export function useUnitInfluenceLabels(): UnitInfluenceLabels | null {
   return INFLUENCE_LABELS;
+}
+
+// the decoded WeatherConfig table + the units whose skill generates a weather.
+export function useWeather(): WeatherData | null {
+  const [weather, set] = useState<WeatherData | null>(null);
+  useEffect(() => {
+    loadJSON<WeatherData>("weather")
+      .then(set)
+      .catch(() => set({ weathers: [], sources: [] }));
+  }, []);
+  return weather;
 }
 
 // every Missile.atb id with non-trivial facts (splash/slow/on-hit/penetrate/

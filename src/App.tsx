@@ -15,6 +15,7 @@ export default function App() {
           <NavLink to="/stages">Stages</NavLink>
           <NavLink to="/buffs">Buffs</NavLink>
           <NavLink to="/costgen">Cost Gen</NavLink>
+          <NavLink to="/weather">Weather</NavLink>
         </nav>
         <span className="note">
           unverified attributes are shown raw, not explained

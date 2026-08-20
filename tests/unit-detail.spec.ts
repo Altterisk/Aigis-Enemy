@@ -35,6 +35,9 @@ const HAND_NAMED: [number, string][] = [
   [1646, "Hlidskjalf"],
   [2781, "Chibi Tsukiko"],
   [1724, "Allegro"],
+  [2868, "Kerudra (Black)"],
+  [2869, "Kerudra (Platinum)"],
+  [2870, "Karviya"],
 ];
 for (const [id, name] of HAND_NAMED) {
   test(`hand-translated name #${id} = ${name}`, async ({ page }) => {
