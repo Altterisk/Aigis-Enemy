@@ -2260,8 +2260,8 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
     "284": {
       "name": "HP increase when dodge",
       "verified": true,
-      "note": "user-tested: HP increase when dodge\np1 is percent\np3 is cap",
-      "tpl": "+{p1}%[[?p3:, cap {p3}]]"
+      "note": "user-tested: HP increase when dodge\np1 is percent\np3 is percent cap",
+      "tpl": "+{p1}%[[?p3:, cap {p3}%]]"
     },
     "177": {
       "name": "Deep Sea ATK mod",
@@ -2605,8 +2605,14 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
     "285": {
       "name": "ATK increase when dodge",
       "verified": true,
-      "note": "user-tested: #284 but ATK",
-      "tpl": "+{p1}%[[?p3:, cap {p3}]]"
+      "note": "user-tested: #284 but ATK\n250% is the percent cap",
+      "tpl": "+{p1}%[[?p3:, cap {p3}%]]"
+    },
+    "286": {
+      "name": "DEF increase when dodge",
+      "verified": true,
+      "note": "user-tested: 286 is DEF equivalent\n250% is the percent cap",
+      "tpl": "+{p1}%[[?p3:, cap {p3}%]]"
     },
     "136": {
       "name": "Deployment Spot DEF buff",
@@ -3407,6 +3413,7 @@ const CANONICAL_ABILITY_NAMES: Record<string, string> = {
   "277": "Grant regeneration",
   "284": "HP increase on dodge",
   "285": "ATK increase on dodge",
+  "286": "DEF increase on dodge",
   "287": "MR increase on dodge (flat)",
   "290": "Restore token HP based on damage dealt",
   "294": "HP-lost-based ATK buff",
