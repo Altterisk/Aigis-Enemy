@@ -1089,6 +1089,20 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 .cg-facts b { color: var(--text); }
 .cg-chart { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px; }
 .cg-chart svg { width: 100%; height: auto; display: block; }
+.cg-chart-bar { display: flex; justify-content: flex-end; margin-bottom: 4px; }
+.cg-chart-bar button {
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--panel2);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cg-chart-bar button:hover:not(:disabled) { border-color: var(--accent); }
+.cg-chart-bar button:disabled { opacity: .6; cursor: default; }
 .cg-grid { stroke: #2c3038; stroke-width: 1; }
 .cg-zero { stroke: #4a5060; stroke-width: 1.5; }
 .cg-axis { stroke: #4a5060; stroke-width: 1; }

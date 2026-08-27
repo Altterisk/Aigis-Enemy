@@ -455,12 +455,62 @@ function niceStep(range: number): number {
   return 10 * mag;
 }
 
+// Unit icons are same-origin PNGs, but the PNG export rasterises the chart by
+// feeding a serialized SVG to an <img>, and that never loads sub-resources by
+// URL -- each icon has to be embedded as a data: URI first. One fetch per unit
+// per session; a missing icon resolves to "" and is simply left out.
+const ICON_DATA_URLS = new Map<number, Promise<string>>();
+function iconDataUrl(id: number): Promise<string> {
+  let pending = ICON_DATA_URLS.get(id);
+  if (!pending) {
+    pending = fetch(unitImageUrl("icon", id))
+      .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
+      .then(
+        (blob) =>
+          new Promise<string>((res, rej) => {
+            const fr = new FileReader();
+            fr.onload = () => res(String(fr.result));
+            fr.onerror = () => rej(fr.error);
+            fr.readAsDataURL(blob);
+          }),
+      )
+      .catch(() => "");
+    ICON_DATA_URLS.set(id, pending);
+  }
+  return pending;
+}
+
+// The chart is styled by the .cg-* rules in styles.css, which a serialized SVG
+// does not carry. Copying the COMPUTED values keeps the export in step with the
+// stylesheet instead of duplicating it here.
+const EXPORT_STYLE_PROPS = [
+  "fill", "stroke", "stroke-width", "stroke-dasharray", "stroke-linecap",
+  "stroke-linejoin", "font-family", "font-size", "font-weight", "text-anchor",
+  "opacity",
+];
+
+function inlineComputedStyles(live: Element, clone: Element) {
+  const cs = window.getComputedStyle(live);
+  clone.setAttribute(
+    "style",
+    EXPORT_STYLE_PROPS.map((prop) => `${prop}:${cs.getPropertyValue(prop)}`).join(";"),
+  );
+  // same subtree shape on both sides -- walk them in lockstep, and only strip
+  // nodes from the clone once this is done.
+  for (let i = 0; i < live.children.length; i++) {
+    inlineComputedStyles(live.children[i], clone.children[i]);
+  }
+}
+
 function Chart({ series, seconds }: { series: Series[]; seconds: number }) {
   const [hover, setHover] = useState<number | null>(null); // sample index
+  const [exporting, setExporting] = useState(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const W = 920;
   const H = 430;
-  const M = { l: 52, r: 130, t: 14, b: 30 };
+  // r leaves room for the right-edge direct labels: icon + name.
+  const M = { l: 52, r: 172, t: 14, b: 30 };
+  const ICON = 26;
   const iw = W - M.l - M.r;
   const ih = H - M.t - M.b;
 
@@ -495,16 +545,100 @@ function Chart({ series, seconds }: { series: Series[]; seconds: number }) {
     setHover(i >= 0 && i < n ? i : null);
   };
 
+  const SVG_NS = "http://www.w3.org/2000/svg";
+
+  const exportPng = async () => {
+    const svg = svgRef.current;
+    if (!svg || exporting) return;
+    setExporting(true);
+    try {
+      const icons = new Map<number, string>();
+      await Promise.all(
+        series.map(async (s) => {
+          icons.set(s.id, await iconDataUrl(s.id));
+        }),
+      );
+
+      const clone = svg.cloneNode(true) as SVGSVGElement;
+      inlineComputedStyles(svg, clone);
+      // the crosshair is transient pointer UI, never part of the picture
+      clone.querySelectorAll(".cg-cross, .cg-dot").forEach((el) => el.remove());
+      clone.querySelectorAll("image").forEach((el) => {
+        const data = icons.get(Number(el.getAttribute("data-unit")));
+        if (data) el.setAttribute("href", data);
+        else el.remove();
+      });
+      clone.setAttribute("xmlns", SVG_NS);
+      clone.setAttribute("width", String(W));
+      clone.setAttribute("height", String(H));
+      // the live SVG is transparent and sits on the panel; bake that in so the
+      // PNG is readable on its own.
+      const bg = document.createElementNS(SVG_NS, "rect");
+      bg.setAttribute("width", String(W));
+      bg.setAttribute("height", String(H));
+      bg.setAttribute(
+        "fill",
+        window.getComputedStyle(svg.parentElement ?? svg).backgroundColor || "#1e2128",
+      );
+      clone.insertBefore(bg, clone.firstChild);
+
+      const svgUrl = URL.createObjectURL(
+        new Blob([new XMLSerializer().serializeToString(clone)], {
+          type: "image/svg+xml;charset=utf-8",
+        }),
+      );
+      const img = new Image();
+      try {
+        await new Promise<void>((res, rej) => {
+          img.onload = () => res();
+          img.onerror = () => rej(new Error("chart render failed"));
+          img.src = svgUrl;
+        });
+        const scale = 3; // oversample so text/icons stay crisp when zoomed
+        const canvas = document.createElement("canvas");
+        canvas.width = W * scale;
+        canvas.height = H * scale;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const png = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/png"));
+        if (!png) return;
+        const href = URL.createObjectURL(png);
+        const a = document.createElement("a");
+        a.href = href;
+        a.download = `up-gen-${series.length}-units-${seconds}s.png`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(href), 10000);
+      } finally {
+        URL.revokeObjectURL(svgUrl);
+      }
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // right-edge direct labels, nudged apart
   const labels = series
     .map((s) => ({ s, ly: y(s.samples[s.samples.length - 1] ?? 0) }))
     .sort((a, b) => a.ly - b.ly);
+  const LABEL_GAP = ICON + 3; // the icons, not the text, set the spacing now
   for (let i = 1; i < labels.length; i++) {
-    if (labels[i].ly - labels[i - 1].ly < 13) labels[i].ly = labels[i - 1].ly + 13;
+    if (labels[i].ly - labels[i - 1].ly < LABEL_GAP) labels[i].ly = labels[i - 1].ly + LABEL_GAP;
+  }
+  // nudging only ever pushes down; pull the whole stack back inside the plot
+  const overflow = (labels[labels.length - 1]?.ly ?? 0) - (M.t + ih);
+  if (overflow > 0) {
+    const shift = Math.min(overflow, (labels[0]?.ly ?? 0) - M.t);
+    if (shift > 0) for (const l of labels) l.ly -= shift;
   }
 
   return (
     <div className="cg-chart">
+      <div className="cg-chart-bar">
+        <button type="button" onClick={exportPng} disabled={exporting}>
+          {exporting ? "exporting…" : "Export PNG"}
+        </button>
+      </div>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
@@ -540,9 +674,20 @@ function Chart({ series, seconds }: { series: Series[]; seconds: number }) {
           />
         ))}
         {labels.map(({ s, ly }) => (
-          <text key={`l${s.id}`} x={W - M.r + 8} y={ly + 4} className="cg-label" fill={s.color}>
-            {s.name}
-          </text>
+          <g key={`l${s.id}`}>
+            <image
+              href={unitImageUrl("icon", s.id)}
+              data-unit={s.id}
+              x={W - M.r + 6}
+              y={ly - ICON / 2}
+              width={ICON}
+              height={ICON}
+              preserveAspectRatio="xMidYMid slice"
+            />
+            <text x={W - M.r + ICON + 12} y={ly + 4} className="cg-label" fill={s.color}>
+              {s.name}
+            </text>
+          </g>
         ))}
         {hover !== null && n > 0 && (
           <g>

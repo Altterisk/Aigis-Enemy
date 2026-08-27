@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import fs from "fs";
 
 test("buff ranking renders groups and switches stat tabs", async ({ page }) => {
   await page.goto("/#/buffs");
@@ -60,6 +61,26 @@ test("costgen adds a unit from the search dropdown", async ({ page }) => {
   await expect(page.locator(".cg-card", { hasText: "Jerome" })).toBeVisible();
   await expect(page.locator(".count")).toContainText("1/");
   await expect(page.locator(".cg-chart svg")).toBeVisible();
+});
+
+test("costgen chart labels carry the unit icon and export to PNG", async ({ page }) => {
+  await page.goto("/#/costgen");
+  const search = page.getByPlaceholder("add unit (name / id)…");
+  await search.fill("Jerome");
+  await page.locator(".cg-search-drop button", { hasText: "Jerome" }).first().click();
+  await expect(page.locator(".cg-chart svg")).toBeVisible();
+
+  const icon = page.locator(".cg-chart svg image").first();
+  await expect(icon).toHaveAttribute("href", /unit-icon\/\d+\.png/);
+  expect((await icon.boundingBox())!.width).toBeGreaterThan(4);
+
+  const pending = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export PNG" }).click();
+  const download = await pending;
+  expect(download.suggestedFilename()).toMatch(/^up-gen-1-units-\d+s\.png$/);
+  const bytes = fs.readFileSync((await download.path())!);
+  expect(bytes.length).toBeGreaterThan(5000);
+  expect(bytes.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a"); // PNG magic
 });
 
 test("tag page lists mentions for a known tag", async ({ page }) => {
