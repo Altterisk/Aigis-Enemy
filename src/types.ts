@@ -544,7 +544,20 @@ export interface Unit {
     awaken_ability_level?: number | null;
   };
   specials?: UnitSpecial[];
+  formation_exclusion?: FormationExclusion;
   dot_id: number;
+}
+
+// CfgProhibitConfig.atb: which cards may not share a team. A standalone table,
+// NOT an influence -- a restricted unit has nothing in its ability rows for it
+// (ability influence 148 is the separate same-CLASS restriction).
+export interface FormationExclusion {
+  one_per_team: boolean;              // the card may appear at most once
+  cards: {                            // other cards it may not be fielded with
+    id: number;
+    name?: string | null;
+    name_en?: string | null;
+  }[];
 }
 
 // JP term -> units whose skill/ability conditions mention it, split by
@@ -575,8 +588,9 @@ export interface BuffRow {
   tgt?: string | number | null; // resolved target
   fl?: 1;               // flat value (not percent)
   mod?: string[];       // same-unit modifier ids folded into v
-  // effect rows only: value kind + application condition text
-  vk?: "pct" | "flag" | "flat" | "sec";
+  // value kind: effect rows carry pct/flag/flat/sec; "share" marks a buff
+  // whose value is a percent of the SOURCE unit's own stat (Dancer bonus)
+  vk?: "pct" | "flag" | "flat" | "sec" | "share";
   cond?: string;
   // functional group override: ability 13/70 (ATK) and 14/71 (DEF) split by
   // their OWN invoke into "sortie_atk"/"deploy_atk"/"sortie_def"/

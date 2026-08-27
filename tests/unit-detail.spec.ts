@@ -50,3 +50,21 @@ test("prince page lists his titles", async ({ page }) => {
   await page.goto("/#/units/1");
   await expect(page.locator(".prince-titles summary")).toContainText("Prince titles");
 });
+
+test("a one-copy-only unit shows its formation restriction", async ({ page }) => {
+  await page.goto("/#/units/2874");
+  await expect(page.getByRole("heading", { name: "Formation restriction" })).toBeVisible();
+  await expect(page.getByText("Only one may be in a team.")).toBeVisible();
+});
+
+test("a mutually exclusive pair links the other card", async ({ page }) => {
+  await page.goto("/#/units/1620");
+  await expect(page.getByText("Cannot be in the same team as")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Lukifer (Platinum)" })).toBeVisible();
+});
+
+test("an unrestricted unit has no formation-restriction section", async ({ page }) => {
+  await page.goto("/#/units/2873");
+  await expect(page.getByRole("heading", { name: "Stats" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Formation restriction" })).toHaveCount(0);
+});

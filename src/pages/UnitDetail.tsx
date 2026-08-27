@@ -1899,6 +1899,33 @@ export default function UnitDetail() {
         </details>
       )}
 
+      {/* CfgProhibitConfig.atb -- a team-editor rule, not an influence: the
+          restricted unit carries nothing in its ability/class-ability rows. */}
+      {unit.formation_exclusion && (
+        <section>
+          <h3>Formation restriction</h3>
+          <ul className="effects">
+            {unit.formation_exclusion.one_per_team && (
+              <li>Only one may be in a team.</li>
+            )}
+            {unit.formation_exclusion.cards.length > 0 && (
+              <li>
+                Cannot be in the same team as{" "}
+                {unit.formation_exclusion.cards.map((c, i) => (
+                  <span key={c.id}>
+                    {i > 0 && ", "}
+                    <Link to={`/units/${c.id}`} title={c.name || undefined}>
+                      {c.name_en || c.name || `#${c.id}`}
+                    </Link>
+                  </span>
+                ))}
+                .
+              </li>
+            )}
+          </ul>
+        </section>
+      )}
+
       {unit.specials && unit.specials.length > 0 && (
         <section>
           <h3>Special properties</h3>

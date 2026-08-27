@@ -16,6 +16,8 @@ const STATS = [
   { k: "ATK_DEBUFF", label: "ATK debuff" },
   { k: "DEF_DEBUFF", label: "DEF debuff" },
   { k: "MR_DEBUFF", label: "MR debuff" },
+  { k: "PAD_DEBUFF", label: "Enemy PAD increase" },
+  { k: "DMG_AMP", label: "Enemy damage taken" },
 ] as const;
 // non-stat effect categories (second tab row): innate abilities + effects
 // granted to allies, each row carrying its application condition. Token-
@@ -107,7 +109,8 @@ const SKILL_ADDITIVE_PCT = new Set([204, 205]);
 // MulMax is additive (+X%) same as Sortie/Deployment; a bare, unboosted
 // MulMax (e.g. a carrier with no boost skill at all) would otherwise
 // render as a bogus "x0.25 debuff" instead of "+25%".
-const ABILITY_MULTIPLIER_PCT = new Set([134, 135, 136, 155, 156, 157, 158, 197, 198, 199, 207]);
+const ABILITY_MULTIPLIER_PCT = new Set([134, 135, 136, 155, 156, 157, 158, 197, 198, 199, 207,
+  221]);
 
 // skill 14 (Set PAD): sets PAD to a flat frame count, lower is better --
 // the opposite direction/shape of every other group on this page.
@@ -115,9 +118,12 @@ const isSetPad = (r: BuffRow) => r.ns === "skill" && r.t === 14;
 
 // "_DEBUFF" stats are enemy-facing reductions; PAD_REDUCTION/CDR are ALLY
 // buffs but still phrased as a reduction -- none of these are ever shown
-// as a multiplier, always a plain "-X%".
+// as a multiplier, always a plain "-X%". PAD_DEBUFF is the exception among
+// the enemy-facing stats: it LENGTHENS enemy post-attack delay, so it keeps
+// the "+X%" form.
 const isReduction = (r: BuffRow) =>
-  r.stat.endsWith("_DEBUFF") || r.stat === "PAD_REDUCTION" || r.stat === "CDR";
+  r.stat !== "PAD_DEBUFF" &&
+  (r.stat.endsWith("_DEBUFF") || r.stat === "PAD_REDUCTION" || r.stat === "CDR");
 
 function fmtValue(r: BuffRow): string {
   // effect rows carry an explicit value kind
@@ -125,6 +131,9 @@ function fmtValue(r: BuffRow): string {
   if (r.vk === "sec") return r.v >= 9999 ? "∞ (permanent)" : `${r.v}s`;
   if (r.vk === "flat") return `${r.v.toLocaleString()} flat`;
   if (r.vk === "pct") return `${r.v}%`;
+  // Dancer share: the value is a percent of the SOURCE unit's own stat,
+  // added flat to everyone in range -- not a percent of the target's stat.
+  if (r.vk === "share") return `${r.v}% of own ${r.stat}`;
   if (isSetPad(r)) return `→ ${fmtFrames(r.v)}`;
   if (r.fl) return `+${r.v.toLocaleString()} flat`;
   const asMultiplier =
