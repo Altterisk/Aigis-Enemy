@@ -87,7 +87,10 @@ test("tag page lists mentions for a known tag", async ({ page }) => {
   await page.goto(`/#/tags/${encodeURIComponent("獣人")}`);
   await expect(page.locator("h2")).toBeVisible();
   await expect(page.locator(".tag-mentions").first()).toBeVisible();
-  const classSection = page.locator(".tag-effect-section", { hasText: "Classes" }).first();
+  const classSection = page
+    .locator(".tag-effect-section")
+    .filter({ has: page.locator(":scope > summary", { hasText: /^Classes\b/ }) })
+    .first();
   await expect(classSection).toBeVisible();
   await expect(classSection).not.toHaveAttribute("open", "");
   await classSection.locator("summary").click();
