@@ -102,7 +102,10 @@ test("tag page lists mentions for a known tag", async ({ page }) => {
 
 test("class-trait tag effects respect a carrier-specific CardID condition", async ({ page }) => {
   await page.goto(`/#/tags/${encodeURIComponent("サマー")}`);
-  const classSection = page.locator(".tag-effect-section", { hasText: "Classes" }).first();
+  const classSection = page
+    .locator(".tag-effect-section")
+    .filter({ has: page.locator(":scope > summary", { hasText: /^Classes\b/ }) })
+    .first();
   await classSection.locator("summary").click();
   await expect(classSection).toContainText("Vidya (Swimsuit)");
   await expect(classSection).not.toContainText("Vidya (Black)");

@@ -906,10 +906,13 @@ function AbilityInfluenceRow({
 // value is styled as derived, with the original token in the tooltip.
 // 141/142 = permanent ATK/DEF modification; a stage's timed ATK/DEF row
 // (2/3, 4/5) takes precedence over them regardless of row order.
+// `fallback` types (89/90 Type-C conditional, 228/229 race-conditional ATK/DEF
+// buffs) are read only when the stage's Power is neutral (100), so they never
+// replace a real Power value.
 const PERMANENT_STAT_TYPES = new Set([141, 142]);
-const TOKEN_INFLUENCES: Record<string, { types: number[]; field: "mul3" | "add" }> = {
-  ATK: { types: [2, 3, 141], field: "mul3" },
-  DEF: { types: [4, 5, 142], field: "mul3" },
+const TOKEN_INFLUENCES: Record<string, { types: number[]; field: "mul3" | "add"; fallback?: number[] }> = {
+  ATK: { types: [2, 3, 141], field: "mul3", fallback: [89, 228] },
+  DEF: { types: [4, 5, 142], field: "mul3", fallback: [90, 229] },
   RNG: { types: [6], field: "mul3" },
   MDEF: { types: [34], field: "mul3" },
   AVOID: { types: [9], field: "mul3" },
@@ -963,13 +966,27 @@ function resolveToken(
         - Number(PERMANENT_STAT_TYPES.has(b.influence_type!)));
     const row = rows.find((r) => r[spec.field] != null && !r.activate_if);
     if (row) return rowValue(row, spec.field, "");
+    const gatedValue = (candidates: SkillInfluence[]) => {
+      const gated = candidates.find((r) => r[spec.field] != null);
+      return gated ? rowValue(gated, spec.field,
+        ` (gated: ${gated.activate_if_human || gated.activate_if})`) : null;
+    };
     if (COUNT_TOKENS.has(name)) {
       // counts are never Power-filled; a gated row is better than an
       // unfilled token (tooltip shows the gate).
-      const gated = rows.find((r) => r[spec.field] != null);
-      if (!gated) return null;
-      return rowValue(gated, spec.field,
-        ` (gated: ${gated.activate_if_human || gated.activate_if})`);
+      return gatedValue(rows);
+    }
+    // A neutral Power (100) would render a meaningless "1x": prefer the
+    // fallback types, then a gated row (tooltip shows the gate).
+    const neutralPower = s.power == null
+      || (s.power === 100 && (s.power_max == null || s.power_max === 100));
+    if (neutralPower && spec.fallback) {
+      const fb = (s.influences || []).filter(
+        (r) => r.influence_type != null && (spec.fallback || []).includes(r.influence_type));
+      const fbRow = fb.find((r) => r[spec.field] != null && !r.activate_if);
+      if (fbRow) return rowValue(fbRow, spec.field, "");
+      const gated = gatedValue(rows) || gatedValue(fb);
+      if (gated) return gated;
     }
   }
   // 3) last resort: the raw Power field (no longer displayed anywhere else).

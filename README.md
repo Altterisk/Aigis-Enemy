@@ -28,7 +28,7 @@ All data lives under `public/`:
 - `public/data/speech/<id>.json` — per-unit quotes + affection scenes (built by `python export_speech.py`), loaded on demand
 - `public/data/influence_labels.json` / `unit_influence_labels.json` — hand-verified influence label tables
 - `public/data/race_labels.json`, `specialty_config.json`, `enemy_stages.json`
-- `public/data/influence_audit.json` — the `/admin` page's worklist (every
+- `public/data/influence_audit.json` — the influence worklist (every
   influence id in use, label status, param signatures, example carriers);
   built by `python export_influence_audit.py`
 - `public/unit-icon/<id>[_awN].png` — unit face icons (published, ~108 MB)
