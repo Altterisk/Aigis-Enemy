@@ -904,9 +904,12 @@ function AbilityInfluenceRow({
 // skill's Power/PowerMax otherwise (Power fills whichever token the text
 // wires it into), <TIME> from Duration. HEURISTIC pairing -- every filled
 // value is styled as derived, with the original token in the tooltip.
+// 141/142 = permanent ATK/DEF modification; a stage's timed ATK/DEF row
+// (2/3, 4/5) takes precedence over them regardless of row order.
+const PERMANENT_STAT_TYPES = new Set([141, 142]);
 const TOKEN_INFLUENCES: Record<string, { types: number[]; field: "mul3" | "add" }> = {
-  ATK: { types: [2, 3], field: "mul3" },
-  DEF: { types: [4, 5], field: "mul3" },
+  ATK: { types: [2, 3, 141], field: "mul3" },
+  DEF: { types: [4, 5, 142], field: "mul3" },
   RNG: { types: [6], field: "mul3" },
   MDEF: { types: [34], field: "mul3" },
   AVOID: { types: [9], field: "mul3" },
@@ -954,9 +957,10 @@ function resolveToken(
   // row 240..300 vs everyone's 130..170).
   const spec = TOKEN_INFLUENCES[name];
   if (spec) {
-    const rows = (s.influences || []).filter(
-      (r) => r.influence_type != null && spec.types.includes(r.influence_type)
-    );
+    const rows = (s.influences || [])
+      .filter((r) => r.influence_type != null && spec.types.includes(r.influence_type))
+      .sort((a, b) => Number(PERMANENT_STAT_TYPES.has(a.influence_type!))
+        - Number(PERMANENT_STAT_TYPES.has(b.influence_type!)));
     const row = rows.find((r) => r[spec.field] != null && !r.activate_if);
     if (row) return rowValue(row, spec.field, "");
     if (COUNT_TOKENS.has(name)) {
