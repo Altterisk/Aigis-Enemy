@@ -34,6 +34,7 @@ const EFFECTS = [
   { k: "NULLIFY", label: "Nullification" },
   { k: "INVULN", label: "Invulnerability" },
   { k: "BARRIER", label: "Barrier" },
+  { k: "OVERHEAL", label: "Overheal" },
   { k: "LIMIT", label: "Deploy Limit" },
   { k: "HPCUT", label: "HP Cut" },
   { k: "TIMESTOP", label: "Time Stop" },

@@ -20,6 +20,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadJSONFile, unitImageUrl } from "../data";
 import { useUiStore, type CostGenSel } from "../store";
+import { RACE_LABELS, TAG_LABELS } from "../tagLabels";
 
 // ---------------------------------------------------------------- data types
 
@@ -32,6 +33,8 @@ type Cond =
   | { kind: "env"; text: string; human: string }
   | { kind: "self_tag"; tag: string; match: boolean; human: string }
   | { kind: "skill_evolved"; ids: number[] }
+  | { kind: "cc"; op: string; n: number }
+  | { kind: "all"; of: Cond[] }
   | { kind: "raw"; human: string; raw: string };
 
 interface GenRow {
@@ -54,6 +57,9 @@ interface StageRec {
   cooldown: number;
   permanent?: boolean;
   flat?: number;
+  // conditional flat UP rows (class-change stage / squad counts); every row
+  // whose condition holds is added on activation
+  flats?: { value: number; cond?: Cond }[];
   tick?: { value: number; interval: number };
   consume?: number;
   swaps_to?: number;
@@ -121,12 +127,13 @@ interface Ctx {
   equippedId: number; // current skill id (stage about to be / being used)
   slotEvolved: boolean; // selected slot is the awakened (evolved) skill
   selfId: number;
+  cc: number; // selected tier's class-change stage
   sliders: Record<string, number>;
   toggles: Record<string, boolean>;
 }
 
 function cmp(op: string, a: number, b: number): boolean {
-  return op === "==" ? a === b : op === ">=" ? a >= b : op === "<=" ? a <= b : false;
+  return op === "==" ? a === b : op === "!=" ? a !== b : op === ">=" ? a >= b : op === "<=" ? a <= b : false;
 }
 
 function sliderKey(c: Cond): string | null {
@@ -165,6 +172,10 @@ function evalCond(c: Cond | undefined, ctx: Ctx): boolean {
       return c.match;
     case "skill_evolved":
       return ctx.slotEvolved && c.ids.includes(ctx.equippedId);
+    case "cc":
+      return cmp(c.op, ctx.cc, c.n);
+    case "all":
+      return c.of.every((x) => evalCond(x, ctx));
     case "raw":
       return !!ctx.toggles[`raw:${c.raw}`];
   }
@@ -209,6 +220,7 @@ function prepare(u: CGUnit, sel: Sel, globalCdr: number, ignoreCosts: boolean, i
     equippedId: sk.stages[0].id,
     slotEvolved: sel.slot === "awakened",
     selfId: u.id,
+    cc: tier.cc,
     sliders: sel.sliders,
     toggles: sel.toggles,
   };
@@ -295,12 +307,16 @@ function simulate(p: Prepared, sel: Sel, seconds: number): number[] {
     equippedId: stage.id,
     slotEvolved: sel.slot === "awakened",
     selfId: p.unit.id,
+    cc: p.tier.cc,
     sliders: sel.sliders,
     toggles: sel.toggles,
   };
 
   const activate = () => {
     up += stage.flat ?? 0;
+    for (const f of stage.flats ?? []) {
+      if (evalCond(f.cond, ctx)) up += f.value;
+    }
     up -= stage.consume ?? 0;
     for (const g of p.genRows) {
       if (g.type === 169 && evalCond(g.cond, ctx)) up += g.value ?? 0;
@@ -388,6 +404,10 @@ function controlsFor(u: CGUnit, sel: Sel): ControlSpec {
 
   const scan = (c?: Cond) => {
     if (!c) return;
+    if (c.kind === "all") {
+      c.of.forEach(scan);
+      return;
+    }
     const sk = sliderKey(c);
     if (sk && (c.kind === "team_count" || (c.kind === "tag_count" && c.self))) {
       const prev = sliders.get(sk);
@@ -401,7 +421,7 @@ function controlsFor(u: CGUnit, sel: Sel): ControlSpec {
               ? "Female units in squad"
               : c.var === "male"
                 ? "Male units in squad"
-                : `${c.var} units in squad`
+                : `${RACE_LABELS[c.var] ?? TAG_LABELS[c.var] ?? c.var} units in squad`
             : `${c.tag} units deployed (incl. self)`,
         min: isSelfTag ? 1 : 0,
         max: Math.max(hi, isSelfTag ? 1 : 0),
@@ -426,6 +446,16 @@ function controlsFor(u: CGUnit, sel: Sel): ControlSpec {
     if (!r.target || r.target === "self") scan(r.cond);
   }
   if (block?.init_cond) scan(block.init_cond);
+  const sk = u.skills[sel.slot] ?? u.skills.awakened ?? u.skills.class_evolved ?? u.skills.base;
+  for (const st of sk?.stages ?? []) {
+    for (const f of st.flats ?? []) {
+      // only rows reachable at the selected tier contribute controls
+      const ccOk = (c?: Cond): boolean =>
+        !c ? true : c.kind === "cc" ? cmp(c.op, tier?.cc ?? 0, c.n)
+          : c.kind === "all" ? c.of.every(ccOk) : true;
+      if (ccOk(f.cond)) scan(f.cond);
+    }
+  }
 
   const out: ControlSpec = { sliders: [...sliders.values()], toggles: [...toggles.values()] };
   if (block?.dur_kills && block.dur_kills.per > 0) {
@@ -958,6 +988,14 @@ export default function CostGen() {
                       {" / "}
                       {(st.cooldown * (1 - (u.aff_cd ?? 0) / 100) * (1 - p.cdrPct / 100)).toFixed(0)}s cd
                       {st.flat ? ` · +${st.flat} UP` : ""}
+                      {(() => {
+                        const ctxS: Ctx = {
+                          activeStageId: null, equippedId: st.id, slotEvolved: sel.slot === "awakened",
+                          selfId: u.id, cc: tier.cc, sliders: sel.sliders, toggles: sel.toggles,
+                        };
+                        const v = (st.flats ?? []).filter((f) => evalCond(f.cond, ctxS)).reduce((a, f) => a + f.value, 0);
+                        return st.flats?.length ? ` · +${v} UP` : "";
+                      })()}
                       {st.tick ? ` · ${st.tick.value}/${st.tick.interval}f` : ""}
                       {st.consume ? ` · −${st.consume} UP` : ""}
                     </span>

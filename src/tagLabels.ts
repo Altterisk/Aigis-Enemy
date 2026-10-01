@@ -47,6 +47,7 @@ export const RACE_LABELS: Record<string, string> = {
   "機械": "Machine",
   "サキュバス": "Succubus",
   "天眼ノ国": "Divine Eye Country",
+  "ルドラサウム": "Rudrathaum",
 };
 
 // identity attributes + seasonal genus tags, combined (matches aigis/

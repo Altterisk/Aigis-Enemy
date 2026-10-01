@@ -421,7 +421,8 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
     "71": {
       "name": "Attack heals nearby allies",
       "verified": true,
-      "note": "wiki-maintainer-sourced (community-compiled, not our own in-game test)."
+      "note": "wiki-maintainer-sourced (community-compiled, not our own in-game test). official influence name アブソーブ. mul = % of damage dealt healed to allies in range (user: \"mil is percent\"); every carrier whose text states a value matches (100 = equal to damage, 130 = 130%, 50/30/25/20/15/5).",
+      "tpl": "{mul}% of damage dealt"
     },
     "84": {
       "name": "Unit cost",
@@ -2647,6 +2648,24 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "name": "Zero Initial Skill Timer",
       "verified": true,
       "note": "user-tested: Zero Initial Skill Timer"
+    },
+    "344": {
+      "name": "Overheal",
+      "verified": false,
+      "note": "official influence name オーバーヒール. p1 = HP the unit's heal targets can be healed past max HP (#2900: 2000 default, 4000 awakened, matching the ability text).",
+      "tpl": "up to {p1} HP over max"
+    },
+    "345": {
+      "name": "Overheal-target ATK modifier",
+      "verified": false,
+      "note": "official influence name 攻撃力上昇(オーバーヒール対象のみ). p1 = ATK % for allies currently overhealed (#2900: 25 default, 35 awakened, matching the ability text).",
+      "tpl": "+{p1}%"
+    },
+    "346": {
+      "name": "Overheal-target DEF modifier",
+      "verified": false,
+      "note": "official influence name 防御力上昇(オーバーヒール対象のみ). p1 = DEF % for allies currently overhealed (#2900: 25 default, 35 awakened, matching the ability text).",
+      "tpl": "+{p1}%"
     },
     "175": {
       "name": "Mark enemies for targeting",
