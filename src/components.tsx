@@ -115,6 +115,7 @@ export function HumanText({ text }: { text: string }) {
 // All of a missile's noteworthy facts on one line (shared by unit skill rows
 // and enemy displays).
 export function missileText(m: Missile): string {
+  if (m.empty) return "empty slot: fires nothing";
   const parts: string[] = [];
   if (m.splash) parts.push(`splash ${m.splash}`);
   if (m.penetrate) {

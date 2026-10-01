@@ -68,3 +68,14 @@ test("an unrestricted unit has no formation-restriction section", async ({ page 
   await expect(page.getByRole("heading", { name: "Stats" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Formation restriction" })).toHaveCount(0);
 });
+
+test("a per-shot missile list marks its empty slots", async ({ page }) => {
+  // #2902's awakened ability fires a 15-slot list where 6 slots are blank
+  // Missile.atb rows (#1517)
+  await page.goto("/#/units/2902");
+  // the influence rows sit in a collapsed section, so check presence
+  const list = page.getByText(/15 shot slots: 9 fire, 6 empty/).first();
+  await expect(list).toBeAttached();
+  await expect(list).toContainText("∅");
+  await expect(page.getByText(/missile 1517: empty slot: fires nothing/).first()).toBeAttached();
+});

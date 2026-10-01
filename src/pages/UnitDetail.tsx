@@ -176,7 +176,8 @@ function decodeAbilityCommand(cmd?: string | null): CommandFact[] {
 function missileRef(mid: number | undefined, missiles?: Record<string, Missile> | null): string {
   if (mid == null) return "?";
   const info = missiles?.[String(mid)];
-  return info ? `#${mid} (${missileText(info)})` : `#${mid}`;
+  const text = info ? missileText(info) : "";
+  return text ? `#${mid} (${text})` : `#${mid}`;
 }
 
 function commandFactText(f: CommandFact, missiles?: Record<string, Missile> | null): string {
@@ -315,6 +316,15 @@ function extendText(
   if (MISSILE_ID_KEYS.has(k)) {
     const ids = Array.isArray(vRaw) ? vRaw : [vRaw];
     const prefix = k === "ミサイル反撃時ID" ? "counter missile" : "missile";
+    const isEmpty = (id: string | number) => !!missiles?.[String(id)]?.empty;
+    const empties = ids.filter(isEmpty).length;
+    if (ids.length > 1 && empties) {
+      // per-shot list with blank slots: say how many actually fire
+      const seq = ids.map((id) => (isEmpty(id) ? "∅" : `#${id}`)).join(" ");
+      const real = [...new Set(ids.filter((id) => !isEmpty(id)).map(String))]
+        .map((id) => missileRef(Number(id), missiles)).join(", ");
+      return `${ids.length} shot slots: ${ids.length - empties} fire, ${empties} empty (∅) — ${seq}; ${prefix} ${real}`;
+    }
     return `${prefix} ${ids.map((id) => missileRef(Number(id), missiles)).join(", ")}`;
   }
   // スキル系オプション can carry multiple option strings at once -- translate

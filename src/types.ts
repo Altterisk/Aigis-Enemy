@@ -57,6 +57,9 @@ export interface Missile {
   heal?: boolean | null;
   blast_residue?: [number, number] | null; // lingering blast [time, interval] frames (raw)
   on_hit?: MissileOnHit | null;
+  // blank Missile.atb row: no sprite, speed, hit effect or damage -- an empty
+  // slot (e.g. filler entries in a type-210 per-shot missile list)
+  empty?: boolean | null;
 }
 
 // per-spawn EntryCommand scripts.
