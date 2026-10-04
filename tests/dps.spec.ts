@@ -160,3 +160,13 @@ test("share link restores the whole setup", async ({ page, context }) => {
   await expect(fresh.locator(".dps-buffer", { hasText: "#2629" })).toBeVisible();
   await expect(fresh.locator(".dps-breakdown").nth(1)).toContainText("Failnaught");
 });
+
+test("Ovie's HP-tier conditional ATK rows replace each other", async ({ page }) => {
+  await pickUnit(page, 2722);
+  const slider = page.locator(".cg-slider", { hasText: "Own HP %" }).locator("input[type=range]");
+  await slider.fill("40");
+  const steps = page.locator(".dps-breakdown").first();
+  const rows = steps.locator("tr", { hasText: "Ability 83" });
+  await expect(rows).toHaveCount(1);
+  await expect(rows).toContainText("50");
+});

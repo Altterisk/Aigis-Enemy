@@ -920,11 +920,16 @@ export default function Dps() {
     let trueChance = 0;
     let padZero = 0;
     const effectsOn = [...own.filter((e) => !ownOff[e.key]), ...grants];
+    // conditional ATK rows of one ability type replace each other: of the
+    // rows whose condition holds, only the highest applies (Ovie's HP tiers)
+    const bestPct = new Map<number, OwnEffect>();
     for (const e of effectsOn) {
       const ok = e.exprs.reduce<Tri>((acc, x) => both(acc, evaluate(x, ctx)), true);
       if (ok !== true) continue;
-      if (e.kind === "atk_pct") factors.push({ label: `Ability ${e.type} (${e.cond})`, f: 1 + e.value / 100 });
-      else if (e.kind === "count") {
+      if (e.kind === "atk_pct") {
+        const cur = bestPct.get(e.type);
+        if (!cur || e.value > cur.value) bestPct.set(e.type, e);
+      } else if (e.kind === "count") {
         const n = ownCount[e.key] ?? 0;
         let v = e.value * n;
         if (e.cap != null) v = Math.min(v, e.cap);
@@ -939,6 +944,10 @@ export default function Dps() {
         const f = ch >= 1 || procMode === "always" ? full : procMode === "never" ? 1 : 1 + (full - 1) * ch;
         dmgMods.push({ label: `${e.src.startsWith("granted") ? e.src : "Ability 1"} (${e.cond}${ch < 1 ? `, ${e.chance}% chance` : ""})`, f });
       }
+    }
+
+    for (const e of bestPct.values()) {
+      factors.push({ label: `Ability ${e.type} (${e.cond})`, f: 1 + e.value / 100 });
     }
 
     // ATK buffs
