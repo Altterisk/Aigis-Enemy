@@ -12,6 +12,7 @@ import TagPage from "./pages/TagPage";
 import Buffs from "./pages/Buffs";
 import CostGen from "./pages/CostGen";
 import Weather from "./pages/Weather";
+import Dps from "./pages/Dps";
 import Collection from "./pages/Collection";
 import "./styles.css";
 
@@ -31,6 +32,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="buffs" element={<Buffs />} />
           <Route path="costgen" element={<CostGen />} />
           <Route path="weather" element={<Weather />} />
+          <Route path="dps" element={<Dps />} />
           <Route path="collection" element={<Collection />} />
         </Route>
       </Routes>

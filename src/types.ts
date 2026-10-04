@@ -595,6 +595,10 @@ export interface BuffRow {
   // whose value is a percent of the SOURCE unit's own stat (Dancer bonus)
   vk?: "pct" | "flag" | "flat" | "sec" | "share";
   cond?: string;
+  // raw expressions: x = which units the row applies to (evaluated per
+  // target), ax = the owner-side activation gate
+  x?: string;
+  ax?: string;
   // functional group override: ability 13/70 (ATK) and 14/71 (DEF) split by
   // their OWN invoke into "sortie_atk"/"deploy_atk"/"sortie_def"/
   // "deploy_def"; 223/224 (War God Blessing ATK/DEF) get their own

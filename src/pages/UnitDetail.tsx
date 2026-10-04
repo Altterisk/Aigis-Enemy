@@ -970,8 +970,14 @@ function resolveToken(
   // row 240..300 vs everyone's 130..170).
   const spec = TOKEN_INFLUENCES[name];
   if (spec) {
-    const rows = (s.influences || [])
-      .filter((r) => r.influence_type != null && spec.types.includes(r.influence_type))
+    // A self row tagged "[X]" belongs to the "[X]" token; an "<X>" token
+    // names the other row (allies/tokens) unless that is the only candidate.
+    const typed = (s.influences || [])
+      .filter((r) => r.influence_type != null && spec.types.includes(r.influence_type));
+    const unclaimed = token.startsWith("<")
+      ? typed.filter((r) => !(r.tag === `[${name}]` && r.target === "self"))
+      : typed;
+    const rows = (unclaimed.length ? unclaimed : typed)
       .sort((a, b) => Number(PERMANENT_STAT_TYPES.has(a.influence_type!))
         - Number(PERMANENT_STAT_TYPES.has(b.influence_type!)));
     const row = rows.find((r) => r[spec.field] != null && !r.activate_if);

@@ -111,3 +111,10 @@ test("class-trait tag effects respect a carrier-specific CardID condition", asyn
   await expect(classSection).not.toContainText("Vidya (Black)");
   await expect(classSection).not.toContainText("Vidya (Platinum)");
 });
+
+test("buff rows list every skill-stage tier of a boosted ability", async ({ page }) => {
+  await page.goto("/#/buffs");
+  const row = page.locator(".buff-table tr", { hasText: "Tristella (Black)" }).first();
+  await expect(row.locator(".buff-tiers")).toContainText("base");
+  await expect(row.locator(".buff-tiers")).toContainText("awakened skill stage 3");
+});

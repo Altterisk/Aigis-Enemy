@@ -311,6 +311,18 @@ export default function Buffs() {
         const rule = list
           .map(buffSelectionRule)
           .find((candidate) => candidate != null);
+        // every value a unit reaches in this group (a skill stage can boost
+        // an ability: "... + awakened skill stage 3 (name)" rows), shown as
+        // tiers under the unit's best value
+        const tiers = new Map<number, { label: string; r: BuffRow }[]>();
+        list.forEach((r) => {
+          const m = r.s.match(/ \+ (.+)$/);
+          const label = m ? m[1] : "base";
+          const cur = tiers.get(r.u) ?? [];
+          if (!cur.some((x) => x.label === label && x.r.v === r.v)) cur.push({ label, r });
+          tiers.set(r.u, cur);
+        });
+        tiers.forEach((cur) => cur.sort((a, b) => a.r.v - b.r.v));
         const ranked = list
           .sort((a, b) => rule === "highest_duration"
             ? (b.selection_priority ?? 0) - (a.selection_priority ?? 0)
@@ -320,7 +332,7 @@ export default function Buffs() {
             seen.add(r.u);
             return true;
           });
-        return { k, grp, nsK, t, rule, ranked };
+        return { k, grp, nsK, t, rule, ranked, tiers };
       })
       .sort((a, b) => b.ranked.length - a.ranked.length);
   }, [rows, stat, targetScope, targetFaction, targetRace, targetAttr, targetSeason, targetClass]);
@@ -442,6 +454,15 @@ export default function Buffs() {
                       <td className="num buff-val" title={rawTitle(r)}>
                         <strong>{fmtValue(r)}</strong>
                         {r.mod?.length ? <span className="buff-mod">*</span> : null}
+                        {(g.tiers.get(r.u)?.length ?? 0) > 1 && (
+                          <div className="buff-tiers">
+                            {g.tiers.get(r.u)!.map((x) => (
+                              <div key={`${x.label}-${x.r.v}`} title={x.r.s}>
+                                {fmtValue(x.r)} <span className="muted">{x.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         {buffSelectionRule(r) === "highest_duration" && r.selection_priority != null && (
                           <span className="buff-priority">priority: {fmtFrames(r.selection_priority)}</span>
                         )}

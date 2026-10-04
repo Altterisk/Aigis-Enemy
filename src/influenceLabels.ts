@@ -3385,7 +3385,7 @@ const CANONICAL_ABILITY_NAMES: Record<string, string> = {
   "161": "Permanent ATK gain on condition",
   "162": "Permanent DEF gain on condition",
   "163": "Permanent MR gain on condition",
-  "164": "Death-count-based HP/ATK/DEF buff",
+  "164": "Death-count-based HP buff",
   "165": "Death-count-based ATK buff",
   "166": "Death-count-based DEF buff",
   "167": "Death-count-based MR buff",
