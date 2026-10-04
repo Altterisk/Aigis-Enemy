@@ -284,6 +284,29 @@ const isAlways = (x?: string | null) => !x || !x.trim() || /^1;?$/.test(x.trim()
 
 // ---------------------------------------------------------------- unit-side data
 
+// Stable keys for remembered toggles: a short hash of what a row IS (its
+// source, influence id, values and conditions), never its position in a list,
+// so a shared link keeps pointing at the same row after a data re-export.
+function hashKey(text: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(36);
+}
+
+// distinct key per identical-content row within one list ("~2", "~3", ...)
+function keyer() {
+  const seen = new Map<string, number>();
+  return (text: string) => {
+    const k = hashKey(text);
+    const n = (seen.get(k) ?? 0) + 1;
+    seen.set(k, n);
+    return n > 1 ? `${k}~${n}` : k;
+  };
+}
+
 function abilityRows(u: Unit, cl: UnitClass): { src: string; r: AbilityInfluence }[] {
   const ab = cl.cc >= 2 ? u.abilities?.awakened : u.abilities?.default;
   return [
@@ -342,13 +365,15 @@ function counterText(v: unknown, fallback: string): string {
 
 function ownEffects(u: Unit, cl: UnitClass): OwnEffect[] {
   const out: OwnEffect[] = [];
-  abilityRows(u, cl).forEach(({ src, r }, i) => {
+  const nextKey = keyer();
+  abilityRows(u, cl).forEach(({ src, r }) => {
     const t = r.influence_type;
     if (r.target !== "self") return;
     const p = (r.params || []) as number[];
     const cond = [r.command_human, r.activate_command_human].filter(Boolean).join(" AND ") || "always";
     const exprs = [r.command, r.activate_command].filter((x): x is string => !isAlways(x));
-    const key = `${src}-${i}`;
+    const key = nextKey([src, r.influence_type, r.invoke, JSON.stringify(r.params ?? []),
+      r.command ?? "", r.activate_command ?? ""].join("|"));
     if (t === 1) {
       out.push({ key, src, type: 1, label: "Damage modifier on hit", cond, exprs,
         kind: "dmg", value: p[0] ?? 100, chance: p[1] ?? 100 });
@@ -510,6 +535,7 @@ interface BufferSel {
 
 interface BufEffect {
   key: string;
+  legacyKey?: string; // position-based key used by links made before stable keys
   cat: Cat;
   label: string; // source text
   value: string;
@@ -552,6 +578,7 @@ function bufferEffects(
   const cl = bu.classes[Math.min(b.tier, bu.classes.length - 1)];
   if (!cl) return [];
   const out: BufEffect[] = [];
+  const nextKey = keyer();
   index.forEach((r, i) => {
     if (r.u !== bu.id) return;
     const cat = catOf(r);
@@ -559,7 +586,8 @@ function bufferEffects(
     const slot = bufferSlotOk(r.s, bu, cl, b);
     if (!slot.ok) return;
     out.push({
-      key: `row${i}`, cat, label: r.s, value: fmtRowValue(r), target: r.tgt ? String(r.tgt) : "",
+      key: nextKey([r.stat, r.ns, r.t, r.s, r.grp ?? "", r.x ?? "", r.ax ?? ""].join("|")), legacyKey: `row${i}`,
+      cat, label: r.s, value: fmtRowValue(r), target: r.tgt ? String(r.tgt) : "",
       row: r, needsDeploy: !/\(sortie\)( \+ |$)/.test(r.s), needsSkill: slot.skill,
       gate: r.ax ?? null, filter: r.x ?? null,
       toggle: r.ns === "ability" && r.t === 345 ? OVERHEALED : undefined,
@@ -576,6 +604,7 @@ function bufferEffects(
   ];
   sources.forEach(({ src, r, skill }, gi) => {
     if (r.influence_type !== 189) return;
+    const grantBase = [src, r.invoke, r.params?.[0], r.command ?? "", r.activate_command ?? ""].join("|");
     const granted = configs?.[String(r.params?.[0])] ?? [];
     granted.forEach((g, j) => {
       const p = (g.params || []) as number[];
@@ -594,7 +623,7 @@ function bufferEffects(
       }
       if (!eff) return;
       out.push({
-        key: `grant${gi}-${j}`, cat: "GRANT", label: `${src} (${r.invoke}) grants ability ${g.influence_type}`,
+        key: nextKey(`grant|${grantBase}|${j}|${g.influence_type}`), legacyKey: `grant${gi}-${j}`, cat: "GRANT", label: `${src} (${r.invoke}) grants ability ${g.influence_type}`,
         value: eff.kind === "dmg" ? `x${eff.value / 100}${eff.chance! < 100 ? ` (${eff.chance}% chance)` : ""}`
           : eff.kind === "pad_zero" ? `${eff.value}% no-PAD chance` : `${eff.value}% true damage`,
         target: [r.command_human, cond !== "always" ? `when ${cond}` : ""].filter(Boolean).join(" · ") || "all",
@@ -606,6 +635,9 @@ function bufferEffects(
   });
   return out;
 }
+
+// a buffer row switched off, by its stable key or (old links) its position
+const isOff = (b: BufferSel, e: BufEffect) => !!(b.off[e.key] || (e.legacyKey && b.off[e.legacyKey]));
 
 // ---------------------------------------------------------------- page
 
@@ -681,18 +713,91 @@ interface ShareState {
   b?: BufferSel[]; co?: Record<string, boolean>; sb?: boolean;
 }
 
-function encodeShare(st: ShareState): string {
-  const bytes = new TextEncoder().encode(JSON.stringify(st));
+const b64uEncode = (bytes: Uint8Array): string => {
   let bin = "";
   bytes.forEach((x) => { bin += String.fromCharCode(x); });
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+};
+const b64uDecode = (code: string): Uint8Array =>
+  Uint8Array.from(atob(code.replace(/-/g, "+").replace(/_/g, "/")), (ch) => ch.charCodeAt(0));
+
+async function pipe(bytes: Uint8Array, stream: CompressionStream | DecompressionStream): Promise<Uint8Array> {
+  const out = new Blob([bytes.slice().buffer as ArrayBuffer]).stream().pipeThrough(stream);
+  return new Uint8Array(await new Response(out).arrayBuffer());
 }
 
-function decodeShare(code: string): ShareState | null {
+// ?s= links (plain JSON ShareState, base64url)
+function decodeShareV1(code: string): ShareState | null {
   try {
-    const bin = atob(code.replace(/-/g, "+").replace(/_/g, "/"));
-    const bytes = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
-    return JSON.parse(new TextDecoder().decode(bytes)) as ShareState;
+    return JSON.parse(new TextDecoder().decode(b64uDecode(code))) as ShareState;
+  } catch {
+    return null;
+  }
+}
+
+// ?z= links: a positional array (codes instead of words, defaults left out),
+// deflate-raw compressed, base64url
+const SLOTS: SlotKey[] = ["none", "base", "class_evolved", "awakened"];
+const PROCS = ["expected", "always", "never"] as const;
+const CAT_KEYS: Cat[] = ["SORTIE", "ATK", "DEF_DEBUFF", "MR_DEBUFF", "DMG_AMP", "PAD", "GRANT"];
+
+type Compact = [
+  number,                               // 0 format version (2)
+  number | null,                        // 1 unit id
+  number,                               // 2 class index
+  number,                               // 3 level: 0 max, 1 lv1
+  number,                               // 4 skill slot index
+  number,                               // 5 stage index
+  number,                               // 6 flags: 1 affection, 2 self-buff, 4 add-percents, 8 multiply dmg mods
+  string,                               // 7 interval override ("" = none)
+  [number, number, number],             // 8 enemy HP / DEF / MR
+  number,                               // 9 proc mode index
+  number,                               // 10 damage floor %
+  Record<string, number | boolean>,     // 11 condition values
+  string[],                             // 12 own effects switched off
+  Record<string, number>,               // 13 own effect counts
+  (number | string)[][],                // 14 buffers: [id, tier, slot, stage, flags(1 deployed, 2 skill), ...off row keys]
+  number,                               // 15 categories switched off (bit per CAT_KEYS index)
+];
+
+function toCompact(st: ShareState): Compact {
+  return [
+    2, st.u ?? null, st.c ?? 0, st.l === "1" ? 1 : 0, SLOTS.indexOf(st.sl ?? "none"), st.st ?? 0,
+    (st.a !== false ? 1 : 0) | (st.sb !== false ? 2 : 0) | (st.cb === "add" ? 4 : 0) | (st.dc === "multiply" ? 8 : 0),
+    st.iv ?? "", st.e ?? [0, 0, 0], PROCS.indexOf(st.pm ?? "expected"), st.fp ?? 10,
+    st.v ?? {}, Object.keys(st.oo ?? {}).filter((k) => st.oo![k]), st.oc ?? {},
+    (st.b ?? []).map((b) => [b.id, b.tier, SLOTS.indexOf(b.slot), b.stage,
+      (b.deployed ? 1 : 0) | (b.skillOn ? 2 : 0), ...Object.keys(b.off).filter((k) => b.off[k])]),
+    CAT_KEYS.reduce((m, k, i) => (st.co && st.co[k] === false ? m | (1 << i) : m), 0),
+  ];
+}
+
+function fromCompact(c: Compact): ShareState {
+  const off = (k: number | string) => (typeof k === "number" ? `row${k}` : k);
+  return {
+    u: c[1] ?? undefined, c: c[2], l: c[3] ? "1" : "max", sl: SLOTS[c[4]] ?? "none", st: c[5],
+    a: !!(c[6] & 1), sb: !!(c[6] & 2), cb: c[6] & 4 ? "add" : "multiply", dc: c[6] & 8 ? "multiply" : "highest",
+    iv: c[7] || undefined, e: c[8], pm: PROCS[c[9]] ?? "expected", fp: c[10],
+    v: c[11], oo: Object.fromEntries(c[12].map((k) => [k, true])), oc: c[13],
+    b: c[14].map(([id, tier, sl, stage, flags, ...offs]) => ({
+      id: Number(id), tier: Number(tier), slot: SLOTS[Number(sl)] ?? "none", stage: Number(stage),
+      deployed: !!(Number(flags) & 1), skillOn: !!(Number(flags) & 2),
+      off: Object.fromEntries(offs.map((k) => [off(k), true])),
+    })),
+    co: Object.fromEntries(CAT_KEYS.map((k, i) => [k, !(c[15] & (1 << i))])),
+  };
+}
+
+async function encodeShare(st: ShareState): Promise<string> {
+  const json = new TextEncoder().encode(JSON.stringify(toCompact(st)));
+  return b64uEncode(await pipe(json, new CompressionStream("deflate-raw")));
+}
+
+async function decodeShare(code: string): Promise<ShareState | null> {
+  try {
+    const json = await pipe(b64uDecode(code), new DecompressionStream("deflate-raw"));
+    const c = JSON.parse(new TextDecoder().decode(json)) as Compact;
+    return c[0] === 2 ? fromCompact(c) : null;
   } catch {
     return null;
   }
@@ -746,8 +851,9 @@ export default function Dps() {
   const restore = useRef<ShareState | null>(null);
   const [copied, setCopied] = useState(false);
   useEffect(() => {
-    const code = params.get("s");
-    const st = code ? decodeShare(code) : null;
+    const z = params.get("z");
+    const s1 = params.get("s");
+    (z ? decodeShare(z) : Promise.resolve(s1 ? decodeShareV1(s1) : null)).then((st) => {
     if (!st) return;
     restore.current = st;
     if (st.u != null) setUnitId(st.u);
@@ -762,6 +868,7 @@ export default function Dps() {
     if (st.b) setBuffers(st.b);
     if (st.co) setCatOn((cur) => ({ ...cur, ...st.co }));
     if (st.sb != null) setSelfBuff(st.sb);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -797,12 +904,13 @@ export default function Dps() {
       pm: procMode, fp: floorPct, cb: combine, dc: dmgCombine,
       v: vals, oo: ownOff, oc: ownCount, b: buffers, co: catOn, sb: selfBuff,
     };
-    const code = encodeShare(st);
-    setParams({ s: code }, { replace: true });
-    const url = `${window.location.origin}${window.location.pathname}#/dps?s=${code}`;
-    const done = () => { setCopied(true); setTimeout(() => setCopied(false), 2000); };
-    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).then(done, done);
-    else done();
+    encodeShare(st).then((code) => {
+      setParams({ z: code }, { replace: true });
+      const url = `${window.location.origin}${window.location.pathname}#/dps?z=${code}`;
+      const done = () => { setCopied(true); setTimeout(() => setCopied(false), 2000); };
+      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).then(done, done);
+      else done();
+    });
   };
 
   const skills = (u?.skills ?? {}) as Partial<Record<Exclude<SlotKey, "none">, UnitSkill | null>>;
@@ -863,7 +971,7 @@ export default function Dps() {
     if (buffIndex) {
       allBuffers(true).forEach(({ b, bu }) => {
         bufferEffects(b, bu, buffIndex, configs).forEach((e) => {
-          if (b.off[e.key] || !catOn[e.cat]) return;
+          if (isOff(b, e) || !catOn[e.cat]) return;
           if (effectState(e, b, bu) === false) return;
           if (e.toggle) add([e.toggle]);
           add(controlsOf(e.gate));
@@ -902,7 +1010,7 @@ export default function Dps() {
     if (buffIndex) {
       allBuffers(withSkill).forEach(({ b, bu, self }) => {
         bufferEffects(b, bu, buffIndex, configs).forEach((e) => {
-          if (b.off[e.key] || !catOn[e.cat]) return;
+          if (isOff(b, e) || !catOn[e.cat]) return;
           if (effectState(e, b, bu, vals) !== true) return;
           if (e.row) { live.push(e.row); if (self) ownRows.add(e.row); }
           if (e.grant) grants.push(e.grant);
@@ -1099,12 +1207,16 @@ export default function Dps() {
         <tbody>
           {shown.map((e) => {
             const st = effectState(e, b, bu, vals);
-            const on = !b.off[e.key] && catOn[e.cat];
+            const on = !isOff(b, e) && catOn[e.cat];
             return (
               <tr key={e.key} className={st !== true || !on ? "dps-na" : ""}>
                 <td>
-                  <input type="checkbox" checked={!b.off[e.key]} disabled={isSelf}
-                    onChange={(ev) => patchBuffer(b.id, (x) => ({ ...x, off: { ...x.off, [e.key]: !ev.target.checked } }))} />
+                  <input type="checkbox" checked={!isOff(b, e)} disabled={isSelf}
+                    onChange={(ev) => patchBuffer(b.id, (x) => {
+                      const off = { ...x.off, [e.key]: !ev.target.checked };
+                      if (e.legacyKey) delete off[e.legacyKey];
+                      return { ...x, off };
+                    })} />
                 </td>
                 <td><span className="dps-badge">{CATS.find((c) => c.k === e.cat)?.label}</span></td>
                 <td><strong>{e.value}</strong></td>

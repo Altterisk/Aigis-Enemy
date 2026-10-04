@@ -151,7 +151,8 @@ test("share link restores the whole setup", async ({ page, context }) => {
   await page.getByRole("button", { name: "Share" }).click();
   await expect(page.getByRole("button", { name: "Link copied" })).toBeVisible();
   const url = page.url();
-  expect(url).toContain("/dps?s=");
+  expect(url).toContain("/dps?z=");
+  expect(url.length).toBeLessThan(200);
 
   const fresh = await context.newPage();
   await fresh.goto(url);
@@ -169,4 +170,38 @@ test("Ovie's HP-tier conditional ATK rows replace each other", async ({ page }) 
   const rows = steps.locator("tr", { hasText: "Ability 83" });
   await expect(rows).toHaveCount(1);
   await expect(rows).toContainText("50");
+});
+
+test("old ?s= share links still open", async ({ page }) => {
+  const st = { u: 2902, c: 1, l: "max", sl: "awakened", st: 0, a: true, e: [0, 500, 0] };
+  const code = Buffer.from(JSON.stringify(st)).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  await page.goto(`/#/dps?s=${code}`);
+  await expect(page.locator(".dps-card-head, .cg-card-head").first()).toContainText("#2902");
+  await expect(page.getByLabel("DEF", { exact: true })).toHaveValue("500");
+  await expect(page.locator(".dps-result tbody tr")).toHaveCount(2);
+});
+
+test("switched-off buffer rows are shared by content key, not row position", async ({ page, context }) => {
+  await pickUnit(page, 2901);
+  const card = await addBuffer(page, 2475);
+  const atk = page.locator(".dps-result tbody tr").first().locator("td").nth(1);
+  const box = card.locator("tbody input[type=checkbox]").first();
+  await box.uncheck();
+  const after = await atk.innerText();
+  await page.getByRole("button", { name: "Share" }).click();
+  await expect(page.getByRole("button", { name: "Link copied" })).toBeVisible();
+  const url = page.url();
+  // the encoded off entry is a hash string, never a bare row number
+  const z = new URL(url.replace("#/dps", "dps")).searchParams.get("z")!;
+  const zlib = await import("node:zlib");
+  const json = JSON.parse(zlib.inflateRawSync(Buffer.from(z.replace(/-/g, "+").replace(/_/g, "/"), "base64")).toString());
+  const offs = json[14][0].slice(5);
+  expect(offs.length).toBe(1);
+  expect(typeof offs[0]).toBe("string");
+  expect(offs[0]).not.toMatch(/^row\d+$/);
+
+  const fresh = await context.newPage();
+  await fresh.goto(url);
+  await expect(fresh.locator(".dps-result tbody tr").first().locator("td").nth(1)).toHaveText(after);
+  await expect(fresh.locator(".dps-buffer", { hasText: "#2475" }).locator("tbody input[type=checkbox]").first()).not.toBeChecked();
 });
