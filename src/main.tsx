@@ -14,6 +14,9 @@ import CostGen from "./pages/CostGen";
 import Weather from "./pages/Weather";
 import Dps from "./pages/Dps";
 import Collection from "./pages/Collection";
+import "@altterisk/game-hub/hub.css";
+import "@altterisk/game-hub/base.css";
+import "@altterisk/game-hub/components.css";
 import "./styles.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
