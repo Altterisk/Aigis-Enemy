@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("root redirects to the unit list", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/#\/units$/);
-  await expect(page.locator("h1")).toHaveText("Aigis Database");
+  await expect(page.locator(".hub-bar__home")).toHaveText("Aigis Database");
   await expect(page.locator(".unit-grid .unit-tile").first()).toBeVisible();
 });
 

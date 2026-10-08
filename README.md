@@ -53,6 +53,12 @@ npm run dev      # http://localhost:5173
 npm run build    # static build into dist/
 ```
 
+The top bar, game switcher, footer and colour tokens come from the shared
+`@altterisk/game-hub` package (the same shell as the other altterisk.cc game
+sites), installed from `github:Altterisk/game-hub#main`. `npm run build`
+refetches the hub's latest `main` first (`prebuild`), so every deploy picks up
+shell changes; `npm run hub:update` does the same for local dev.
+
 ## Notes
 
 - Stage enemies use the spawn id; map-local enemies (id ≥ 1000) show inline

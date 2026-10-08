@@ -608,7 +608,7 @@ function Chart({ series, seconds }: { series: Series[]; seconds: number }) {
       bg.setAttribute("height", String(H));
       bg.setAttribute(
         "fill",
-        window.getComputedStyle(svg.parentElement ?? svg).backgroundColor || "#1e2128",
+        window.getComputedStyle(svg.parentElement ?? svg).backgroundColor || "#121825",
       );
       clone.insertBefore(bg, clone.firstChild);
 
