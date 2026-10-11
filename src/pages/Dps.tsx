@@ -45,6 +45,7 @@ import { useSearchParams } from "react-router-dom";
 import { loadJSONFile, unitImageUrl, useAbilityConfigs, useUnitDetail, useUnits } from "../data";
 import { influenceSelectionRule } from "../influenceLabels";
 import type { AbilityInfluence, BuffRow, SkillStage, Unit, UnitClass, UnitSkill } from "../types";
+import { base64url, packJson, unpackJson } from "@altterisk/game-hub/codec";
 
 type SlotKey = "none" | "base" | "class_evolved" | "awakened";
 type Combine = "multiply" | "add";
@@ -713,23 +714,10 @@ interface ShareState {
   b?: BufferSel[]; co?: Record<string, boolean>; sb?: boolean;
 }
 
-const b64uEncode = (bytes: Uint8Array): string => {
-  let bin = "";
-  bytes.forEach((x) => { bin += String.fromCharCode(x); });
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-};
-const b64uDecode = (code: string): Uint8Array =>
-  Uint8Array.from(atob(code.replace(/-/g, "+").replace(/_/g, "/")), (ch) => ch.charCodeAt(0));
-
-async function pipe(bytes: Uint8Array, stream: CompressionStream | DecompressionStream): Promise<Uint8Array> {
-  const out = new Blob([bytes.slice().buffer as ArrayBuffer]).stream().pipeThrough(stream);
-  return new Uint8Array(await new Response(out).arrayBuffer());
-}
-
 // ?s= links (plain JSON ShareState, base64url)
 function decodeShareV1(code: string): ShareState | null {
   try {
-    return JSON.parse(new TextDecoder().decode(b64uDecode(code))) as ShareState;
+    return JSON.parse(new TextDecoder().decode(base64url.decode(code))) as ShareState;
   } catch {
     return null;
   }
@@ -788,15 +776,11 @@ function fromCompact(c: Compact): ShareState {
   };
 }
 
-async function encodeShare(st: ShareState): Promise<string> {
-  const json = new TextEncoder().encode(JSON.stringify(toCompact(st)));
-  return b64uEncode(await pipe(json, new CompressionStream("deflate-raw")));
-}
+const encodeShare = (st: ShareState) => packJson(toCompact(st));
 
 async function decodeShare(code: string): Promise<ShareState | null> {
   try {
-    const json = await pipe(b64uDecode(code), new DecompressionStream("deflate-raw"));
-    const c = JSON.parse(new TextDecoder().decode(json)) as Compact;
+    const c = await unpackJson<Compact>(code);
     return c[0] === 2 ? fromCompact(c) : null;
   } catch {
     return null;

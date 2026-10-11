@@ -13,10 +13,13 @@ rarity-grouped or continuous implementation-date ordering. Rarity mode splits
 Hero, Chibi, Support, Event, and Gacha/Paid collections. Prince title classes
 sharing a normalized class/icon count as one separate Prince entry. Unit names
 link to details; Hall-of-Fame and eligible bond-quest completion buttons are
-stored with the checklist. Its copy/paste AIGC2 restore code is a compact,
-versioned and checksummed alternative to
-exporting the full state as JSON. The page can also import the `oryu` ownership
-bitmap from an `aigis.chara-stat.us/checker/` URL.
+stored with the checklist. The Backup panel has a copy/paste AIGC3 restore
+code (compact, versioned and checksummed; AIGC2 and AIGC1 codes still restore)
+and a JSON backup file export/import. The page can also import the `oryu`
+ownership bitmap from an `aigis.chara-stat.us/checker/` URL.
+
+List pages keep their search, filters and page in the URL, so back/forward and
+shared links restore the same view (`?page=` counts from 0).
 
 ## Data
 
@@ -57,7 +60,11 @@ The top bar, game switcher, footer and colour tokens come from the shared
 `@altterisk/game-hub` package (the same shell as the other altterisk.cc game
 sites), installed from `github:Altterisk/game-hub#main`. `npm run build`
 refetches the hub's latest `main` first (`prebuild`), so every deploy picks up
-shell changes; `npm run hub:update` does the same for local dev.
+shell changes; `npm run hub:update` does the same for local dev. The list
+toolbars, filter panels, pager, breadcrumbs, page headers, tabs, panels, the
+gallery lightbox and the collection backup panel are shared game-hub
+components too, as are the JSON loader and the collection/DPS share-code
+codecs.
 
 ## Notes
 

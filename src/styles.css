@@ -441,27 +441,9 @@ section h3 { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 .stage-links { list-style: none; padding-left: 0; columns: 2; }
 .stage-links li { padding: 2px 0; break-inside: avoid; }
 
-/* enemy tile body + pager */
+/* enemy tile body */
 .enemy-tile-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .enemy-tile-body > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pager {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 8px 14px;
-  margin: 18px 0 6px;
-}
-.pager button {
-  background: var(--panel2);
-  border: 1px solid var(--line);
-  color: var(--text);
-  padding: 6px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-.pager button:hover:not(:disabled) { border-color: var(--accent); }
-.pager button:disabled { opacity: 0.4; cursor: default; }
 
 /* ============================ polish ============================ */
 /* the 8-column enemy stat table can be wide; let it scroll rather than
@@ -483,6 +465,8 @@ summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* units */
 .unit-page { position: relative; }
+/* panels sit beside or below the floated infobox, never underneath it */
+.unit-page .hub-panel { display: flow-root; }
 .unit-infobox {
   float: right;
   width: 230px;
@@ -707,6 +691,8 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   width: 100%;
 }
 .unit-toolbar select { min-width: 140px; max-width: 210px; }
+.unit-toolbar .hub-list-toolbar { margin: 0; width: 100%; }
+.unit-toolbar .hub-search__input { width: 100%; }
 .unit-toolbar-row > input[type="text"], .unit-toolbar-row > input:not([type]) {
   flex: 1 1 220px;
   min-width: 180px;
@@ -723,20 +709,6 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 /* filters/reset are one logical action, not two independent buttons --
    tighter internal gap + a shared outer border reads as one grouped
    control, distinct from the wider gap used between unrelated row items. */
-.unit-toolbar-actions {
-  display: flex;
-  margin-left: auto;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  overflow: hidden;
-}
-.unit-toolbar-actions .filter-toggle-btn {
-  border: none;
-  border-radius: 0;
-}
-.unit-toolbar-actions .filter-toggle-btn + .filter-toggle-btn {
-  border-left: 1px solid var(--line);
-}
 
 /* tag-mentions panel (tag-filtered unit list) */
 .tag-mentions {
@@ -791,20 +763,9 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   border: solid var(--bg, #14161a); border-width: 0 2px 2px 0;
   transform: rotate(45deg) translate(-1px, -1px);
 }
-.filter-toggle-btn {
-  background: var(--panel2); border: 1px solid var(--accent); color: var(--text);
-  border-radius: 6px; padding: 7px 14px; cursor: pointer; font-size: 13px;
-  transition: background 0.12s;
-}
-.filter-toggle-btn:hover { background: var(--line); }
 .npc-toggle {
   display: inline-flex; align-items: center; gap: 7px;
   white-space: nowrap; cursor: pointer; color: var(--muted); font-size: 13px;
-}
-.filter-panel {
-  display: flex; flex-direction: column; gap: 14px;
-  background: var(--panel2); border: 1px solid var(--line);
-  border-radius: var(--hub-radius-xl); padding: 16px 20px; margin-bottom: 14px;
 }
 .filter-group { max-width: 100%; }
 .filter-group-title {
@@ -821,17 +782,6 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   font-size: 13px; height: fit-content; transition: color 0.12s, border-color 0.12s;
 }
 .filter-clear-btn:hover { color: var(--hub-danger); border-color: var(--hub-danger); }
-
-/* pager jump box */
-.pager-jump {
-  width: 52px;
-  background: var(--panel2);
-  border: 1px solid var(--line);
-  color: var(--text);
-  border-radius: 6px;
-  padding: 6px 8px;
-  text-align: center;
-}
 
 /* prince title group */
 .prince-titles {
@@ -885,68 +835,12 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 }
 
 /* ---- /buffs page ---------------------------------------------------- */
-.buff-toolbar { flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-.buff-toolbar.buff-toolbar-effects { margin-bottom: 14px; }
-.buff-toolbar select {
-  min-width: 140px;
-  max-width: 210px;
-  background: var(--panel2);
-  border: 1px solid var(--line);
-  color: var(--text);
-  padding: 7px 10px;
-  border-radius: 6px;
-}
-.buff-toolbar select:hover { border-color: var(--accent); }
-.buff-target-toggle { margin-left: auto; }
-.buff-target-panel { margin: 0 0 14px; }
-.stat-tab {
-  padding: 5px 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel2);
-  color: var(--muted);
-  font-weight: 600;
-  font-size: 12.5px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.stat-tab:hover { color: var(--text); border-color: var(--accent); }
-.stat-tab.active { background: var(--accent); border-color: var(--accent); color: var(--hub-bg); }
-.stat-tab.debuff-tab.active { background: #f7768e; border-color: #f7768e; }
-
-.buff-groups {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
-  gap: 16px;
-  align-items: start;
-}
-/* effect categories carry an extra Condition column -- give each group the
-   full row so the table has room to breathe */
-.buff-groups.buff-groups-wide { grid-template-columns: 1fr; }
-.buff-group {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--hub-radius-xl);
-  padding: 12px 14px;
-  overflow-x: auto;
-  min-width: 0;
-}
-.buff-group-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  margin-bottom: 8px;
-}
-.buff-group-title { font-weight: 700; }
-.buff-group-meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
-.buff-group-meta .unverified { color: #e0af68; font-style: normal; }
-.buff-group-rule {
-  margin: -2px 0 8px;
-  color: #c9a7ff;
-  font-size: 12px;
-}
+/* picker = shared FilterRow/FilterChip, toolbar = .hub-toolbar--panel,
+   groups = shared GroupCard in .hub-group-grid */
+.buffs-page { --hub-group-note-color: #c9a7ff; }
+.buff-toolbar { margin: 12px 0 14px; }
+.buff-target-panel { flex-basis: 100%; }
+.buff-group .unverified { color: #e0af68; font-style: normal; }
 .buff-table { width: 100%; }
 .buff-table th, .buff-table td { padding: 4px 8px; }
 .buff-table td.buff-val { white-space: nowrap; }
@@ -965,14 +859,13 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 }
 .buff-more:hover { color: var(--text); border-color: var(--accent); }
 @media (max-width: 700px) {
-  .buff-groups { grid-template-columns: 1fr; }
-  .buff-target-toggle { margin-left: 0; }
-  .stat-tab { padding: 4px 9px; font-size: 12px; }
   .buff-table { font-size: 12px; }
   .buff-table th, .buff-table td { padding: 3px 6px; }
   .buff-table td.buff-cond { max-width: 180px; }
-  .buff-group { padding: 10px 10px; }
-  .buff-group-meta { white-space: normal; }
+}
+@media (max-width: 600px) {
+  /* stacked rows: the condition cell gets the full card width */
+  .buff-table td.buff-cond { max-width: none; }
 }
 
 /* ===== /costgen -- UP generation simulator ===== */
@@ -1096,7 +989,7 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   .cg-ctl-group { width: 100%; }
 }
 
-/* ---- unit art gallery lightbox ---- */
+/* ---- unit art zoom button ---- */
 .unit-art-zoom {
   display: block;
   padding: 0;
@@ -1105,75 +998,6 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   cursor: zoom-in;
   width: 100%;
 }
-.art-lightbox {
-  position: fixed;
-  inset: 0;
-  z-index: 1100; /* above the shared bar (1000) */
-  background: rgba(0, 0, 0, 0.82);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: zoom-out;
-}
-.art-lightbox-body {
-  cursor: default;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  max-width: 96vw;
-  max-height: 96vh;
-}
-.art-lightbox-img {
-  max-width: 92vw;
-  max-height: 88vh;
-  object-fit: contain;
-  border-radius: 6px;
-}
-/* controls pinned to the viewport bottom, independent of the art size */
-.art-lightbox-bar {
-  position: fixed;
-  left: 50%;
-  bottom: 18px;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 14px;
-  background: color-mix(in srgb, var(--hub-bg) 85%, transparent);
-  border: 1px solid var(--line);
-  border-radius: var(--hub-radius-md);
-  white-space: nowrap;
-}
-.art-lightbox-close {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  color: var(--muted);
-  border-radius: 6px;
-  padding: 4px 10px;
-  cursor: pointer;
-}
-.art-lightbox-close:hover { color: var(--accent); border-color: var(--accent); }
-
-/* ---- lightbox nav (gallery viewer) ---- */
-.art-lightbox-nav {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  color: var(--text);
-  border-radius: 6px;
-  padding: 4px 14px;
-  cursor: pointer;
-  font-size: 15px;
-}
-.art-lightbox-nav:hover { color: var(--accent); border-color: var(--accent); }
-.art-lightbox-label { color: #fff; font-size: 13px; }
-.art-lightbox-pixel { image-rendering: pixelated; min-width: 128px; min-height: 128px; max-width: 60vw; max-height: 60vh; }
-.art-lightbox-none {
-  display: flex; align-items: center; justify-content: center;
-  width: 240px; height: 200px; color: var(--muted);
-  background: var(--panel); border-radius: var(--hub-radius-md);
-}
-
 /* ---- unit gallery section ---- */
 .gallery-grid {
   display: flex;
@@ -1256,16 +1080,6 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 .enemy-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
 
 /* ==================== stage detail page revamp ==================== */
-.stage-head {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  background: linear-gradient(135deg, var(--panel) 0%, var(--panel2) 100%);
-  border: 1px solid var(--line);
-  border-radius: var(--hub-radius-xl);
-  padding: 14px 16px;
-  margin-top: 6px;
-}
 .stage-banner {
   width: 220px;
   max-height: 90px;
@@ -1274,10 +1088,6 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   flex: none;
   background: var(--hub-bg);
 }
-.stage-head-main { flex: 1; min-width: 0; }
-.stage-head-main h2 { margin: 0 0 4px; }
-.stage-head-main .event-line { margin: 2px 0 8px; }
-.stage-meta { margin-bottom: 0; gap: 6px; }
 .past-chip { border-color: #4a3535; color: #d0a0a0; }
 .stage-desc {
   white-space: pre-line;
@@ -1288,32 +1098,6 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   border-radius: 0 8px 8px 0;
   padding: 8px 12px;
   margin: 12px 0 0;
-}
-
-/* tabs (Enemies | Dialogue) */
-.stage-tabs {
-  display: flex;
-  gap: 6px;
-  margin-top: 16px;
-  border-bottom: 1px solid var(--line);
-  padding-bottom: 0;
-}
-.stage-tabs button {
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  color: var(--muted);
-  font: inherit;
-  font-weight: 700;
-  padding: 9px 14px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.stage-tabs button:hover { color: var(--text); }
-.stage-tabs button.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
 }
 
 /* dialogue scenes */
@@ -1383,7 +1167,6 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 .dlg-text { white-space: pre-line; font-size: 13px; }
 
 @media (max-width: 600px) {
-  .stage-head { flex-direction: column; align-items: flex-start; }
   .stage-banner { width: 100%; max-height: 120px; }
   .dlg-face { width: 36px; height: 36px; }
 }
@@ -1625,16 +1408,18 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 .collection-group-head h3 { display: inline; margin: 0; }
 .collection-section-progress {
   display: flex;
+  flex-direction: row-reverse;
   align-items: center;
   gap: 7px;
   width: clamp(110px, 16vw, 220px);
-  margin-left: auto;
+  margin: 0 0 0 auto;
   color: var(--muted);
   font-size: 11px;
   white-space: nowrap;
 }
-.collection-section-progress .collection-progress-track {
-  grid-column: auto;
+.collection-section-progress .hub-progress__head { margin: 0; font-size: 11px; }
+.collection-section-progress .hub-progress__track {
+  flex: 1;
   height: 7px;
 }
 .collection-accordion-chevron {
@@ -1957,14 +1742,12 @@ main:has(.dps-page) { max-width: 1480px; }
 /* form fields: same look as the shared .hub-input / .hub-select */
 .toolbar input, .toolbar select,
 .searchable-select input,
-.buff-toolbar select,
 .cg-search input,
 .cg-ctl select,
 .cg-row select,
 .collection-tools input,
 .collection-tools select,
 .collection-transfer textarea,
-.pager-jump,
 .dps-page .cg-ctl input[type="number"], .dps-page .cg-ctl select {
   background: var(--hub-surface);
   border: 1px solid var(--hub-border);
@@ -1975,7 +1758,6 @@ main:has(.dps-page) { max-width: 1480px; }
 }
 .toolbar input, .toolbar select,
 .searchable-select input,
-.buff-toolbar select,
 .cg-search input,
 .collection-tools input,
 .collection-tools select {
@@ -1984,28 +1766,24 @@ main:has(.dps-page) { max-width: 1480px; }
 }
 .toolbar input:hover, .toolbar select:hover,
 .searchable-select input:hover,
-.buff-toolbar select:hover,
 .cg-search input:hover,
 .cg-ctl select:hover,
 .cg-row select:hover,
 .collection-tools input:hover,
 .collection-tools select:hover,
 .collection-transfer textarea:hover,
-.pager-jump:hover,
 .dps-page .cg-ctl input[type="number"]:hover {
   border-color: var(--hub-border-strong);
   background: var(--hub-surface-raised);
 }
 .toolbar input:focus-visible, .toolbar select:focus-visible,
 .searchable-select input:focus-visible,
-.buff-toolbar select:focus-visible,
 .cg-search input:focus-visible,
 .cg-ctl select:focus-visible,
 .cg-row select:focus-visible,
 .collection-tools input:focus-visible,
 .collection-tools select:focus-visible,
 .collection-transfer textarea:focus-visible,
-.pager-jump:focus-visible,
 .dps-page .cg-ctl input[type="number"]:focus-visible {
   outline: none;
   border-color: var(--hub-accent);
@@ -2016,16 +1794,12 @@ main:has(.dps-page) { max-width: 1480px; }
 .collection-tools input::placeholder { color: var(--hub-text-subtle); }
 
 /* buttons: same look as the shared .hub-btn--sm */
-.pager button,
-.filter-toggle-btn,
 .collection-tools button,
 .collection-filters button,
 .collection-transfer button,
 .collection-section-actions button,
 .cg-chart-bar button,
 .buff-more,
-.art-lightbox-close,
-.art-lightbox-nav,
 .cg-x,
 .dps-remove {
   background: var(--hub-surface-raised);
@@ -2036,16 +1810,12 @@ main:has(.dps-page) { max-width: 1480px; }
   font-weight: 700;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
-.pager button:hover:not(:disabled),
-.filter-toggle-btn:hover,
 .collection-tools button:hover,
 .collection-filters button:hover,
 .collection-transfer button:hover:not(:disabled),
 .collection-section-actions button:hover:not(:disabled),
 .cg-chart-bar button:hover:not(:disabled),
 .buff-more:hover,
-.art-lightbox-close:hover,
-.art-lightbox-nav:hover,
 .cg-x:hover {
   background: var(--hub-surface-hover);
 }

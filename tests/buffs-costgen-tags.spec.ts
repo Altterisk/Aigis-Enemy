@@ -12,6 +12,17 @@ test("buff ranking renders groups and switches stat tabs", async ({ page }) => {
   await expect(page.locator(".buff-group").first()).toBeVisible();
 });
 
+test("buff categories sit in labelled rows with unit counts", async ({ page }) => {
+  await page.goto("/#/buffs?stat=MR_DEBUFF");
+  for (const label of ["Stats", "Debuffs", "Effects"]) {
+    await expect(page.getByRole("group", { name: label })).toBeVisible();
+  }
+  const active = page.getByRole("group", { name: "Debuffs" }).locator(".stat-tab[aria-pressed=true]");
+  await expect(active).toContainText("MR debuff");
+  const count = Number(await active.locator(".hub-chip__count").textContent());
+  expect(count).toBeGreaterThan(0);
+});
+
 test("a large buff group expands and collapses", async ({ page }) => {
   await page.goto("/#/buffs");
   const more = page.locator(".buff-more").first();

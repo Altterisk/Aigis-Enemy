@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { loadJSONFile, useUnitInfluenceLabels, useLocalisation, useUnits } from "../data";
+import { FilterChip, FilterRow, GroupCard } from "@altterisk/game-hub";
 import { HumanText, UnitIconLink, fmtFrames } from "../components";
 import type { BuffRow, InfluenceSelectionRule, UnitInfluenceLabel } from "../types";
 import { influenceSelectionRule } from "../influenceLabels";
 
+// ally stat buffs, then enemy-facing stat effects (the picker's first two rows)
 const STATS = [
   { k: "ATK", label: "ATK" },
   { k: "DEF", label: "DEF" },
@@ -13,13 +15,15 @@ const STATS = [
   { k: "RNG", label: "Range" },
   { k: "PAD_REDUCTION", label: "PAD Reduction" },
   { k: "CDR", label: "Skill CD Reduction" },
+] as const;
+const DEBUFFS = [
   { k: "ATK_DEBUFF", label: "ATK debuff" },
   { k: "DEF_DEBUFF", label: "DEF debuff" },
   { k: "MR_DEBUFF", label: "MR debuff" },
   { k: "PAD_DEBUFF", label: "Enemy PAD increase" },
   { k: "DMG_AMP", label: "Enemy damage taken" },
 ] as const;
-// non-stat effect categories (second tab row): innate abilities + effects
+// non-stat effect categories (third picker row): innate abilities + effects
 // granted to allies, each row carrying its application condition. Token-
 // sourced rows are attributed to the owner (source column names the token).
 const EFFECTS = [
@@ -39,7 +43,14 @@ const EFFECTS = [
   { k: "HPCUT", label: "HP Cut" },
   { k: "TIMESTOP", label: "Time Stop" },
 ] as const;
-type StatKey = (typeof STATS)[number]["k"] | (typeof EFFECTS)[number]["k"];
+type StatKey = (typeof STATS)[number]["k"] | (typeof DEBUFFS)[number]["k"] | (typeof EFFECTS)[number]["k"];
+const PICKER_ROWS: { label: string; tabs: readonly { k: StatKey; label: string }[] }[] = [
+  { label: "Stats", tabs: STATS },
+  { label: "Debuffs", tabs: DEBUFFS },
+  { label: "Effects", tabs: EFFECTS },
+];
+// active colour for the enemy-facing stat reductions
+const DEBUFF_CHIP_COLOR = "#f7768e";
 
 const TARGET_SCOPE_OPTIONS = [
   { value: "range", label: "In range / nearby" },
@@ -165,7 +176,7 @@ export default function Buffs() {
   // selected tab lives in the URL so back/forward and shared links restore it
   const [params, setParams] = useSearchParams();
   const rawStat = params.get("stat") || "ATK";
-  const stat: StatKey = ([...STATS, ...EFFECTS].some((s) => s.k === rawStat)
+  const stat: StatKey = ([...STATS, ...DEBUFFS, ...EFFECTS].some((s) => s.k === rawStat)
     ? rawStat : "ATK") as StatKey;
   const setStat = (k: StatKey) => {
     const next = new URLSearchParams(params);
@@ -249,6 +260,17 @@ export default function Buffs() {
     return true;
   };
 
+  // distinct units per category, with the target filters applied
+  const unitCounts = useMemo(() => {
+    const by = new Map<string, Set<number>>();
+    (rows || []).forEach((r) => {
+      if (!targetMatches(r)) return;
+      let set = by.get(r.stat);
+      if (!set) by.set(r.stat, (set = new Set()));
+      set.add(r.u);
+    });
+    return by;
+  }, [rows, targetScope, targetFaction, targetRace, targetAttr, targetSeason, targetClass]);
   // display names for rows carrying a `grp` override.
   const GRP_NAME: Record<string, string> = {
     sortie_atk: "Sortie ATK Buff", deploy_atk: "Deployment ATK Buff",
@@ -360,56 +382,52 @@ export default function Buffs() {
         1st-barrack, token-targeted and specific-unit rows are excluded.
       </p>
 
-      <div className="toolbar buff-toolbar">
-        {STATS.map((s) => (
-          <button
-            key={s.k}
-            className={`stat-tab${s.k === stat ? " active" : ""}${s.k.endsWith("_DEBUFF") ? " debuff-tab" : ""}`}
-            onClick={() => setStat(s.k)}
-          >
-            {s.label}
-          </button>
-        ))}
-        <button className="filter-toggle-btn buff-target-toggle" onClick={() => setShowTargetFilters(!showTargetFilters)}>
+      {PICKER_ROWS.map((row) => (
+        <FilterRow key={row.label} label={row.label}>
+          {row.tabs.map((s) => (
+            <FilterChip
+              key={s.k}
+              className="stat-tab"
+              active={s.k === stat}
+              count={unitCounts.get(s.k)?.size ?? 0}
+              color={s.k.endsWith("_DEBUFF") ? DEBUFF_CHIP_COLOR : undefined}
+              onClick={() => setStat(s.k)}
+            >
+              {s.label}
+            </FilterChip>
+          ))}
+        </FilterRow>
+      ))}
+      <div className="hub-toolbar hub-toolbar--panel buff-toolbar">
+        <button className="hub-btn hub-btn--sm" onClick={() => setShowTargetFilters(!showTargetFilters)}>
           {showTargetFilters ? "hide target filters ▲" : "target filters ▼"}
           {targetFilterCount ? ` (${targetFilterCount})` : ""}
         </button>
-        <span className="count">{groups.length} effect types</span>
+        <span className="hub-toolbar__end hub-muted hub-small">{groups.length} effect types</span>
+        {showTargetFilters && (
+          <div className="buff-target-panel">
+            <TargetCheckboxGroup title="Scope" options={TARGET_SCOPE_OPTIONS} selected={targetScope} onToggle={(v) => toggleTarget("targetScope", targetScope, v)} />
+            <TargetCheckboxGroup title="Affiliation" options={targetOptions.factions} selected={targetFaction} onToggle={(v) => toggleTarget("targetFaction", targetFaction, v)} />
+            <TargetCheckboxGroup title="Race" options={targetOptions.races} selected={targetRace} onToggle={(v) => toggleTarget("targetRace", targetRace, v)} />
+            <TargetCheckboxGroup title="Attribute" options={targetOptions.attrs} selected={targetAttr} onToggle={(v) => toggleTarget("targetAttr", targetAttr, v)} />
+            <TargetCheckboxGroup title="Season" options={targetOptions.seasons} selected={targetSeason} onToggle={(v) => toggleTarget("targetSeason", targetSeason, v)} />
+            <TargetCheckboxGroup title="Class" options={targetOptions.classes} selected={targetClass} onToggle={(v) => toggleTarget("targetClass", targetClass, v)} />
+            {targetFilterCount > 0 && (
+              <button
+                className="hub-btn hub-btn--sm hub-btn--ghost"
+                onClick={() => {
+                  const next = new URLSearchParams(params);
+                  ["targetScope", "targetFaction", "targetRace", "targetAttr", "targetSeason", "targetClass"]
+                    .forEach((key) => next.delete(key));
+                  setParams(next, { replace: true });
+                }}
+              >
+                clear target filters
+              </button>
+            )}
+          </div>
+        )}
       </div>
-      <div className="toolbar buff-toolbar buff-toolbar-effects">
-        {EFFECTS.map((s) => (
-          <button
-            key={s.k}
-            className={`stat-tab${s.k === stat ? " active" : ""}`}
-            onClick={() => setStat(s.k)}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
-      {showTargetFilters && (
-        <div className="filter-panel buff-target-panel">
-          <TargetCheckboxGroup title="Scope" options={TARGET_SCOPE_OPTIONS} selected={targetScope} onToggle={(v) => toggleTarget("targetScope", targetScope, v)} />
-          <TargetCheckboxGroup title="Affiliation" options={targetOptions.factions} selected={targetFaction} onToggle={(v) => toggleTarget("targetFaction", targetFaction, v)} />
-          <TargetCheckboxGroup title="Race" options={targetOptions.races} selected={targetRace} onToggle={(v) => toggleTarget("targetRace", targetRace, v)} />
-          <TargetCheckboxGroup title="Attribute" options={targetOptions.attrs} selected={targetAttr} onToggle={(v) => toggleTarget("targetAttr", targetAttr, v)} />
-          <TargetCheckboxGroup title="Season" options={targetOptions.seasons} selected={targetSeason} onToggle={(v) => toggleTarget("targetSeason", targetSeason, v)} />
-          <TargetCheckboxGroup title="Class" options={targetOptions.classes} selected={targetClass} onToggle={(v) => toggleTarget("targetClass", targetClass, v)} />
-          {targetFilterCount > 0 && (
-            <button
-              className="filter-clear-btn"
-              onClick={() => {
-                const next = new URLSearchParams(params);
-                ["targetScope", "targetFaction", "targetRace", "targetAttr", "targetSeason", "targetClass"]
-                  .forEach((key) => next.delete(key));
-                setParams(next, { replace: true });
-              }}
-            >
-              clear target filters
-            </button>
-          )}
-        </div>
-      )}
       {isEffect && (
         <p className="muted small">
           Innate abilities and effects granted to allies (self-only skill rows
@@ -418,7 +436,7 @@ export default function Buffs() {
           list the owner, with the token named in the source column.
         </p>
       )}
-      <div className={`buff-groups${isEffect ? " buff-groups-wide" : ""}`}>
+      <div className={`hub-group-grid${isEffect ? " hub-group-grid--wide" : ""}`}>
         {groups.length === 0 && (
           <p className="muted">No rows match this target filter.</p>
         )}
@@ -427,20 +445,18 @@ export default function Buffs() {
           const isExpanded = expanded.has(g.k);
           const shown = isExpanded ? g.ranked : g.ranked.slice(0, GROUP_PREVIEW);
           return (
-            <section key={g.k} className="buff-group">
-              <header className="buff-group-head">
-                <span className="buff-group-title">
-                  {g.grp ? groupName(g.grp, g.nsK, g.t) : lab?.name || `type ${g.t}`}
-                </span>
-                <span className="buff-group-meta">
-                  {g.grp ? g.nsK : `${g.nsK} ${g.t}`} · {g.ranked.length} units
-                  {lab && !lab.verified && <em className="unverified"> unverified</em>}
-                </span>
-              </header>
-              {g.rule && RULE_TEXT[g.rule] && (
-                <p className="buff-group-rule">{RULE_TEXT[g.rule]}</p>
-              )}
-              <table className="grid buff-table">
+            <GroupCard
+              key={g.k}
+              className="buff-group"
+              title={g.grp ? groupName(g.grp, g.nsK, g.t) : lab?.name || `type ${g.t}`}
+              count={`${g.ranked.length} units`}
+              meta={<>
+                {g.grp ? g.nsK : `${g.nsK} ${g.t}`}
+                {lab && !lab.verified && <em className="unverified"> unverified</em>}
+              </>}
+              note={g.rule && RULE_TEXT[g.rule]}
+            >
+              <table className="grid buff-table hub-table--stack">
                 <thead>
                   <tr>
                     <th>#</th><th>{isEffect ? "Value" : "Cap"}</th><th>Unit</th>
@@ -450,8 +466,8 @@ export default function Buffs() {
                 <tbody>
                   {shown.map((r, i) => (
                     <tr key={`${r.u}-${i}`}>
-                      <td className="num muted">{i + 1}</td>
-                      <td className="num buff-val" title={rawTitle(r)}>
+                      <td data-label="#" className="num muted">{i + 1}</td>
+                      <td data-label={isEffect ? "Value" : "Cap"} className="num buff-val" title={rawTitle(r)}>
                         <strong>{fmtValue(r)}</strong>
                         {r.mod?.length ? <span className="buff-mod">*</span> : null}
                         {(g.tiers.get(r.u)?.length ?? 0) > 1 && (
@@ -467,16 +483,16 @@ export default function Buffs() {
                           <span className="buff-priority">priority: {fmtFrames(r.selection_priority)}</span>
                         )}
                       </td>
-                      <td><UnitIconLink id={r.u} name={r.n} /></td>
-                      <td className="muted small">
+                      <td data-label="Unit"><UnitIconLink id={r.u} name={r.n} /></td>
+                      <td data-label="Target" className="muted small">
                         {typeof r.tgt === "string" ? <HumanText text={r.tgt} /> : (r.tgt ?? "-")}
                       </td>
                       {isEffect && (
-                        <td className="muted small buff-cond">
+                        <td data-label="Condition" className="muted small buff-cond">
                           {r.cond ? <HumanText text={r.cond} /> : "-"}
                         </td>
                       )}
-                      <td className="muted small">{loc?.classes[r.s] || r.s}</td>
+                      <td data-label="Source" className="muted small">{loc?.classes[r.s] || r.s}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -486,7 +502,7 @@ export default function Buffs() {
                   {isExpanded ? "collapse" : `expand (${g.ranked.length})`}
                 </button>
               )}
-            </section>
+            </GroupCard>
           );
         })}
       </div>
