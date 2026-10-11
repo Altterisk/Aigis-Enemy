@@ -885,68 +885,12 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 }
 
 /* ---- /buffs page ---------------------------------------------------- */
-.buff-toolbar { flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-.buff-toolbar.buff-toolbar-effects { margin-bottom: 14px; }
-.buff-toolbar select {
-  min-width: 140px;
-  max-width: 210px;
-  background: var(--panel2);
-  border: 1px solid var(--line);
-  color: var(--text);
-  padding: 7px 10px;
-  border-radius: 6px;
-}
-.buff-toolbar select:hover { border-color: var(--accent); }
-.buff-target-toggle { margin-left: auto; }
-.buff-target-panel { margin: 0 0 14px; }
-.stat-tab {
-  padding: 5px 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel2);
-  color: var(--muted);
-  font-weight: 600;
-  font-size: 12.5px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.stat-tab:hover { color: var(--text); border-color: var(--accent); }
-.stat-tab.active { background: var(--accent); border-color: var(--accent); color: var(--hub-bg); }
-.stat-tab.debuff-tab.active { background: #f7768e; border-color: #f7768e; }
-
-.buff-groups {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
-  gap: 16px;
-  align-items: start;
-}
-/* effect categories carry an extra Condition column -- give each group the
-   full row so the table has room to breathe */
-.buff-groups.buff-groups-wide { grid-template-columns: 1fr; }
-.buff-group {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--hub-radius-xl);
-  padding: 12px 14px;
-  overflow-x: auto;
-  min-width: 0;
-}
-.buff-group-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  margin-bottom: 8px;
-}
-.buff-group-title { font-weight: 700; }
-.buff-group-meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
-.buff-group-meta .unverified { color: #e0af68; font-style: normal; }
-.buff-group-rule {
-  margin: -2px 0 8px;
-  color: #c9a7ff;
-  font-size: 12px;
-}
+/* picker = shared FilterRow/FilterChip, toolbar = .hub-toolbar--panel,
+   groups = shared GroupCard in .hub-group-grid */
+.buffs-page { --hub-group-note-color: #c9a7ff; }
+.buff-toolbar { margin: 12px 0 14px; }
+.buff-target-panel { flex-basis: 100%; }
+.buff-group .unverified { color: #e0af68; font-style: normal; }
 .buff-table { width: 100%; }
 .buff-table th, .buff-table td { padding: 4px 8px; }
 .buff-table td.buff-val { white-space: nowrap; }
@@ -965,14 +909,13 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 }
 .buff-more:hover { color: var(--text); border-color: var(--accent); }
 @media (max-width: 700px) {
-  .buff-groups { grid-template-columns: 1fr; }
-  .buff-target-toggle { margin-left: 0; }
-  .stat-tab { padding: 4px 9px; font-size: 12px; }
   .buff-table { font-size: 12px; }
   .buff-table th, .buff-table td { padding: 3px 6px; }
   .buff-table td.buff-cond { max-width: 180px; }
-  .buff-group { padding: 10px 10px; }
-  .buff-group-meta { white-space: normal; }
+}
+@media (max-width: 600px) {
+  /* stacked rows: the condition cell gets the full card width */
+  .buff-table td.buff-cond { max-width: none; }
 }
 
 /* ===== /costgen -- UP generation simulator ===== */
@@ -1957,7 +1900,6 @@ main:has(.dps-page) { max-width: 1480px; }
 /* form fields: same look as the shared .hub-input / .hub-select */
 .toolbar input, .toolbar select,
 .searchable-select input,
-.buff-toolbar select,
 .cg-search input,
 .cg-ctl select,
 .cg-row select,
@@ -1975,7 +1917,6 @@ main:has(.dps-page) { max-width: 1480px; }
 }
 .toolbar input, .toolbar select,
 .searchable-select input,
-.buff-toolbar select,
 .cg-search input,
 .collection-tools input,
 .collection-tools select {
@@ -1984,7 +1925,6 @@ main:has(.dps-page) { max-width: 1480px; }
 }
 .toolbar input:hover, .toolbar select:hover,
 .searchable-select input:hover,
-.buff-toolbar select:hover,
 .cg-search input:hover,
 .cg-ctl select:hover,
 .cg-row select:hover,
@@ -1998,7 +1938,6 @@ main:has(.dps-page) { max-width: 1480px; }
 }
 .toolbar input:focus-visible, .toolbar select:focus-visible,
 .searchable-select input:focus-visible,
-.buff-toolbar select:focus-visible,
 .cg-search input:focus-visible,
 .cg-ctl select:focus-visible,
 .cg-row select:focus-visible,

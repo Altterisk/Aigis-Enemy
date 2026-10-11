@@ -79,7 +79,7 @@ test("there is no enemy picker, only HP / DEF / MR inputs", async ({ page }) => 
 });
 
 test("lia's ally ATK placeholder reads the ally row, not her self row", async ({ page }) => {
-  await page.goto("/#/units/2901");
+  await page.goto("/#/units/2901?tab=skills");
   const row = page.locator("tr", { hasText: "女王様の鞭" }).first();
   await expect(row).toContainText("1.6");
 });

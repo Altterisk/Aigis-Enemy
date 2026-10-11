@@ -1,6 +1,6 @@
 import { useState, useEffect, createContext, useContext } from "react";
 import type { ReactNode } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useUnitDetail, useUnitInfluenceLabels, useLocalisation, useTexts, usePrinceTitles, useMissiles, useAbilityConfigs, useUnitSpeech, unitImageUrl, unitAnimUrl } from "../data";
 import { UnitImage, missileText, fillLabel, HumanText, fmtFrames, ColorCodedText } from "../components";
 import { influenceSelectionRule } from "../influenceLabels";
@@ -1741,8 +1741,19 @@ function BackToUnits({ children, className }: { children: ReactNode; className?:
   );
 }
 
+const UNIT_TABS = [
+  { id: "stats", label: "Stats" },
+  { id: "skills", label: "Skills" },
+  { id: "abilities", label: "Abilities" },
+  { id: "tokens", label: "Tokens" },
+  { id: "gallery", label: "Gallery" },
+  { id: "quotes", label: "Quotes" },
+] as const;
+type UnitTab = (typeof UNIT_TABS)[number]["id"];
+
 export default function UnitDetail() {
   const { id } = useParams();
+  const [params, setParams] = useSearchParams();
   const unitId = Number(id);
   const { loading, unit } = useUnitDetail(unitId);
   const influenceLabels = useUnitInfluenceLabels();
@@ -1834,6 +1845,19 @@ export default function UnitDetail() {
     skill: texts.skill_texts,
     ability: texts.ability_texts,
     cls: texts.class_texts,
+  };
+
+  // the active tab lives in ?tab= (absent = stats); tabs with nothing to
+  // show are left out, and a ?tab= naming one of them falls back to stats
+  const tabs = UNIT_TABS.filter((t) =>
+    (t.id !== "tokens" || allTokens.length > 0) && (t.id !== "quotes" || !!speech));
+  const requested = params.get("tab");
+  const activeTab: UnitTab = tabs.find((t) => t.id === requested)?.id ?? "stats";
+  const selectTab = (t: UnitTab) => {
+    const next = new URLSearchParams(params);
+    if (t === "stats") next.delete("tab");
+    else next.set("tab", t);
+    setParams(next, { replace: true });
   };
 
   return (
@@ -1936,6 +1960,23 @@ export default function UnitDetail() {
         </details>
       )}
 
+      <div className="hub-tabs unit-tabs" role="tablist">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            className="hub-tab"
+            aria-selected={t.id === activeTab}
+            onClick={() => selectTab(t.id)}
+          >
+            {t.label}
+            {t.id === "tokens" && ` (${allTokens.length})`}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "stats" && (
+      <div role="tabpanel">
       {/* CfgProhibitConfig.atb -- a team-editor rule, not an influence: the
           restricted unit carries nothing in its ability/class-ability rows. */}
       {unit.formation_exclusion && (
@@ -1989,10 +2030,20 @@ export default function UnitDetail() {
         <p className="muted small">stat values exclude affection bonuses</p>
       </section>
 
+      <ClassAttributes classes={unit.classes} labels={abilityLabels} classMap={loc?.classes} />
+      </div>
+      )}
+
+      {activeTab === "skills" && (
+      <div role="tabpanel">
       <SkillBlock label="Base skill" skill={unit.skills.base} labels={skillLabels} abilityLabels={abilityLabels} />
       <SkillBlock label="Class-evolved skill" skill={unit.skills.class_evolved} labels={skillLabels} abilityLabels={abilityLabels} />
       <SkillBlock label="Awakened skill" skill={unit.skills.awakened} labels={skillLabels} abilityLabels={abilityLabels} />
+      </div>
+      )}
 
+      {activeTab === "abilities" && (
+      <div role="tabpanel">
       <AbilityBlock label="Ability" ability={unit.abilities.default} labels={abilityLabels} />
       {/* heroes/AW-start units carry the SAME ability in both slots -- show once */}
       {unit.abilities.awakened?.id !== unit.abilities.default?.id && (
@@ -2004,10 +2055,11 @@ export default function UnitDetail() {
           labels={abilityLabels}
         />
       )}
+      </div>
+      )}
 
-      <ClassAttributes classes={unit.classes} labels={abilityLabels} classMap={loc?.classes} />
-
-      <section>
+      {activeTab === "gallery" && (
+      <section role="tabpanel">
         <h3>Gallery</h3>
         {gallerySections.map((sec, si) => {
           const offset = gallerySections.slice(0, si).reduce((n, s) => n + s.items.length, 0);
@@ -2023,11 +2075,16 @@ export default function UnitDetail() {
           );
         })}
       </section>
+      )}
 
-      {speech && <SpeechSection speech={speech} />}
+      {activeTab === "quotes" && speech && (
+        <div role="tabpanel">
+          <SpeechSection speech={speech} />
+        </div>
+      )}
 
-      {allTokens.length > 0 && (
-        <section>
+      {activeTab === "tokens" && (
+        <section role="tabpanel">
           <h3>Tokens</h3>
           {allTokens.map((t, i) => (
             <div key={i} className="unit-token-card">

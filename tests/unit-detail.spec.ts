@@ -8,15 +8,31 @@ test("unit header shows the EN name with the JP original underneath", async ({ p
   await expect(heading.locator(".muted")).not.toBeEmpty();
 });
 
-test("unit detail renders stats and gallery sections", async ({ page }) => {
+test("unit detail opens on the stats tab and switches to the gallery", async ({ page }) => {
   await page.goto("/#/units/10");
+  await expect(page.getByRole("tab", { name: "Stats" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: "Stats" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Gallery" })).toBeVisible();
   await expect(page.locator(".unit-stat-table tbody tr").first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Gallery" })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Gallery" }).click();
+  await expect(page.getByRole("heading", { name: "Gallery" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Stats" })).toHaveCount(0);
+  await expect(page).toHaveURL(/[?&]tab=gallery/);
+});
+
+test("a ?tab= link opens that tab", async ({ page }) => {
+  await page.goto("/#/units/10?tab=skills");
+  await expect(page.getByRole("tab", { name: "Skills" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("heading", { name: "Base skill" })).toBeVisible();
+});
+
+test("a ?tab= naming a hidden or unknown tab falls back to stats", async ({ page }) => {
+  await page.goto("/#/units/10?tab=nonsense");
+  await expect(page.getByRole("tab", { name: "Stats" })).toHaveAttribute("aria-selected", "true");
 });
 
 test("Eterna SAW exposes its forced healing-priority rule", async ({ page }) => {
-  await page.goto("/#/units/2864");
+  await page.goto("/#/units/2864?tab=skills");
   const rule = page.locator(".selection-rule--forced_priority").first();
   await expect(rule).toContainText("forced priority");
   await expect(rule).toContainText("group mode 23");
@@ -72,7 +88,7 @@ test("an unrestricted unit has no formation-restriction section", async ({ page 
 test("a per-shot missile list marks its empty slots", async ({ page }) => {
   // #2902's awakened ability fires a 15-slot list where 6 slots are blank
   // Missile.atb rows (#1517)
-  await page.goto("/#/units/2902");
+  await page.goto("/#/units/2902?tab=abilities");
   // the influence rows sit in a collapsed section, so check presence
   const list = page.getByText(/15 shot slots: 9 fire, 6 empty/).first();
   await expect(list).toBeAttached();
