@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useUnits, useUnitInfluenceLabels, useLocalisation, loadJSONFile } from "../data";
 import { UnitImage } from "../components";
+import { CheckboxGroup, EmptyState, FilterPanel, ListToolbar, Pager, SearchBox } from "@altterisk/game-hub";
 import { useUiStore } from "../store";
 import type { UnitIndexEntry, UnitInfluenceLabel, TagMentions } from "../types";
 
@@ -101,71 +102,6 @@ function influenceOption(
   return lab?.name ? `${id} — ${lab.name}` : `influence ${id}`;
 }
 
-// pager with first/last + jump-to-page
-function Pager({ page, pages, setPage }: {
-  page: number; pages: number; setPage: (p: number) => void;
-}) {
-  const [jump, setJump] = useState("");
-  if (pages <= 1) return null;
-  const go = (p: number) => setPage(Math.min(pages - 1, Math.max(0, p)));
-  return (
-    <div className="pager">
-      <button disabled={page === 0} onClick={() => go(0)}>« first</button>
-      <button disabled={page === 0} onClick={() => go(page - 1)}>‹ prev</button>
-      <span className="muted small">page {page + 1} / {pages}</span>
-      <input
-        className="pager-jump"
-        placeholder="#"
-        value={jump}
-        onChange={(e) => setJump(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            const n = Number(jump);
-            if (Number.isFinite(n) && n >= 1) go(n - 1);
-            setJump("");
-          }
-        }}
-        title="type a page number and press Enter"
-      />
-      <button disabled={page >= pages - 1} onClick={() => go(page + 1)}>next ›</button>
-      <button disabled={page >= pages - 1} onClick={() => go(pages - 1)}>last »</button>
-    </div>
-  );
-}
-
-// A checkbox group for one filter category (multi-select, OR within the
-// group). Empty selection = no filter applied for that category. Mirrors
-// the in-game unit-list filter menu's category layout, skipping player-
-// account-specific categories (Lock Status, Trust/Affection) and 出撃条件
-// (per-map deploy restriction -- not in our data).
-function CheckboxGroup({
-  title, options, selected, onToggle,
-}: {
-  title: string;
-  options: { value: string; label: string }[];
-  selected: string[];
-  onToggle: (value: string) => void;
-}) {
-  if (!options.length) return null;
-  return (
-    <div className="filter-group">
-      <div className="filter-group-title">{title}</div>
-      <div className="filter-group-options">
-        {options.map((o) => (
-          <label key={o.value} className={`cg-pill${selected.includes(o.value) ? " on" : ""}`}>
-            <input
-              type="checkbox"
-              checked={selected.includes(o.value)}
-              onChange={() => onToggle(o.value)}
-            />
-            {o.label}
-          </label>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 const POSITION_OPTS = [
   { value: "melee", label: "Melee" },
   { value: "ranged", label: "Ranged" },
@@ -209,22 +145,17 @@ export default function UnitList() {
   const seasonF = csv("season");
   const yearF = csv("year");
 
-  // sets one param, resetting pagination (any filter/search change goes
-  // back to page 0 -- an old page number could be out of range otherwise).
+  // sets one param; any filter/search change also resets pagination (an
+  // old page number could be out of range otherwise). ?page= is 0-based.
   const setParam = (key: string, value: string | null) => {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value); else next.delete(key);
-    next.delete("page");
+    if (key !== "page") next.delete("page");
     setParams(next, { replace: true });
   };
   const toggleCsv = (key: string, list: string[], value: string) => {
     const next = list.includes(value) ? list.filter((x) => x !== value) : [...list, value];
     setParam(key, next.join(","));
-  };
-  const setPage = (p: number) => {
-    const next = new URLSearchParams(params);
-    if (p) next.set("page", String(p)); else next.delete("page");
-    setParams(next, { replace: true });
   };
 
   const [mentions, setMentions] = useState<TagMentions | null>(null);
@@ -358,9 +289,7 @@ export default function UnitList() {
 
   const activeCount = rarityF.length + positionF.length + genderF.length + factionF.length
     + raceF.length + attrF.length + seasonF.length + yearF.length;
-  const anyFilterActive = Boolean(
-    q || cls || sInf || aInf || showNpc || classFilter || tagFilter || activeCount
-  );
+  const activeParams = [...new Set(params.keys())].filter((k) => k !== "page" && params.get(k)).length;
   const resetAll = () => setParams(new URLSearchParams(), { replace: true });
 
   if (loading) return <p className="loading">Loading units…</p>;
@@ -371,20 +300,30 @@ export default function UnitList() {
   return (
     <div>
       <div className="toolbar unit-toolbar">
+        <ListToolbar
+          search={<SearchBox value={q} onChange={(v) => setParam("q", v || null)} placeholder="Search id / name / class" />}
+          count={`${filtered.length.toLocaleString()} units`}
+          activeFilters={activeParams}
+          onClearFilters={resetAll}
+          actions={(
+            <label className={`hub-chip${showNpc ? " hub-chip--on" : ""}`}>
+              <input
+                type="checkbox"
+                className="hub-visually-hidden"
+                checked={showNpc}
+                onChange={(e) => setParam("npc", e.target.checked ? "1" : null)}
+              />
+              NPC / test / fodder
+            </label>
+          )}
+        />
         <div className="unit-toolbar-row">
-          <input
-            placeholder="Search id / name / class"
-            value={q}
-            onChange={(e) => setParam("q", e.target.value)}
-          />
           <SearchableSelect
             value={cls}
             placeholder="all classes"
             options={classOpts.map((c) => ({ value: c, label: loc?.classes[c] || c }))}
             onChange={(v) => setParam("cls", v || null)}
           />
-        </div>
-        <div className="unit-toolbar-row">
           <SearchableSelect
             wide
             value={sInf}
@@ -400,67 +339,44 @@ export default function UnitList() {
             onChange={(v) => setParam("aInf", v || null)}
           />
         </div>
-        <div className="unit-toolbar-row">
-          <label className={`cg-pill${showNpc ? " on" : ""}`}>
-            <input
-              type="checkbox"
-              checked={showNpc}
-              onChange={(e) => setParam("npc", e.target.checked ? "1" : null)}
-            />
-            NPC / test / fodder
-          </label>
-          <div className="unit-toolbar-actions">
-            <button className="filter-toggle-btn" onClick={() => setShowFilters(!showFilters)}>
-              {showFilters ? "hide filters ▲" : "filters ▼"}{activeCount ? ` (${activeCount})` : ""}
-            </button>
-            {anyFilterActive && (
-              <button className="filter-toggle-btn filter-reset-btn" onClick={resetAll} title="clear every filter and search term">
-                reset
-              </button>
-            )}
-          </div>
-          <span className="count">{filtered.length.toLocaleString()} units</span>
-        </div>
       </div>
 
-      {showFilters && (
-        <div className="filter-panel">
-          <CheckboxGroup title="Rarity" options={rarityOpts} selected={rarityF} onToggle={(v) => toggleCsv("rarity", rarityF, v)} />
-          <CheckboxGroup title="Position" options={POSITION_OPTS} selected={positionF} onToggle={(v) => toggleCsv("position", positionF, v)} />
-          <CheckboxGroup title="Gender" options={GENDER_OPTS} selected={genderF} onToggle={(v) => toggleCsv("gender", genderF, v)} />
-          <CheckboxGroup title="Affiliation" options={factionOpts} selected={factionF} onToggle={(v) => toggleCsv("faction", factionF, v)} />
-          <CheckboxGroup title="Race" options={raceOpts} selected={raceF} onToggle={(v) => toggleCsv("race", raceF, v)} />
-          <CheckboxGroup title="Attribute" options={attrOpts} selected={attrF} onToggle={(v) => toggleCsv("attr", attrF, v)} />
-          <CheckboxGroup title="Season" options={seasonOpts} selected={seasonF} onToggle={(v) => toggleCsv("season", seasonF, v)} />
-          <CheckboxGroup title="Release Year" options={yearOpts} selected={yearF} onToggle={(v) => toggleCsv("year", yearF, v)} />
-          {activeCount > 0 && (
-            <button
-              className="filter-clear-btn"
-              onClick={() => {
-                const next = new URLSearchParams(params);
-                ["rarity", "position", "gender", "faction", "race", "attr", "season", "year", "page"]
-                  .forEach((k) => next.delete(k));
-                setParams(next, { replace: true });
-              }}
-            >
-              clear all filters
-            </button>
-          )}
-        </div>
-      )}
+      <FilterPanel open={showFilters} onToggle={() => setShowFilters(!showFilters)} activeCount={activeCount} phoneOnly={false}>
+        <CheckboxGroup title="Rarity" options={rarityOpts} selected={rarityF} onToggle={(v) => toggleCsv("rarity", rarityF, v)} />
+        <CheckboxGroup title="Position" options={POSITION_OPTS} selected={positionF} onToggle={(v) => toggleCsv("position", positionF, v)} />
+        <CheckboxGroup title="Gender" options={GENDER_OPTS} selected={genderF} onToggle={(v) => toggleCsv("gender", genderF, v)} />
+        <CheckboxGroup title="Affiliation" options={factionOpts} selected={factionF} onToggle={(v) => toggleCsv("faction", factionF, v)} />
+        <CheckboxGroup title="Race" options={raceOpts} selected={raceF} onToggle={(v) => toggleCsv("race", raceF, v)} />
+        <CheckboxGroup title="Attribute" options={attrOpts} selected={attrF} onToggle={(v) => toggleCsv("attr", attrF, v)} />
+        <CheckboxGroup title="Season" options={seasonOpts} selected={seasonF} onToggle={(v) => toggleCsv("season", seasonF, v)} />
+        <CheckboxGroup title="Release Year" options={yearOpts} selected={yearF} onToggle={(v) => toggleCsv("year", yearF, v)} />
+        {activeCount > 0 && (
+          <button
+            className="filter-clear-btn"
+            onClick={() => {
+              const next = new URLSearchParams(params);
+              ["rarity", "position", "gender", "faction", "race", "attr", "season", "year", "page"]
+                .forEach((k) => next.delete(k));
+              setParams(next, { replace: true });
+            }}
+          >
+            clear all filters
+          </button>
+        )}
+      </FilterPanel>
 
       {(classFilter || tagFilter) && (
         <div className="active-filters">
           {classFilter && (
             <span className="filter-chip">
               class: {loc?.classes[classFilter] || classFilter}
-              <button onClick={() => { params.delete("class"); setParams(params); setPage(0); }}>×</button>
+              <button onClick={() => setParam("class", null)}>×</button>
             </span>
           )}
           {tagFilter && (
             <span className="filter-chip">
               tag: {loc?.tags[tagFilter] || loc?.races[tagFilter] || tagFilter}
-              <button onClick={() => { params.delete("tag"); setParams(params); setPage(0); }}>×</button>
+              <button onClick={() => setParam("tag", null)}>×</button>
             </span>
           )}
         </div>
@@ -490,7 +406,9 @@ export default function UnitList() {
         );
       })}
 
-      <Pager page={page} pages={pages} setPage={setPage} />
+      <Pager page={page + 1} pages={pages} onPage={(p) => setParam("page", p > 1 ? String(p - 1) : null)} />
+
+      {shown.length === 0 && <EmptyState title="No units match these filters." hint="Change the search or clear the filters." />}
 
       <div className="unit-grid">
         {shown.map((u) => (
@@ -517,7 +435,7 @@ export default function UnitList() {
         ))}
       </div>
 
-      <Pager page={page} pages={pages} setPage={setPage} />
+      <Pager page={page + 1} pages={pages} onPage={(p) => setParam("page", p > 1 ? String(p - 1) : null)} />
     </div>
   );
 }

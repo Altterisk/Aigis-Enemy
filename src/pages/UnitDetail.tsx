@@ -2,7 +2,10 @@ import { useState, useEffect, createContext, useContext } from "react";
 import type { ReactNode } from "react";
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useUnitDetail, useUnitInfluenceLabels, useLocalisation, useTexts, usePrinceTitles, useMissiles, useAbilityConfigs, useUnitSpeech, unitImageUrl, unitAnimUrl } from "../data";
-import { UnitImage, missileText, fillLabel, HumanText, fmtFrames, ColorCodedText } from "../components";
+import { UnitImage, missileText, fillLabel, HumanText, fmtFrames, ColorCodedText, routerLink } from "../components";
+import { Breadcrumbs, Lightbox, Panel, StatRows, TabPanel, UrlTabs, tabParam } from "@altterisk/game-hub";
+import type { RenderLink } from "@altterisk/game-hub";
+import { searchParamsAdapter } from "@altterisk/game-hub/filters";
 import { influenceSelectionRule } from "../influenceLabels";
 import type {
   Unit,
@@ -1206,12 +1209,15 @@ function SkillBlock({
   const plan = planStages(skill.stages);
   const inlined = new Set(skill.stages.map((s) => s.id));
   return (
-    <section>
-      <h3>
-        {label}: {skill.name_en || skill.name}
-        {skill.name_en && skill.name && <span className="muted small"> {skill.name}</span>}
-        {" "}<span className="muted small">#{skill.id}</span>
-      </h3>
+    <Panel
+      title={(
+        <>
+          {label}: {skill.name_en || skill.name}
+          {skill.name_en && skill.name && <span className="muted small"> {skill.name}</span>}
+          {" "}<span className="muted small">#{skill.id}</span>
+        </>
+      )}
+    >
       <table className="grid unit-detail-table">
         <thead>
           <tr>
@@ -1253,7 +1259,7 @@ function SkillBlock({
           })}
         </tbody>
       </table>
-    </section>
+    </Panel>
   );
 }
 
@@ -1264,8 +1270,7 @@ function AbilityBlock({
   if (!ability) return null;
   const abilityEn = ability.text ? texts.ability[ability.text] : undefined;
   return (
-    <section>
-      <h3>{label}</h3>
+    <Panel title={label}>
       <table className="grid unit-detail-table">
         <thead>
           <tr><th>Ability Name</th><th>Effect</th></tr>
@@ -1300,7 +1305,7 @@ function AbilityBlock({
           </tr>
         </tbody>
       </table>
-    </section>
+    </Panel>
   );
 }
 
@@ -1540,8 +1545,7 @@ function ClassAttributes({
   );
   if (withContent.length === 0) return null;
   return (
-    <section>
-      <h3>Class Attributes</h3>
+    <Panel title="Class Attributes">
       <table className="grid unit-detail-table">
         <thead>
           <tr><th>Class Name</th><th>Description</th></tr>
@@ -1583,7 +1587,7 @@ function ClassAttributes({
           ))}
         </tbody>
       </table>
-    </section>
+    </Panel>
   );
 }
 
@@ -1601,67 +1605,13 @@ function GalleryThumb({ item, onOpen }: { item: GalleryItem; onOpen: () => void 
   );
 }
 
-/** One viewable item in the art lightbox / gallery. */
+/** One viewable item in the gallery (and its lightbox). */
 export interface GalleryItem {
   label: string;
   src: string;
   kind: "art" | "icon" | "anim";
 }
 
-/** Fullscreen lightbox over a list of gallery items. Keeps its OWN cursor
- *  (never mutates the page behind it); ←/→ move between items, Escape or
- *  backdrop click closes. */
-function ArtLightbox({ items, start, onClose }: {
-  items: GalleryItem[];
-  start: number;
-  onClose: () => void;
-}) {
-  const [idx, setIdx] = useState(start);
-  const [broken, setBroken] = useState<Record<string, boolean>>({});
-  useEffect(() => setIdx(start), [start, items.length]);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft") setIdx((i) => (i + items.length - 1) % items.length);
-      if (e.key === "ArrowRight") setIdx((i) => (i + 1) % items.length);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, items.length]);
-  const cur = items[idx];
-  if (!cur) return null;
-  return (
-    <div className="art-lightbox" onClick={onClose}>
-      <div className="art-lightbox-body" onClick={(e) => e.stopPropagation()}>
-        {broken[cur.src] ? (
-          <div className="art-lightbox-img art-lightbox-none">no image</div>
-        ) : (
-          <img
-            className={`art-lightbox-img${cur.kind === "anim" ? " art-lightbox-pixel" : ""}`}
-            src={cur.src}
-            alt={cur.label}
-            onError={() => setBroken((b) => ({ ...b, [cur.src]: true }))}
-          />
-        )}
-        <div className="art-lightbox-bar">
-          <button className="art-lightbox-nav" aria-label="previous"
-            onClick={() => setIdx((i) => (i + items.length - 1) % items.length)}>←</button>
-          <span className="art-lightbox-label">{cur.label} <span className="muted small">{idx + 1}/{items.length}</span></span>
-          <button className="art-lightbox-nav" aria-label="next"
-            onClick={() => setIdx((i) => (i + 1) % items.length)}>→</button>
-          <button className="art-lightbox-close" onClick={onClose} aria-label="close">✕</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// A plain `to="/units"` link always lands on the default (unfiltered,
-// page 0) list, discarding whatever filters/page/search were active
-// before navigating here. Going back in history instead returns to the
-// exact previous URL (filters and all); fall back to a plain link only
-// when there's no in-app history to go back to (e.g. a shared link opened
-// directly on this page).
 // status-screen quotes (unlock % from the card's own LoveEv1 thresholds) +
 // the affection conversation scenes (scene 1 at 30, scene 2 at 100; extra
 // scenes come from the unit's special harlem quest).
@@ -1707,8 +1657,7 @@ function SpeechSceneBlock({ s }: { s: SpeechScene }) {
 
 function SpeechSection({ speech }: { speech: UnitSpeech }) {
   return (
-    <section>
-      <h3>Quotes &amp; scenes</h3>
+    <Panel title="Quotes & scenes">
       {speech.quotes && speech.quotes.length > 0 && (
         <div className="quote-list">
           {speech.quotes.map((q, i) => (
@@ -1726,10 +1675,16 @@ function SpeechSection({ speech }: { speech: UnitSpeech }) {
         </div>
       )}
       {(speech.scenes ?? []).map((s, i) => <SpeechSceneBlock s={s} key={i} />)}
-    </section>
+    </Panel>
   );
 }
 
+// A plain `to="/units"` link always lands on the default (unfiltered,
+// page 0) list, discarding whatever filters/page/search were active
+// before navigating here. Going back in history instead returns to the
+// exact previous URL (filters and all); fall back to a plain link only
+// when there's no in-app history to go back to (e.g. a shared link opened
+// directly on this page).
 function BackToUnits({ children, className }: { children: ReactNode; className?: string }) {
   const navigate = useNavigate();
   const hasHistory = (window.history.state?.idx ?? 0) > 0;
@@ -1741,15 +1696,11 @@ function BackToUnits({ children, className }: { children: ReactNode; className?:
   );
 }
 
-const UNIT_TABS = [
-  { id: "stats", label: "Stats" },
-  { id: "skills", label: "Skills" },
-  { id: "abilities", label: "Abilities" },
-  { id: "tokens", label: "Tokens" },
-  { id: "gallery", label: "Gallery" },
-  { id: "quotes", label: "Quotes" },
-] as const;
-type UnitTab = (typeof UNIT_TABS)[number]["id"];
+// breadcrumb links: the Units crumb goes back to the previous list view
+const crumbLink: RenderLink = ({ href, className, children }) =>
+  href === "/units"
+    ? <BackToUnits className={className}>{children}</BackToUnits>
+    : routerLink({ href, className, children });
 
 export default function UnitDetail() {
   const { id } = useParams();
@@ -1838,8 +1789,8 @@ export default function UnitDetail() {
       if (extra.length) gallerySections.push({ title: `Set ${s + 1}`, items: extra });
     }
   }
-  const galleryItems: GalleryItem[] = gallerySections.flatMap((s) =>
-    s.items.map((it) => ({ ...it, label: `${it.label} — ${s.title}` })));
+  const galleryItems = gallerySections.flatMap((s) =>
+    s.items.map((it) => ({ srcs: [it.src], label: `${it.label} — ${s.title}` })));
 
   const textMaps: TextMaps = {
     skill: texts.skill_texts,
@@ -1848,24 +1799,23 @@ export default function UnitDetail() {
   };
 
   // the active tab lives in ?tab= (absent = stats); tabs with nothing to
-  // show are left out, and a ?tab= naming one of them falls back to stats
-  const tabs = UNIT_TABS.filter((t) =>
-    (t.id !== "tokens" || allTokens.length > 0) && (t.id !== "quotes" || !!speech));
-  const requested = params.get("tab");
-  const activeTab: UnitTab = tabs.find((t) => t.id === requested)?.id ?? "stats";
-  const selectTab = (t: UnitTab) => {
-    const next = new URLSearchParams(params);
-    if (t === "stats") next.delete("tab");
-    else next.set("tab", t);
-    setParams(next, { replace: true });
-  };
+  // show are hidden, and a ?tab= naming one of them falls back to stats
+  const UNIT_TABS_WITH_HIDDEN = [
+    { id: "stats", label: "Stats" },
+    { id: "skills", label: "Skills" },
+    { id: "abilities", label: "Abilities" },
+    { id: "tokens", label: "Tokens", count: allTokens.length, hidden: allTokens.length === 0 },
+    { id: "gallery", label: "Gallery" },
+    { id: "quotes", label: "Quotes", hidden: !speech },
+  ];
+  const [activeTab, selectTab] = tabParam(searchParamsAdapter(params, setParams), UNIT_TABS_WITH_HIDDEN);
 
   return (
     <MissilesContext.Provider value={missiles}>
     <AbilityConfigsContext.Provider value={abilityConfigs}>
     <TextsContext.Provider value={textMaps}>
     <div className="detail unit-page">
-      <BackToUnits className="back">← units</BackToUnits>
+      <Breadcrumbs renderLink={crumbLink} items={[{ label: "Units", href: "/units" }, { label: displayName }]} />
 
       <aside className="unit-infobox">
         <div className={`unit-infobox-banner rarity-${unit.rarity_id}`}>{displayName}</div>
@@ -1878,13 +1828,12 @@ export default function UnitDetail() {
         >
           <UnitImage kind="art" id={unit.id} tier={tier} fallbackKind="icon" className="unit-art-img" alt={displayName} />
         </button>
-        {galleryAt !== null && (
-          <ArtLightbox
-            items={galleryItems}
-            start={Math.max(0, galleryAt)}
-            onClose={() => setGalleryAt(null)}
-          />
-        )}
+        <Lightbox
+          items={galleryItems}
+          index={galleryAt}
+          onIndex={setGalleryAt}
+          onClose={() => setGalleryAt(null)}
+        />
         {artTiers.length > 1 && (
           <div className="unit-tier-tabs">
             {artTiers.map((t) => (
@@ -1960,90 +1909,82 @@ export default function UnitDetail() {
         </details>
       )}
 
-      <div className="hub-tabs unit-tabs" role="tablist">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            role="tab"
-            className="hub-tab"
-            aria-selected={t.id === activeTab}
-            onClick={() => selectTab(t.id)}
-          >
-            {t.label}
-            {t.id === "tokens" && ` (${allTokens.length})`}
-          </button>
-        ))}
-      </div>
+      <UrlTabs className="unit-tabs" tabs={UNIT_TABS_WITH_HIDDEN} active={activeTab} onChange={selectTab} label="Unit sections" idBase="unit" />
 
       {activeTab === "stats" && (
-      <div role="tabpanel">
+      <TabPanel tab="stats" idBase="unit">
       {/* CfgProhibitConfig.atb -- a team-editor rule, not an influence: the
           restricted unit carries nothing in its ability/class-ability rows. */}
       {unit.formation_exclusion && (
-        <section>
-          <h3>Formation restriction</h3>
-          <ul className="effects">
-            {unit.formation_exclusion.one_per_team && (
-              <li>Only one may be in a team.</li>
-            )}
-            {unit.formation_exclusion.cards.length > 0 && (
-              <li>
-                Cannot be in the same team as{" "}
-                {unit.formation_exclusion.cards.map((c, i) => (
-                  <span key={c.id}>
-                    {i > 0 && ", "}
-                    <Link to={`/units/${c.id}`} title={c.name || undefined}>
-                      {c.name_en || c.name || `#${c.id}`}
-                    </Link>
-                  </span>
-                ))}
-                .
-              </li>
-            )}
-          </ul>
-        </section>
+        <Panel title="Formation restriction">
+          <StatRows
+            columns={1}
+            rows={[
+              ...(unit.formation_exclusion.one_per_team
+                ? [{ id: "one", label: "Team limit", value: "Only one may be in a team." }]
+                : []),
+              ...(unit.formation_exclusion.cards.length > 0
+                ? [{
+                    id: "cards",
+                    label: "Cannot be in the same team as",
+                    value: unit.formation_exclusion.cards.map((c, i) => (
+                      <span key={c.id}>
+                        {i > 0 && ", "}
+                        <Link to={`/units/${c.id}`} title={c.name || undefined}>
+                          {c.name_en || c.name || `#${c.id}`}
+                        </Link>
+                      </span>
+                    )),
+                  }]
+                : []),
+            ]}
+          />
+        </Panel>
       )}
 
       {unit.specials && unit.specials.length > 0 && (
-        <section>
-          <h3>Special properties</h3>
-          <ul className="effects">
-            {unit.specials.map((s, i) => (
-              <li key={i}>
-                <code>type {s.type} · value {s.value}</code>
-                {s.params && s.params.length > 0 && (
-                  <span className="params"> [{s.params.join(", ")}]</span>
-                )}
-                {s.name && <span className="meaning"> {s.name}</span>}
-                {s.type === 34 ? (
-                  <CommandFacts cmd={s.command} kind="specialty" />
-                ) : s.command && <span className="expr" title={s.command}> {s.command}</span>}
-              </li>
-            ))}
-          </ul>
-        </section>
+        <Panel title="Special properties">
+          <StatRows
+            columns={1}
+            rows={unit.specials.map((s, i) => ({
+              id: String(i),
+              label: <code>type {s.type}</code>,
+              value: (
+                <>
+                  <code>value {s.value}</code>
+                  {s.params && s.params.length > 0 && (
+                    <span className="params"> [{s.params.join(", ")}]</span>
+                  )}
+                  {s.name && <span className="meaning"> {s.name}</span>}
+                  {s.type === 34 ? (
+                    <CommandFacts cmd={s.command} kind="specialty" />
+                  ) : s.command && <span className="expr" title={s.command}> {s.command}</span>}
+                </>
+              ),
+            }))}
+          />
+        </Panel>
       )}
 
-      <section>
-        <h3>Stats</h3>
+      <Panel title="Stats">
         <StatsTable unit={unit} classMap={loc?.classes} />
         <p className="muted small">stat values exclude affection bonuses</p>
-      </section>
+      </Panel>
 
       <ClassAttributes classes={unit.classes} labels={abilityLabels} classMap={loc?.classes} />
-      </div>
+      </TabPanel>
       )}
 
       {activeTab === "skills" && (
-      <div role="tabpanel">
+      <TabPanel tab="skills" idBase="unit">
       <SkillBlock label="Base skill" skill={unit.skills.base} labels={skillLabels} abilityLabels={abilityLabels} />
       <SkillBlock label="Class-evolved skill" skill={unit.skills.class_evolved} labels={skillLabels} abilityLabels={abilityLabels} />
       <SkillBlock label="Awakened skill" skill={unit.skills.awakened} labels={skillLabels} abilityLabels={abilityLabels} />
-      </div>
+      </TabPanel>
       )}
 
       {activeTab === "abilities" && (
-      <div role="tabpanel">
+      <TabPanel tab="abilities" idBase="unit">
       <AbilityBlock label="Ability" ability={unit.abilities.default} labels={abilityLabels} />
       {/* heroes/AW-start units carry the SAME ability in both slots -- show once */}
       {unit.abilities.awakened?.id !== unit.abilities.default?.id && (
@@ -2055,12 +1996,12 @@ export default function UnitDetail() {
           labels={abilityLabels}
         />
       )}
-      </div>
+      </TabPanel>
       )}
 
       {activeTab === "gallery" && (
-      <section role="tabpanel">
-        <h3>Gallery</h3>
+      <TabPanel tab="gallery" idBase="unit">
+      <Panel title="Gallery">
         {gallerySections.map((sec, si) => {
           const offset = gallerySections.slice(0, si).reduce((n, s) => n + s.items.length, 0);
           return (
@@ -2074,18 +2015,19 @@ export default function UnitDetail() {
             </div>
           );
         })}
-      </section>
+      </Panel>
+      </TabPanel>
       )}
 
       {activeTab === "quotes" && speech && (
-        <div role="tabpanel">
+        <TabPanel tab="quotes" idBase="unit">
           <SpeechSection speech={speech} />
-        </div>
+        </TabPanel>
       )}
 
       {activeTab === "tokens" && (
-        <section role="tabpanel">
-          <h3>Tokens</h3>
+        <TabPanel tab="tokens" idBase="unit">
+        <Panel title="Tokens">
           {allTokens.map((t, i) => (
             <div key={i} className="unit-token-card">
               <div className="meta token-head">
@@ -2185,7 +2127,8 @@ export default function UnitDetail() {
               )}
             </div>
           ))}
-        </section>
+        </Panel>
+        </TabPanel>
       )}
 
     </div>

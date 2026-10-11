@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import type { RenderLink } from "@altterisk/game-hub";
 import { spriteUrl, enemyAnimUrl, unitImageUrl, DMG_COLORS, useInfluenceLabels, useLocalisation } from "./data";
 import type {
   Effect, DamageType, UnitImageKind, Missile, MissileOnHit,
   Localisation as LocalisationT,
 } from "./types";
+
+// Router-aware link for shared game-hub parts that take renderLink.
+export const routerLink: RenderLink = ({ href, ...rest }) => <Link to={href} {...rest} />;
 
 // engine frames (@60fps) -> "Nf (X.Xs)" -- always show both the raw frame
 // count and its seconds conversion side by side, never seconds alone, since

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+﻿import { expect, test } from "@playwright/test";
 
 test("stage index lists events with stage links", async ({ page }) => {
   await page.goto("/#/stages");
@@ -16,7 +16,7 @@ test("stage detail loads from the index", async ({ page }) => {
 test("stage dialogue tab shows in-stage scenes when present", async ({ page }) => {
   await page.goto("/#/stages/1");
   await expect(page.locator(".enemy-cards > *").first()).toBeVisible();
-  const tab = page.locator(".stage-tabs button", { hasText: "Dialogue" });
+  const tab = page.getByRole("tab", { name: /Dialogue/ });
   test.skip(await tab.count() === 0, "stage 1 has no dialogue in this export");
   await tab.click();
   await expect(page.locator(".dlg")).toBeVisible();
@@ -24,7 +24,7 @@ test("stage dialogue tab shows in-stage scenes when present", async ({ page }) =
 
 test("dialogue renders the supplied game portrait refs", async ({ page }) => {
   await page.goto("/#/stages/8983");
-  await page.locator(".stage-tabs button", { hasText: "Dialogue" }).click();
+  await page.getByRole("tab", { name: /Dialogue/ }).click();
 
   for (const [speaker, unitId, icon] of [
     ["キュウビ", 465, "465.png"],
@@ -34,4 +34,33 @@ test("dialogue renders the supplied game portrait refs", async ({ page }) => {
     await expect(line.locator(".dlg-face")).toHaveAttribute("src", new RegExp(`unit-icon/${icon}$`));
     await expect(line.locator(".dlg-face-link")).toHaveAttribute("href", `#/units/${unitId}`);
   }
+});
+
+test("stage list keeps search and category in the URL", async ({ page }) => {
+  await page.goto("/#/stages?cat=all&q=1");
+  await expect(page.locator(".hub-list-toolbar select")).toHaveValue("all");
+  await expect(page.getByPlaceholder("Search stage / event / quest id")).toHaveValue("1");
+  await page.locator(".stage-row li a").first().click();
+  await expect(page).toHaveURL(/#\/stages\/\d+/);
+  await page.goBack();
+  await expect(page.locator(".hub-list-toolbar select")).toHaveValue("all");
+});
+
+test("stage list fits a phone screen", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.goto("/#/stages?cat=all");
+  await expect(page.locator(".stage-row li a").first()).toBeVisible();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test("stage tabs live in the URL and breadcrumbs lead back", async ({ page }) => {
+  await page.goto("/#/stages/8983?tab=dialogue");
+  await expect(page.getByRole("tab", { name: /Dialogue/ })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator(".dlg")).toBeVisible();
+  await page.getByRole("tab", { name: /Enemies/ }).click();
+  await expect(page).not.toHaveURL(/tab=/);
+  await expect(page.locator(".enemy-cards > *").first()).toBeVisible();
+  await page.locator(".hub-crumbs a", { hasText: "Stages" }).click();
+  await expect(page).toHaveURL(/#\/stages$/);
 });

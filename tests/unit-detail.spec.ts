@@ -95,3 +95,39 @@ test("a per-shot missile list marks its empty slots", async ({ page }) => {
   await expect(list).toContainText("∅");
   await expect(page.getByText(/missile 1517: empty slot: fires nothing/).first()).toBeAttached();
 });
+
+test("?tab=quotes opens the Quotes tab", async ({ page }) => {
+  await page.goto("/#/units/1?tab=quotes");
+  await expect(page.getByRole("tab", { name: "Quotes" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("heading", { name: "Quotes & scenes" })).toBeVisible();
+});
+
+test("gallery lightbox steps with arrow keys and closes on Escape", async ({ page }) => {
+  await page.goto("/#/units/10?tab=gallery");
+  await page.locator(".gallery-thumb").first().click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  const first = await dialog.locator("h2, h3, .hub-modal__title").first().innerText();
+  await page.keyboard.press("ArrowRight");
+  await expect(dialog.locator("h2, h3, .hub-modal__title").first()).not.toHaveText(first);
+  await page.keyboard.press("ArrowLeft");
+  await expect(dialog.locator("h2, h3, .hub-modal__title").first()).toHaveText(first);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+});
+
+test("unit breadcrumbs return to the filtered list", async ({ page }) => {
+  await page.goto("/#/units?rarity=Black");
+  await page.locator(".unit-grid .unit-tile").first().click();
+  await expect(page).toHaveURL(/#\/units\/\d+$/);
+  await page.locator(".hub-crumbs a", { hasText: "Units" }).click();
+  await expect(page).toHaveURL(/#\/units\?rarity=Black/);
+});
+
+test("unit page fits a phone screen", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.goto("/#/units/10");
+  await expect(page.locator(".unit-stat-table")).toBeVisible();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+});

@@ -77,6 +77,7 @@ export const useUiStore = create<UiState>()(
           collectionBondDone: typeof ids === "function" ? ids(s.collectionBondDone) : ids,
         })),
     }),
-    { name: "aigis-ui-store" }
+    // saves written before versioning are version 0 and carry the same shape
+    { name: "aigis-ui-store", version: 1, migrate: (state) => state as UiState }
   )
 );

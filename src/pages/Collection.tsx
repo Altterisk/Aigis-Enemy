@@ -4,12 +4,18 @@ import { Link } from "react-router-dom";
 import { UnitImage } from "../components";
 import { loadJSONFile, useLocalisation, useUnits } from "../data";
 import { useUiStore } from "../store";
+import {
+  ByteReader, ByteWriter, base64url, idsFromBitset, uniqueSortedIds, verifyChecksum, withChecksum,
+} from "@altterisk/game-hub/codec";
+import { exportFile, readFile } from "@altterisk/game-hub/persist";
+import { BackupPanel, ProgressBar } from "@altterisk/game-hub";
 import type { UnitIndexEntry } from "../types";
 import ScreenshotImport from "./CollectionScan";
 
 const CODE_PREFIX = "AIGC3.";
 const V2_CODE_PREFIX = "AIGC2.";
 const LEGACY_CODE_PREFIX = "AIGC1.";
+const FILE_FORMAT = "aigis.collection";
 const UI_ASSET = `${import.meta.env.BASE_URL}ui/`;
 const PRINCE_NAME_OVERRIDES: Record<number, string> = {
   741: "Chibi Prince",
@@ -53,52 +59,7 @@ function isCollectionPrince(unit: UnitIndexEntry): boolean {
   return Boolean(unit.prince || unit.class === "ちび王子" || /^王子【/.test(unit.class || ""));
 }
 
-function uniqueSorted(values: number[]): number[] {
-  return [...new Set(values.filter((n) => Number.isInteger(n) && n > 0))].sort((a, b) => a - b);
-}
-
-function pushVarint(out: number[], value: number) {
-  let n = value >>> 0;
-  while (n >= 0x80) {
-    out.push((n & 0x7f) | 0x80);
-    n >>>= 7;
-  }
-  out.push(n);
-}
-
-function pushIdList(out: number[], values: number[]) {
-  const sorted = uniqueSorted(values);
-  pushVarint(out, sorted.length);
-  let previous = 0;
-  sorted.forEach((id) => {
-    pushVarint(out, id - previous);
-    previous = id;
-  });
-}
-
-function pushCompactIdList(out: number[], values: number[]) {
-  const sorted = uniqueSorted(values);
-  const deltas: number[] = [];
-  pushIdList(deltas, sorted);
-  const bitset = sorted.length ? new Array(Math.floor(sorted[sorted.length - 1] / 8) + 1).fill(0) : [];
-  sorted.forEach((id) => { bitset[Math.floor(id / 8)] |= 1 << (id % 8); });
-  const bitsetLength: number[] = [];
-  pushVarint(bitsetLength, bitset.length);
-  if (bitset.length && bitset.length + bitsetLength.length < deltas.length) {
-    out.push(1, ...bitsetLength, ...bitset);
-  } else {
-    out.push(0, ...deltas);
-  }
-}
-
-function checksum(bytes: number[]): number {
-  let hash = 0x811c9dc5;
-  bytes.forEach((byte) => {
-    hash ^= byte;
-    hash = Math.imul(hash, 0x01000193);
-  });
-  return hash >>> 0;
-}
+const HALL_TIERS = [1, 2, 3] as const;
 
 function encodeCollection(
   unitIds: number[],
@@ -106,17 +67,10 @@ function encodeCollection(
   hall: Record<number, number>,
   bondDone: number[]
 ): string {
-  const payload: number[] = [];
-  pushCompactIdList(payload, unitIds);
-  pushCompactIdList(payload, princeDots);
-  pushCompactIdList(payload, Object.keys(hall).map(Number).filter((id) => hall[id] === 1));
-  pushCompactIdList(payload, Object.keys(hall).map(Number).filter((id) => hall[id] === 2));
-  pushCompactIdList(payload, Object.keys(hall).map(Number).filter((id) => hall[id] === 3));
-  pushCompactIdList(payload, bondDone);
-  const sum = checksum(payload);
-  payload.push(sum & 0xff, (sum >>> 8) & 0xff, (sum >>> 16) & 0xff, (sum >>> 24) & 0xff);
-  const binary = String.fromCharCode(...payload);
-  return CODE_PREFIX + btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const w = new ByteWriter().compactIdList(unitIds).compactIdList(princeDots);
+  for (const tier of HALL_TIERS) w.compactIdList(Object.keys(hall).map(Number).filter((id) => hall[id] === tier));
+  w.compactIdList(bondDone);
+  return CODE_PREFIX + base64url.encode(withChecksum(w.bytes));
 }
 
 function decodeCollection(code: string): {
@@ -126,109 +80,48 @@ function decodeCollection(code: string): {
   bondDone: number[];
 } {
   const compact = code.trim();
-  const prefix = compact.startsWith(CODE_PREFIX)
-    ? CODE_PREFIX
-    : compact.startsWith(V2_CODE_PREFIX) ? V2_CODE_PREFIX
-      : compact.startsWith(LEGACY_CODE_PREFIX) ? LEGACY_CODE_PREFIX : "";
+  const prefix = [CODE_PREFIX, V2_CODE_PREFIX, LEGACY_CODE_PREFIX].find((p) => compact.startsWith(p));
   if (!prefix) throw new Error("not an Aigis collection code");
-  const encoded = compact.slice(prefix.length).replace(/-/g, "+").replace(/_/g, "/");
-  const padded = encoded + "=".repeat((4 - (encoded.length % 4)) % 4);
-  let bytes: number[];
+  let bytes: Uint8Array;
   try {
-    bytes = [...atob(padded)].map((char) => char.charCodeAt(0));
+    bytes = base64url.decode(compact.slice(prefix.length));
   } catch {
     throw new Error("invalid collection code");
   }
   if (bytes.length < 6) throw new Error("collection code is incomplete");
-  const body = bytes.slice(0, -4);
-  const tail = bytes.length - 4;
-  const stored = (bytes[tail] | (bytes[tail + 1] << 8) | (bytes[tail + 2] << 16) | (bytes[tail + 3] << 24)) >>> 0;
-  if (checksum(body) !== stored) throw new Error("collection code is damaged or mistyped");
-
-  let cursor = 0;
-  const readVarint = () => {
-    let value = 0;
-    let shift = 0;
-    while (cursor < body.length && shift <= 28) {
-      const byte = body[cursor++];
-      value += (byte & 0x7f) * 2 ** shift;
-      if ((byte & 0x80) === 0) return value;
-      shift += 7;
+  const body = verifyChecksum(bytes);
+  if (!body) throw new Error("collection code is damaged or mistyped");
+  const r = new ByteReader(body, "collection code");
+  // AIGC3 lists carry a mode byte (delta list or bitset); AIGC1/AIGC2 are plain delta lists
+  const readList = () => (prefix === CODE_PREFIX ? r.compactIdList() : r.idList());
+  try {
+    const unitIds = readList();
+    const princeDots = readList();
+    const hall: Record<number, number> = {};
+    let bondDone: number[] = [];
+    if (prefix !== LEGACY_CODE_PREFIX) {
+      for (const tier of HALL_TIERS) readList().forEach((id) => { hall[id] = tier; });
+      bondDone = readList();
     }
-    throw new Error("invalid collection code data");
-  };
-  const readIdList = () => {
-    const count = readVarint();
-    if (count > 10000) throw new Error("collection code contains too many entries");
-    const result: number[] = [];
-    let previous = 0;
-    for (let i = 0; i < count; i += 1) {
-      const id = previous + readVarint();
-      if (id <= previous || id > 10_000_000) throw new Error("invalid collection id");
-      result.push(id);
-      previous = id;
-    }
-    return result;
-  };
-
-  const readCompactIdList = () => {
-    const mode = body[cursor++];
-    if (mode === 0) return readIdList();
-    if (mode !== 1) throw new Error("unsupported collection list encoding");
-    const length = readVarint();
-    if (length > 1_250_001 || cursor + length > body.length) {
-      throw new Error("invalid collection bitset");
-    }
-    const result: number[] = [];
-    for (let byteIndex = 0; byteIndex < length; byteIndex += 1) {
-      const byte = body[cursor + byteIndex];
-      for (let bit = 0; bit < 8; bit += 1) {
-        const id = byteIndex * 8 + bit;
-        if (id > 0 && (byte & (1 << bit)) !== 0) result.push(id);
-      }
-    }
-    cursor += length;
-    if (result.length > 10000) throw new Error("collection code contains too many entries");
-    return result;
-  };
-
-  const readList = prefix === CODE_PREFIX ? readCompactIdList : readIdList;
-  const unitIds = readList();
-  const princeDots = readList();
-  const hall: Record<number, number> = {};
-  let bondDone: number[] = [];
-  if (prefix === CODE_PREFIX || prefix === V2_CODE_PREFIX) {
-    readList().forEach((id) => { hall[id] = 1; });
-    readList().forEach((id) => { hall[id] = 2; });
-    readList().forEach((id) => { hall[id] = 3; });
-    bondDone = readList();
+    if (!r.done()) throw new Error("collection code has unsupported data");
+    return { unitIds, princeDots, hall, bondDone };
+  } catch (e) {
+    throw new Error(e instanceof Error && e.message.startsWith("collection code") ? e.message : "invalid collection code data");
   }
-  if (cursor !== body.length) throw new Error("collection code has unsupported data");
-  return { unitIds, princeDots, hall, bondDone };
 }
 
 function decodeCharaStatOwned(input: string): number[] {
   const value = input.trim();
   const match = value.match(/[?&]oryu=([^&#\s]+)/);
-  const encoded = decodeURIComponent(match ? match[1] : value).replace(/-/g, "+").replace(/_/g, "/");
-  if (!encoded || !/^[A-Za-z0-9+/=]+$/.test(encoded)) {
+  const encoded = decodeURIComponent(match ? match[1] : value);
+  if (!encoded || !/^[A-Za-z0-9+/=_-]+$/.test(encoded)) {
     throw new Error("not a valid chara-stat.us checker URL or oryu code");
   }
-  const padded = encoded + "=".repeat((4 - (encoded.length % 4)) % 4);
-  let bytes: number[];
   try {
-    bytes = [...atob(padded)].map((char) => char.charCodeAt(0));
+    return idsFromBitset(base64url.decode(encoded));
   } catch {
     throw new Error("invalid chara-stat.us oryu code");
   }
-  const ids: number[] = [];
-  bytes.forEach((byte, byteIndex) => {
-    for (let bit = 0; bit < 8; bit += 1) {
-      const id = byteIndex * 8 + bit;
-      if (id > 0 && (byte & (1 << bit)) !== 0) ids.push(id);
-    }
-  });
-  return ids;
 }
 
 function toggleNumber(values: number[], value: number): number[] {
@@ -332,10 +225,7 @@ function CollectionGroupSummary({ title, selected, total, onSelectAll, onClear }
     <summary className="collection-group-head">
       <span className="collection-accordion-chevron" aria-hidden="true" />
       <h3>{title}</h3>
-      <span className="collection-section-progress">
-        <ProgressMeter value={selected} total={total} label={`${title}: ${selected} of ${total} shown selected`} />
-        <span>{selected} / {total}</span>
-      </span>
+      <ProgressBar className="collection-section-progress" value={selected} max={total} />
       <span className="collection-group-meta">
         <span className="collection-section-actions">
           <button
@@ -460,7 +350,6 @@ export default function Collection() {
   const [groupBy, setGroupBy] = useState<"rarity" | "implementation">("rarity");
   const [sortBy, setSortBy] = useState<"id" | "implementation" | "class">("id");
   const [reverseSort, setReverseSort] = useState(false);
-  const [restoreCode, setRestoreCode] = useState("");
   const [charaStatCode, setCharaStatCode] = useState("");
   const [message, setMessage] = useState("");
 
@@ -513,7 +402,7 @@ export default function Collection() {
     });
     return [...groups.values()].map((members) => {
       members.sort((a, b) => a.id - b.id);
-      const dots = uniqueSorted(members.map((unit) => unit.dot_id));
+      const dots = uniqueSortedIds(members.map((unit) => unit.dot_id));
       return { members, dots, canonicalDot: dots[0], unit: members[0] };
     });
   }, [princeUnits]);
@@ -671,28 +560,42 @@ export default function Collection() {
     setYearFilters([]);
   };
 
-  const copyCode = async () => {
+  const applyDecoded = (decoded: ReturnType<typeof decodeCollection>) => {
+    setOwned(decoded.unitIds);
+    setPrinceDots(decoded.princeDots);
+    setHall(decoded.hall);
+    setBondDone(decoded.bondDone);
+    setMessage(
+      `Restored ${decoded.unitIds.length} units, ${decoded.princeDots.length} Prince icons, `
+      + `${Object.keys(decoded.hall).length} Hall marks, and ${decoded.bondDone.length} bond quests.`
+    );
+  };
+  const importCode = (code: string): string | null => {
     try {
-      await navigator.clipboard.writeText(exportCode);
-      setMessage("Restore code copied.");
-    } catch {
-      setMessage("Copy was blocked; select the code and copy it manually.");
+      applyDecoded(decodeCollection(code));
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : "could not restore collection";
     }
   };
-  const restore = () => {
+  const exportCollectionFile = () => exportFile({
+    format: FILE_FORMAT,
+    version: 1,
+    fileName: `aigis-collection-${new Date().toISOString().slice(0, 10)}.json`,
+    data: { owned, princeDots, hall, bondDone },
+  });
+  const importCollectionFile = async (file: File): Promise<string | null> => {
     try {
-      const decoded = decodeCollection(restoreCode);
-      setOwned(decoded.unitIds);
-      setPrinceDots(decoded.princeDots);
-      setHall(decoded.hall);
-      setBondDone(decoded.bondDone);
-      setMessage(
-        `Restored ${decoded.unitIds.length} units, ${decoded.princeDots.length} Prince icons, `
-        + `${Object.keys(decoded.hall).length} Hall marks, and ${decoded.bondDone.length} bond quests.`
-      );
-      setRestoreCode("");
+      const { data } = await readFile(file, FILE_FORMAT, 1);
+      const ids = (v: unknown) => (Array.isArray(v) ? v.filter((n): n is number => Number.isInteger(n) && n > 0) : []);
+      const fileHall = Object.fromEntries(Object.entries((data.hall ?? {}) as Record<string, unknown>)
+        .filter(([k, v]) => Number(k) > 0 && (v === 1 || v === 2 || v === 3))) as Record<number, number>;
+      applyDecoded({
+        unitIds: ids(data.owned), princeDots: ids(data.princeDots), hall: fileHall, bondDone: ids(data.bondDone),
+      });
+      return null;
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "could not restore collection");
+      return error instanceof Error ? error.message : "could not read that file";
     }
   };
   const importCharaStat = () => {
@@ -714,8 +617,8 @@ export default function Collection() {
           unitIds.push(unit.id);
         }
       });
-      const nextUnits = uniqueSorted(unitIds);
-      const nextPrinces = uniqueSorted(importedPrinceDots);
+      const nextUnits = uniqueSortedIds(unitIds);
+      const nextPrinces = uniqueSortedIds(importedPrinceDots);
       setOwned(nextUnits);
       setPrinceDots(nextPrinces);
       setMessage(
@@ -734,8 +637,8 @@ export default function Collection() {
   const applyScan = (units: UnitIndexEntry[]) => {
     const unitIds = units.filter((unit) => !isCollectionPrince(unit)).map((unit) => unit.id);
     const dots = units.filter(isCollectionPrince).map((unit) => unit.dot_id);
-    if (unitIds.length) setOwned((current) => uniqueSorted([...current, ...unitIds]));
-    if (dots.length) setPrinceDots((current) => uniqueSorted([...current, ...dots]));
+    if (unitIds.length) setOwned((current) => uniqueSortedIds([...current, ...unitIds]));
+    if (dots.length) setPrinceDots((current) => uniqueSortedIds([...current, ...dots]));
     setMessage(
       `Added ${unitIds.length} unit${unitIds.length === 1 ? "" : "s"}`
       + (dots.length ? ` and ${dots.length} Prince icon${dots.length === 1 ? "" : "s"}` : "")
@@ -814,16 +717,13 @@ export default function Collection() {
       <details className="collection-transfer">
         <summary>Copy / restore collection</summary>
         <div className="collection-transfer-grid">
-          <label>
-            Current restore code
-            <textarea readOnly value={exportCode} onFocus={(e) => e.currentTarget.select()} />
-            <button type="button" onClick={copyCode}>copy code</button>
-          </label>
-          <label>
-            Restore from a code
-            <textarea value={restoreCode} onChange={(e) => setRestoreCode(e.target.value)} placeholder="Paste an AIGC1, AIGC2, or AIGC3 code" />
-            <button type="button" disabled={!restoreCode.trim()} onClick={restore}>restore</button>
-          </label>
+          <BackupPanel
+            code={exportCode}
+            onImportCode={importCode}
+            onExportFile={exportCollectionFile}
+            onImportFile={importCollectionFile}
+            labels={{ pasteCode: "Paste an AIGC1, AIGC2, or AIGC3 code" }}
+          />
           <label>
             Import from chara-stat.us
             <textarea
@@ -850,7 +750,7 @@ export default function Collection() {
             title="Prince"
             selected={shownPrinces.filter(princeOwned).length}
             total={shownPrinces.length}
-            onSelectAll={() => setPrinceDots((current) => uniqueSorted([
+            onSelectAll={() => setPrinceDots((current) => uniqueSortedIds([
               ...current,
               ...shownPrinces.map((group) => group.canonicalDot),
             ]))}
@@ -870,7 +770,7 @@ export default function Collection() {
                   const groupDots = new Set(group.dots);
                   return princeOwned(group)
                     ? current.filter((dot) => !groupDots.has(dot))
-                    : uniqueSorted([...current, group.canonicalDot]);
+                    : uniqueSortedIds([...current, group.canonicalDot]);
                 })}
                 subtitle={`${group.members.length} card record${group.members.length === 1 ? "" : "s"}`}
               />
@@ -885,7 +785,7 @@ export default function Collection() {
             title="Support"
             selected={shownSupport.filter(supportOwned).length}
             total={shownSupport.length}
-            onSelectAll={() => setOwned((current) => uniqueSorted([
+            onSelectAll={() => setOwned((current) => uniqueSortedIds([
               ...current,
               ...shownSupport.map((group) => group.unit.id),
             ]))}
@@ -905,7 +805,7 @@ export default function Collection() {
                   const groupIds = new Set(group.members.map((unit) => unit.id));
                   return supportOwned(group)
                     ? current.filter((id) => !groupIds.has(id))
-                    : uniqueSorted([...current, group.unit.id]);
+                    : uniqueSortedIds([...current, group.unit.id]);
                 })}
                 subtitle={group.members.length > 1
                   ? `${group.members.length} card records`
@@ -920,7 +820,7 @@ export default function Collection() {
             title={section.key}
             selected={section.items.filter((unit) => ownedSet.has(unit.id)).length}
             total={section.items.length}
-            onSelectAll={() => setOwned((current) => uniqueSorted([
+            onSelectAll={() => setOwned((current) => uniqueSortedIds([
               ...current,
               ...section.items.map((unit) => unit.id),
             ]))}

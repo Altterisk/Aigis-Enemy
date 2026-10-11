@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { EmptyState, ListToolbar, SearchBox } from "@altterisk/game-hub";
+import { listState, searchParamsAdapter } from "@altterisk/game-hub/filters";
 import { useStages, useCurrentMissions, useHistoryYears, bannerUrl } from "../data";
 import type { StageIndexEntry } from "../types";
 
@@ -89,8 +91,11 @@ export default function StageList() {
   const { loading, stages } = useStages();
   const currentMissions = useCurrentMissions();
   const historyYears = useHistoryYears();
-  const [q, setQ] = useState("");
-  const [cat, setCat] = useState("current");
+  // search + category live in the URL; an absent ?cat= is "current"
+  const [params, setParams] = useSearchParams();
+  const list = listState(searchParamsAdapter(params, setParams));
+  const q = list.text("q");
+  const cat = list.text("cat", "current");
 
   const currentSet = useMemo(() => {
     return new Set(
@@ -206,24 +211,24 @@ export default function StageList() {
 
   return (
     <div>
-      <div className="toolbar">
-        <input
-          placeholder="Search stage / event / quest id"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        <select value={cat} onChange={(e) => setCat(e.target.value)}>
-          <option value="current">now running</option>
-          <option value="all">all categories</option>
-          {categories.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-        <span className="count">{totalEvents} events</span>
-      </div>
+      <ListToolbar
+        search={(
+          <>
+            <SearchBox value={q} onChange={(v) => list.setText("q", v)} placeholder="Search stage / event / quest id" />
+            <select className="hub-select" value={cat} onChange={(e) => list.setText("cat", e.target.value === "current" ? "" : e.target.value)}>
+              <option value="current">now running</option>
+              <option value="all">all categories</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </>
+        )}
+        count={`${totalEvents} events`}
+      />
 
       {cat === "current" && totalEvents === 0 && (
-        <p className="muted">No limited-time missions matched — switch to a category above.</p>
+        <EmptyState title="No limited-time missions right now" hint="Pick a category above." />
       )}
 
       {sections.map(([category, events]) => (

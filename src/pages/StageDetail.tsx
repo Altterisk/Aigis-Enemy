@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, Link } from "react-router-dom";
+import { Breadcrumbs, MetaChip, MetaChips, PageHeader, Panel, TabPanel, UrlTabs, tabParam } from "@altterisk/game-hub";
+import { searchParamsAdapter } from "@altterisk/game-hub/filters";
 import {
   useStageDetail,
   useInfluenceLabels,
@@ -9,7 +11,7 @@ import {
   talkFaceUrl,
   bannerUrl,
 } from "../data";
-import { Sprite, DamageBadge, Effects, Tags, auraRadius, periodicRate, missileOnHitText, HumanText } from "../components";
+import { Sprite, DamageBadge, Effects, Tags, auraRadius, periodicRate, missileOnHitText, HumanText, routerLink } from "../components";
 import type {
   StageEnemy,
   StageEnemyForm,
@@ -446,7 +448,7 @@ export default function StageDetail() {
   const labels = useInfluenceLabels();
   const races = useRaceLabels();
   const spcfg = useSpecialtyConfig();
-  const [tab, setTab] = useState<"enemies" | "dialogue">("enemies");
+  const [params, setParams] = useSearchParams();
   const { available: hasStoryTalk, talk: storyTalk } =
     useStoryTalk(stage?.mission_id);
   const [bannerFailed, setBannerFailed] = useState(false);
@@ -458,58 +460,72 @@ export default function StageDetail() {
   const storySections = storyTalk?.sections ?? [];
   const dialogueCount = dialogue.length + storySections.length;
   const hasDialogue = dialogueCount > 0 || hasStoryTalk;
-  const activeTab = hasDialogue ? tab : "enemies";
+  const TABS = [
+    { id: "enemies", label: "Enemies", count: enemies.length },
+    { id: "dialogue", label: "Dialogue", count: dialogueCount, hidden: !hasDialogue },
+  ];
+  const [activeTab, setTab] = tabParam(searchParamsAdapter(params, setParams), TABS);
 
   return (
     <div className="detail stage-page">
-      <Link to="/stages" className="back">← stages</Link>
+      <Breadcrumbs
+        renderLink={routerLink}
+        items={[
+          { label: "Stages", href: "/stages" },
+          ...(stage.event ? [{ label: stage.event, href: "/stages" }] : []),
+          { label: stage.name },
+        ]}
+      />
 
-      <header className="stage-head">
-        {stage.mission_id != null && !bannerFailed && (
+      <PageHeader
+        className="stage-header"
+        level={2}
+        art={stage.mission_id != null && !bannerFailed ? (
           <img
             className="stage-banner"
             src={bannerUrl(stage.mission_id)}
             alt=""
             onError={() => setBannerFailed(true)}
           />
+        ) : undefined}
+        title={stage.name}
+        subtitle={stage.event ? (
+          <span className="event-line">
+            <span className="cat-badge">{stage.event_category}</span> {stage.event}
+          </span>
+        ) : undefined}
+        meta={(
+          <MetaChips>
+            <MetaChip label="Quest" value={stage.quest_id} />
+            <MetaChip label="Map / Entry" value={<>{stage.map_no} / {stage.entry_no}</>} />
+            <MetaChip value={`×${stage.multiplier ?? 1} mult`} title="stat multiplier on HP and melee ATK" />
+            <MetaChip label="Charisma" value={stage.charisma ?? 0} />
+            <MetaChip label="Capacity" value={stage.capacity ?? 0} />
+            {stage.active === false && <MetaChip className="past-chip" value="past content" />}
+          </MetaChips>
         )}
-        <div className="stage-head-main">
-          <h2>{stage.name}</h2>
-          {stage.event && (
-            <div className="event-line">
-              <span className="cat-badge">{stage.event_category}</span> {stage.event}
-            </div>
-          )}
-          <div className="meta stage-meta">
-            <span className="meta-chip">Quest {stage.quest_id}</span>
-            <span className="meta-chip">Map {stage.map_no} / Entry {stage.entry_no}</span>
-            <span className="meta-chip" title="stat multiplier on HP and melee ATK">
-              ×{stage.multiplier ?? 1} mult
-            </span>
-            <span className="meta-chip">Charisma {stage.charisma ?? 0}</span>
-            <span className="meta-chip">Capacity {stage.capacity ?? 0}</span>
-            {stage.active === false && <span className="meta-chip past-chip">past content</span>}
-          </div>
-        </div>
-      </header>
+      />
 
       {stage.description && (
         <p className="stage-desc">{stage.description}</p>
       )}
 
       {stage.modifiers && stage.modifiers.length > 0 && (
-        <section>
-          <h3>Stage modifiers</h3>
+        <Panel title="Stage modifiers">
           <Effects effects={stage.modifiers} />
-        </section>
+        </Panel>
       )}
 
       {stage.hard && (
-        <section className="hard-box">
-          <h3>
-            <span className="cat-badge">4★ / hard</span> alternative
-            <span className="muted small"> · same map, ×{stage.hard.multiplier ?? 1} mult</span>
-          </h3>
+        <Panel
+          className="hard-box"
+          title={(
+            <>
+              <span className="cat-badge">4★ / hard</span> alternative
+              <span className="muted small"> · same map, ×{stage.hard.multiplier ?? 1} mult</span>
+            </>
+          )}
+        >
           {(stage.hard.modifiers?.length ?? 0) > 0 && (
             <>
               <div className="muted small">extra modifiers:</div>
@@ -519,40 +535,21 @@ export default function StageDetail() {
           <div className="muted small">
             Enemy HP/ATK are rescaled to ×{stage.hard.multiplier ?? 1} (same enemies as below).
           </div>
-        </section>
+        </Panel>
       )}
 
-      {hasDialogue && (
-        <div className="stage-tabs">
-          <button
-            className={activeTab === "enemies" ? "active" : ""}
-            onClick={() => setTab("enemies")}
-          >
-            Enemies ({enemies.length})
-          </button>
-          <button
-            className={activeTab === "dialogue" ? "active" : ""}
-            onClick={() => setTab("dialogue")}
-          >
-            Dialogue ({dialogueCount})
-          </button>
-        </div>
-      )}
+      {hasDialogue && <UrlTabs tabs={TABS} active={activeTab} onChange={setTab} label="Stage sections" idBase="stage" />}
 
       {activeTab === "enemies" && (
-        <>
+        <TabPanel tab="enemies" idBase="stage">
           {stage.popups && stage.popups.length > 0 && (
-            <section>
-              <h3>Ability popups ({stage.popups.length})</h3>
-              <div className="muted small">
-                In-game explanation popups shown in this stage.
-              </div>
+            <Panel title={`Ability popups (${stage.popups.length})`} note="In-game explanation popups shown in this stage.">
               <div className="popups">
                 {stage.popups.map((p, i) => (
                   <div className="popup" key={i}>{p}</div>
                 ))}
               </div>
-            </section>
+            </Panel>
           )}
           <section>
             {!hasDialogue && <h3>Enemies ({enemies.length})</h3>}
@@ -562,11 +559,11 @@ export default function StageDetail() {
               ))}
             </div>
           </section>
-        </>
+        </TabPanel>
       )}
 
       {activeTab === "dialogue" && (
-        <section className="dlg">
+        <TabPanel tab="dialogue" idBase="stage" className="dlg">
           {dialogue.length > 0 && (
             <>
               <h3>In-stage dialogue</h3>
@@ -592,7 +589,7 @@ export default function StageDetail() {
           {dialogue.length === 0 && storySections.length === 0 && (
             <p className="muted">No dialogue found for this stage.</p>
           )}
-        </section>
+        </TabPanel>
       )}
     </div>
   );

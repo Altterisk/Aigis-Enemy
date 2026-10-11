@@ -1,4 +1,4 @@
-// Lightweight data layer: fetch the exported JSON once, cache, and index it.
+// Lightweight data layer: fetch the exported JSON once (shared loader), and index it.
 import { useEffect, useState } from "react";
 import type {
   GlobalEnemy,
@@ -24,23 +24,18 @@ import type {
 } from "./types";
 import { INFLUENCE_LABELS } from "./influenceLabels";
 import { RACE_LABELS, TAG_LABELS } from "./tagLabels";
+import { bucketFor, createJsonLoader, parseBounds } from "@altterisk/game-hub/data";
 
-const cache: Record<string, unknown> = {};
+// retryOn keeps the old behaviour of retrying any non-OK response once
+const loader = createJsonLoader({
+  urls: (name) => [`${import.meta.env.BASE_URL}data/${name}.json`],
+  retryOn: () => true,
+});
 
 export { loadJSON as loadJSONFile };
 
-async function loadJSON<T>(name: string): Promise<T> {
-  if (cache[name]) return cache[name] as T;
-  const url = `${import.meta.env.BASE_URL}data/${name}.json`;
-  let res = await fetch(url);
-  if (!res.ok) {
-    // transient failures (dev-server restart, flaky network) get one retry
-    res = await fetch(url);
-  }
-  if (!res.ok) throw new Error(`failed to load ${name}.json (${res.status})`);
-  const data = (await res.json()) as T;
-  cache[name] = data;
-  return data;
+function loadJSON<T>(name: string): Promise<T> {
+  return loader.load<T>(name);
 }
 
 export function useEnemies() {
@@ -366,17 +361,7 @@ export function useAbilityConfigs(): Record<string, AbilityInfluence[]> | null {
 // fallbackKind).
 const IMG_CDN: string =
   (import.meta.env.VITE_IMG_CDN as string | undefined)?.replace(/\/$/, "") || "";
-const IMG_BUCKET_BOUNDS: number[] =
-  ((import.meta.env.VITE_IMG_BUCKET_BOUNDS as string | undefined) || "")
-    .split(",")
-    .map((s) => parseInt(s, 10))
-    .filter((n) => !isNaN(n));
-
-function imgBucket(id: number): number {
-  let b = 0;
-  while (b < IMG_BUCKET_BOUNDS.length && id > IMG_BUCKET_BOUNDS[b]) b++;
-  return b;
-}
+const IMG_BUCKET_BOUNDS = parseBounds(import.meta.env.VITE_IMG_BUCKET_BOUNDS as string | undefined);
 
 // Unit battle-sprite animation (all poses exported by export_anim.py);
 // lives in the aigis-assets repo — the id-routed art buckets sit near the
@@ -394,7 +379,7 @@ export function unitImageUrl(kind: UnitImageKind, id: number, tier = 0): string 
     return `${import.meta.env.BASE_URL}unit-icon/${id}${suffix}.png`;
   }
   if (IMG_CDN && !import.meta.env.DEV) {
-    const base = IMG_CDN.replace("{b}", String(imgBucket(id)));
+    const base = IMG_CDN.replace("{b}", String(bucketFor(id, IMG_BUCKET_BOUNDS)));
     return `${base}/${kind}/${id}${suffix}.png`;
   }
   return `${import.meta.env.BASE_URL}unit-img/${kind}/${id}${suffix}.png`;
