@@ -131,3 +131,35 @@ test("unit page fits a phone screen", async ({ page }) => {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
 });
+
+test("infobox artist links to that artist's section on the artist list", async ({ page }) => {
+  await page.goto("/#/units/2908");
+  const artist = page.locator(".unit-infobox-rows a", { hasText: "内有一馬" });
+  await expect(artist).toBeVisible();
+  await artist.click();
+  await expect(page).toHaveURL(/#\/artists\?artist=/);
+  const row = page.locator(".artist-table tr.focused");
+  await expect(row.locator(".artist-name")).toContainText("内有一馬");
+  await expect(row.locator(".artist-links a", { hasText: "Twitter" })).toHaveAttribute("href", /twitter\.com\/utiu_kazuma/);
+  await expect(row.locator("a[href$='/units/2908']")).toBeInViewport();
+  expect(await row.locator(".artist-units a").count()).toBeGreaterThan(1);
+  await expect(page.locator(".artist-table tbody tr").last().locator(".artist-name")).toContainText("Unknown");
+  expect(await page.locator(".artist-table tbody tr").count()).toBeGreaterThan(100);
+});
+
+test("artist search filters by artist or unit name", async ({ page }) => {
+  await page.goto("/#/artists");
+  const search = page.getByPlaceholder("Search artist / unit name");
+  const names = page.locator(".artist-table .artist-name");
+  await search.fill("ＳＡＬＬＹ");   // full-width upper case still finds "Sally"
+  await expect(names.first()).toContainText("Sally");
+  await search.fill("内有");
+  await expect(page).toHaveURL(/[?&]q=/);
+  await expect(names.first()).toContainText("内有一馬");
+  for (const t of await names.allTextContents()) expect(t).toContain("内有一馬");
+  await search.fill("狼装の盗賊ベルナ");
+  await expect(names).toHaveCount(1);
+  await expect(names.first()).toContainText("内有一馬");
+  await search.fill("");
+  expect(await names.count()).toBeGreaterThan(100);
+});

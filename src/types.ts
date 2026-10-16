@@ -534,6 +534,9 @@ export interface Unit {
   identity_tags?: string[];
   faction?: string | null;
   genus?: string | null;
+  release_year?: number | null;
+  implementation_date?: string | null; // YYYY-MM-DD
+  artist?: string | null;
   affection_bonuses?: AffectionBonus[];
   classes: UnitClass[];
   skills: {
@@ -577,6 +580,9 @@ export interface TagMention {
   effect?: string | null;
 }
 export type TagMentions = Record<string, { unit?: TagMention[]; enemy?: TagMention[] }>;
+
+// artist_links.json: artist credit -> profile links (Twitter / pixiv / site)
+export type ArtistLinks = Record<string, { label: string; url: string }[]>;
 
 // one row of data/buff_index.json (units' valued influence rows, for /buffs).
 export interface BuffRow {
@@ -667,6 +673,7 @@ export interface UnitIndexEntry {
   position?: "melee" | "ranged" | "omni" | null;
   release_year?: number | null;
   implementation_date?: string | null;
+  artist?: string | null;
   magic_resistance?: number | null;
   sell_price?: number | null;
   trade_point?: number | null;

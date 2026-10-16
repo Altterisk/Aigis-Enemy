@@ -1847,11 +1847,26 @@ export default function UnitDetail() {
             ))}
           </div>
         )}
-        <div className="unit-infobox-meta">
-          <Link className="meta-chip" to={`/units?rarity=${encodeURIComponent(unit.rarity.replace(/ Hero$/, ""))}`}>{unit.rarity}</Link>
+        <dl className="unit-infobox-rows">
+          <div><dt>ID</dt><dd>#{unit.id}</dd></div>
+          <div>
+            <dt>Rarity</dt>
+            <dd><Link to={`/units?rarity=${encodeURIComponent(unit.rarity.replace(/ Hero$/, ""))}`}>{unit.rarity}</Link></dd>
+          </div>
           {unit.gender && (
-            <Link className="meta-chip" to={`/units?gender=${encodeURIComponent(String(unit.gender))}`}>{unit.gender}</Link>
+            <div>
+              <dt>Gender</dt>
+              <dd><Link to={`/units?gender=${encodeURIComponent(String(unit.gender))}`}>{unit.gender}</Link></dd>
+            </div>
           )}
+          {(unit.implementation_date || unit.release_year) && (
+            <div><dt>Released</dt><dd>{unit.implementation_date || unit.release_year}</dd></div>
+          )}
+          {unit.artist && (
+            <div><dt>Artist</dt><dd><Link to={`/artists?artist=${encodeURIComponent(unit.artist)}`}>{unit.artist}</Link></dd></div>
+          )}
+        </dl>
+        <div className="unit-infobox-meta">
           {unit.faction && (
             <Link className="meta-chip" to={`/tags/${encodeURIComponent(unit.faction)}`} title={unit.faction}>
               {loc?.races[unit.faction] || unit.faction}

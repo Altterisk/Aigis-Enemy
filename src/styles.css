@@ -498,6 +498,40 @@ summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .unit-infobox .unit-img--missing { width: 100%; height: 260px; border-radius: 0; margin-top: 8px; }
 /* icon shown in place of splash art (the published site has no art files) */
 .unit-infobox .unit-img--fallback { width: auto; max-width: 106px; margin: 12px auto 4px; display: block; }
+/* /artists */
+.artist-table td { vertical-align: top; }
+.artist-table tr { scroll-margin-top: 70px; }
+.artist-table tr.focused td { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.artist-table tr.focused td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.artist-name { width: 190px; font-weight: 700; overflow-wrap: anywhere; }
+.artist-links { width: 70px; }
+.artist-links a { display: block; white-space: nowrap; }
+.artist-units { display: flex; flex-wrap: wrap; gap: 4px; }
+.artist-units .unit-icon-mini { width: 40px; height: 40px; min-width: 40px; display: block; }
+/* phones: each artist becomes a block -- name, links on one line, icons below */
+@media (max-width: 700px) {
+  .artist-table thead { display: none; }
+  .artist-table, .artist-table tbody, .artist-table tr, .artist-table td { display: block; width: auto; }
+  .artist-table td { border-bottom: none; padding: 4px 10px; }
+  .artist-table tr { border-bottom: 1px solid var(--line); padding: 4px 0; scroll-margin-top: 110px; }
+  .artist-links a { display: inline; margin-right: 12px; }
+  .artist-links:empty { display: none; }
+}
+
+/* label/value rows under the art */
+.unit-infobox-rows { width: 100%; margin: 8px 0 0; font-size: 13px; }
+.unit-infobox-rows > div {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 5px 10px;
+  border-top: 1px solid var(--line);
+}
+.unit-infobox-rows > div:last-child { border-bottom: 1px solid var(--line); }
+.unit-infobox-rows dt {
+  flex: none; width: 64px;
+  color: var(--muted); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+.unit-infobox-rows dd { flex: 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
 .unit-infobox-meta {
   display: flex; flex-wrap: wrap; gap: 5px;
   justify-content: center;
@@ -518,6 +552,7 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 .aff-cell { font-size: 12px; }
 .unit-icon-thumb {
   width: 56px;
+  min-width: 56px;
   height: 56px;
   object-fit: cover;
   border-radius: 6px;
