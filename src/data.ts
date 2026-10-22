@@ -1,6 +1,7 @@
 // Lightweight data layer: fetch the exported JSON once (shared loader), and index it.
 import { useEffect, useState } from "react";
 import type {
+  AffectionBonus,
   GlobalEnemy,
   Stage,
   StageIndexEntry,
@@ -36,6 +37,15 @@ export { loadJSON as loadJSONFile };
 
 function loadJSON<T>(name: string): Promise<T> {
   return loader.load<T>(name);
+}
+
+// Stat value of one affection stat bonus (HP/ATK/DEF/Range/Speed) before the
+// unit's own stat mod: slots 1/2 (100% affection) scale *1.2 at full bloom
+// (max level > 50) and *0.5 at half bloom; slot 3 (150% affection) applies
+// at its raw value.
+export function affectionStat(b: AffectionBonus, fullBloom: boolean): number {
+  if (b.slot === 3) return b.raw;
+  return Math.floor(b.raw * (fullBloom ? 1.2 : 0.5) + 0.5);
 }
 
 export function useEnemies() {
@@ -220,8 +230,9 @@ export function useUnitDetail(id: number) {
 export function useLocalisation(): Localisation | null {
   const [loc, set] = useState<Localisation | null>(null);
   useEffect(() => {
+    // tagLabels.ts wins; the exported maps fill any tag it does not name yet
     loadJSON<Localisation>("localisation")
-      .then((l) => set({ ...l, races: RACE_LABELS, tags: TAG_LABELS }))
+      .then((l) => set({ ...l, races: { ...l.races, ...RACE_LABELS }, tags: { ...l.tags, ...TAG_LABELS } }))
       .catch(() => set({ classes: {}, races: RACE_LABELS, tags: TAG_LABELS, skills: {}, abilities: {} }));
   }, []);
   return loc;

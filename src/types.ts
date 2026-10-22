@@ -12,6 +12,7 @@ export type DamageType = "physical" | "magical" | "true";
 export interface AffectionBonus {
   type: number;
   raw: number;
+  slot?: number; // card slot 1/2 = 100% affection bonus, 3 = 150% bonus
 }
 
 // one resolved influence row of a SpEff / quest term.

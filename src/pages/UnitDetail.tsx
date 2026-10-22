@@ -1,7 +1,7 @@
 import { useState, useEffect, createContext, useContext } from "react";
 import type { ReactNode } from "react";
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useUnitDetail, useUnitInfluenceLabels, useLocalisation, useTexts, usePrinceTitles, useMissiles, useAbilityConfigs, useUnitSpeech, unitImageUrl, unitAnimUrl } from "../data";
+import { useUnitDetail, useUnitInfluenceLabels, useLocalisation, useTexts, usePrinceTitles, useMissiles, useAbilityConfigs, useUnitSpeech, unitImageUrl, unitAnimUrl, affectionStat } from "../data";
 import { UnitImage, missileText, fillLabel, HumanText, fmtFrames, ColorCodedText, routerLink } from "../components";
 import { Breadcrumbs, Lightbox, Panel, StatRows, TabPanel, UrlTabs, tabParam } from "@altterisk/game-hub";
 import type { RenderLink } from "@altterisk/game-hub";
@@ -1388,9 +1388,10 @@ const AFFBONUS_SPECIAL: Record<number, (raw: number) => string> = {
   13: (raw) => `Cost -${raw}`,
 };
 
-// affection bonus is exported raw (BonusType/BonusNum). Stat bonuses:
-// full-bloom (max level > 50) scales *1.2, half-bloom *0.5, then the unit's
-// own HP/ATK/DEF mod (12/13/14) applies on top, same as the stat box.
+// affection bonus is exported raw (BonusType/BonusNum). Stat bonuses in
+// slots 1/2: full-bloom (max level > 50) scales *1.2, half-bloom *0.5; the
+// slot-3 (150% affection) bonus applies at its raw value. The unit's own
+// HP/ATK/DEF mod (12/13/14) then applies on top, same as the stat box.
 // Special-attribute types (5/7/8/9) bypass all of that.
 function affBonusText(
   bonuses: AffectionBonus[] | undefined,
@@ -1404,7 +1405,7 @@ function affBonusText(
       if (special) return special(b.raw);
       const label = AFFBONUS_LABELS[b.type];
       if (!label) return `type${b.type} +${b.raw}`;
-      let v = Math.floor(b.raw * (full ? 1.2 : 0.5) + 0.5);
+      let v = affectionStat(b, full);
       const kind = AFFBONUS_KIND[b.type];
       const pct = kind ? pctFor(kind) : null;
       if (pct != null) v = Math.floor((v * pct) / 100);

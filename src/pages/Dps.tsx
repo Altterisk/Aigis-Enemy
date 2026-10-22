@@ -42,7 +42,7 @@
 // value shape, and how several damage modifiers combine.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { loadJSONFile, unitImageUrl, useAbilityConfigs, useUnitDetail, useUnits } from "../data";
+import { affectionStat, loadJSONFile, unitImageUrl, useAbilityConfigs, useUnitDetail, useUnits } from "../data";
 import { influenceSelectionRule } from "../influenceLabels";
 import type { AbilityInfluence, BuffRow, SkillStage, Unit, UnitClass, UnitSkill } from "../types";
 import { base64url, packJson, unpackJson } from "@altterisk/game-hub/codec";
@@ -330,7 +330,7 @@ function affectionAtk(u: Unit, cl: UnitClass): number {
   if (!b) return 0;
   const group = u.classes.filter((c) => (cl.cc >= 2 ? c.cc >= 2 : c.cc < 2));
   const full = Math.max(...group.map((c) => c.max_level ?? 0)) > 50;
-  return Math.floor(b.raw * (full ? 1.2 : 0.5) + 0.5);
+  return affectionStat(b, full);
 }
 
 interface OwnEffect {
