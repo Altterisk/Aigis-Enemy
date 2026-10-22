@@ -54,6 +54,7 @@ export const RACE_LABELS: Record<string, string> = {
 // localisation.py's tag_map = {**Identity, **Genus}).
 export const TAG_LABELS: Record<string, string> = {
   "高貴": "Noble",
+  "影の帝国": "Shadow Empire",
   "魔術師": "Magician",
   "魔界": "Makai",
   "飛行": "Flying",

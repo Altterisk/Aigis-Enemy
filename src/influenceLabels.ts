@@ -2183,6 +2183,18 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "note": "user-confirmed: on-hit MR debuff. p1 is the percent MR reduction, p2 is the duration in frames -- same shape as 89 (ATK) and 90 (DEF), and 288 is the War God Blessing version. Carried by the 魔法剣士 class line (20/30/40% for 120f) and the 錬金術士 line (50/60/70% for 840-880f); 遺宝狩りカーヴィヤ (units/2870) carries [90, 300] against ability text 攻撃した敵の魔法耐性を一定時間90％減少.",
       "tpl": "-{p1}% for {p2f}"
     },
+    "351": {
+      "name": "Nullify threshold gain per kill",
+      "verified": true,
+      "note": "user-confirmed: \"351 seems correct, ignore p3 for now\". Carrier 影の女帝騎士ディアナ (units/2914) class ability, every tier [50, max, 1] with p2 = the class text's 無効化の値が50上昇(最大N): 1600/2000/2000/2500.",
+      "tpl": "+{p1} per kill (max {p2})"
+    },
+    "117": {
+      "name": "Nullify counterattacks",
+      "verified": true,
+      "note": "user-confirmed: \"also 117\". Carrier 帝国精鋭遊撃兵ローザ (units/2916), no params; ability text 自身の攻撃による反射・反撃無効.",
+      "tpl": ""
+    },
     "223": {
       "name": "War God Blessing ATK Buff",
       "verified": true,
