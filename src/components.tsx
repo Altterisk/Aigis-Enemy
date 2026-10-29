@@ -69,6 +69,165 @@ export function missileOnHitText(h?: MissileOnHit | null): string {
   return `on hit: ${label}${dmg}${dur}${tail}`;
 }
 
+// Parse an enemy specialty's _ExtParam ("key=value, key=value") into a map.
+function parseExt(ext: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const part of ext.split(/[,\n]/)) {
+    const i = part.indexOf("=");
+    if (i > 0) out[part.slice(0, i).trim()] = part.slice(i + 1).trim();
+  }
+  return out;
+}
+
+// Barrier (specialty 41) thresholds: one per melee/ranged x physical/magic/true.
+// A hit at or below the threshold is negated; 0 = that type is not blocked;
+// 1,000,000 and above blocks every hit.
+function barrierText(kv: Record<string, string>): string | null {
+  const TYPES: [string, string][] = [["物理", "physical"], ["魔法", "magic"], ["貫通", "true"]];
+  const val = (k: string) => (kv[k] === undefined ? null : Number(kv[k]));
+  const cells = TYPES.flatMap(([jp]) => [val(`近接${jp}`), val(`遠隔${jp}`)]);
+  if (cells.every((v) => v === null)) return null;
+  const amount = (v: number) => (v >= 1_000_000 ? "every hit" : `hits of ${v.toLocaleString()} damage or less`);
+  const all = cells.every((v) => v === cells[0]);
+  if (all) {
+    const v = cells[0] ?? 0;
+    if (!v) return "blocks nothing";
+    return v >= 1_000_000 ? "blocks every hit" : `blocks every hit of ${v.toLocaleString()} damage or less`;
+  }
+  const parts: string[] = [];
+  for (const [jp, en] of TYPES) {
+    const m = val(`近接${jp}`) ?? 0;
+    const r = val(`遠隔${jp}`) ?? 0;
+    if (m === r) {
+      if (m) parts.push(`${en}: ${amount(m)}`);
+    } else {
+      if (m) parts.push(`melee ${en}: ${amount(m)}`);
+      if (r) parts.push(`ranged ${en}: ${amount(r)}`);
+    }
+  }
+  return parts.length ? `blocks ${parts.join("; ")}` : "blocks nothing";
+}
+
+// Damage-type words used by several specialty ext fields.
+const DMG_TYPE: Record<string, string> = { 物理: "physical", 魔法: "magic", 貫通: "true" };
+function damageTypes(v: string): string {
+  return v
+    .split(/[,、]/)
+    .map((t) => DMG_TYPE[t.trim()] || t.trim())
+    .filter(Boolean)
+    .join(" / ");
+}
+
+// Counter (specialty 23) ext keys, translated literally. 反応 lists the
+// damage types that trigger it; it is the last key, so the values after it
+// (e.g. "反応=魔法,貫通") arrive split across entries.
+function counterText(ext: string): string | null {
+  const m = ext.match(/反応=([^=]*)$/);
+  const kv = parseExt(m ? ext.slice(0, m.index) : ext);
+  const parts: string[] = [];
+  if (kv["反射"] === "1") parts.push("reflect mode");
+  if (kv["反射"] === "0") parts.push("reflect mode off");
+  if (kv["相手攻撃利用"] === "1") parts.push("uses the attacker's attack");
+  if (kv["反射分ダメージ減少"] === "1") parts.push("damage it takes is reduced by the reflected amount");
+  if (m) parts.push(`reacts to ${damageTypes(m[1])} attacks`);
+  return parts.length ? parts.join("; ") : null;
+}
+
+// On-hit DoT ext (specialties 46 / 58) in the shape the missile on-hit
+// formatter reads, so both display the same way.
+function dotText(kv: Record<string, string>): string {
+  const n = (k: string) => (kv[k] === undefined ? undefined : Number(kv[k]));
+  const known = new Set(["種別", "効果時間", "インターバル", "割合ダメージ", "固定ダメージ",
+    "攻撃力を使う", "攻撃間隔", "症状緩和", "効果時間のみで消滅", "演出", "演出ループ"]);
+  const other: Record<string, string> = {};
+  for (const [k, v] of Object.entries(kv)) if (!known.has(k)) other[k] = v;
+  // An hour or more of battle time is effectively the whole battle.
+  const dur = n("効果時間");
+  const long = dur !== undefined && dur >= 216000;
+  const text = missileOnHitText({
+    kind: kv["種別"] || "DOT",
+    duration_f: long ? undefined : dur,
+    interval_f: n("インターバル"),
+    pct_hp: n("割合ダメージ") || undefined,
+    flat: n("固定ダメージ") || undefined,
+    uses_atk: kv["攻撃力を使う"] === "1",
+    attack_interval_f: n("攻撃間隔"),
+    relief: kv["症状緩和"] === "1",
+    expire_duration_only: kv["効果時間のみで消滅"] === "1",
+    other: Object.keys(other).length ? other : undefined,
+  }).replace(/^on hit: poison/, "on hit: damage over time");
+  return long ? text.replace(/(?=( \[|$))/, " for the whole battle") : text;
+}
+
+// Human text for an enemy specialty's _ExtParam; null keeps the raw text.
+export function extText(influence: number | undefined, ext?: string): string | null {
+  if (!ext) return null;
+  const kv = parseExt(ext);
+  switch (influence) {
+    case 41:
+      return barrierText(kv);
+    case 23:
+      return counterText(ext);
+    case 9:
+    case 13:
+    case 15:
+      // The game sets this effect's state bit to Flag (default on).
+      if (kv["Flag"] === "0") return "switched off here (Flag=0)";
+      if (kv["Flag"] === "1") return "";
+      return null;
+    case 14:
+      return kv["Style"] ? `style: ${kv["Style"].replace("自爆(爆心地)", "self-destruct (centred on itself)")}` : null;
+    case 31:
+    case 62:
+      // Effect=<visual name>: cosmetic only.
+      return "";
+    case 42: {
+      const name = kv["名前"];
+      const code = kv["天候"];
+      if (!name && !code) return null;
+      return `weather: ${[code, name && `(${name})`].filter(Boolean).join(" ")}`;
+    }
+    case 46:
+    case 58:
+      return dotText(kv);
+    case 52:
+      if (kv["計算種別"] === "1") return "amount is a percent";
+      if (kv["計算種別"] === "0") return "amount is a flat value";
+      return null;
+    case 55:
+    case 56:
+      if (kv["種別"] !== "スキル妨害") return null;
+      return `skill seal${kv["効果時間"] ? ` for ${fmtFrames(Number(kv["効果時間"]))}` : ""}`;
+    case 57: {
+      // 属性 / ミサイルID / エフェクト lists run on past their own key.
+      const m = ext.match(/属性=([^=]*?)(?:,\s*(?:ミサイルID|エフェクト)=|$)/);
+      return m ? `hit types in order: ${damageTypes(m[1])}` : null;
+    }
+    case 59: {
+      const STATS: [string, string][] = [["攻撃力低下", "ATK"], ["防御力低下", "DEF"], ["魔法耐性低下", "MR"]];
+      const parts = STATS.filter(([k]) => kv[k] !== undefined && Number(kv[k]) !== 100)
+        .map(([k, en]) => `${en} to ${kv[k]}%`);
+      if (!parts.length) return null;
+      const dur = kv["効果時間"] ? ` for ${fmtFrames(Number(kv["効果時間"]))}` : "";
+      return `${parts.join(", ")}${dur}`;
+    }
+    case 64: {
+      const on = Object.entries(DMG_TYPE).filter(([jp]) => kv[jp] === "1").map(([, en]) => en);
+      return on.length ? `applies to ${on.join(" / ")} damage only` : null;
+    }
+    default:
+      return null;
+  }
+}
+
+// What to show for an effect's _ExtParam: the humanized text for enemy
+// specialties ("" = nothing worth showing), otherwise the raw text.
+export function extDisplay(e: { kind?: string; influence?: number; ext?: string }): string {
+  if (!e.ext) return "";
+  const h = e.kind === "specialty" ? extText(e.influence, e.ext) : null;
+  return h === null ? e.ext : h;
+}
+
 // Ability text's own in-game color markup: "%c[RRGGBB]...%c[RRGGBB]" (the
 // second code, usually ffffff, resets to default). Used on ~100 abilities
 // to flag a "【所持効果】" (possession-effect / 1st-barrack) buff clause in
@@ -335,7 +494,11 @@ export function Effects({ effects, foldAt = 5 }: { effects?: Effect[]; foldAt?: 
                 {" "}if <HumanText text={e.expression_human || e.expression || ""} />
               </span>
             )}
-            {e.ext && <span className="expr"> {e.ext}</span>}
+            {e.ext && extDisplay(e) && (
+              <span className="expr" title={e.ext}>
+                {" "}{extDisplay(e)}
+              </span>
+            )}
           </li>
         );
       })}

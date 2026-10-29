@@ -64,3 +64,18 @@ test("stage tabs live in the URL and breadcrumbs lead back", async ({ page }) =>
   await page.locator(".hub-crumbs a", { hasText: "Stages" }).click();
   await expect(page).toHaveURL(/#\/stages$/);
 });
+
+test("fixture / clone enemies carry a marker badge and are counted apart", async ({ page }) => {
+  await page.goto("/#/stages/1021");
+  await expect(page.locator(".enemy-cards > *").first()).toBeVisible();
+  await expect(page.locator(".badge.marker").first()).toBeVisible();
+  await page.goto("/#/stages?cat=all&q=%E7%8E%8B%E9%83%BD%E9%99%A5%E8%90%BD%EF%BC%92");
+  await expect(page.getByRole("link", { name: /王都陥落２/ }).first()).toContainText("+ 9 markers");
+});
+
+test("enemy effect details are written out instead of raw game keys", async ({ page }) => {
+  await page.goto("/#/stages/10028");
+  await expect(page.locator(".enemy-cards > *").first()).toBeVisible();
+  await expect(page.locator(".eff-cond", { hasText: /^ ?blocks / }).first()).toBeVisible();
+  await expect(page.locator(".eff-cond", { hasText: "近接物理" })).toHaveCount(0);
+});

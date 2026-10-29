@@ -44,6 +44,11 @@ function EventBlock({ event, category, missionId, stages }: EventGroup) {
                 {s.name}
                 <span className="muted small"> ×{s.multiplier ?? 1}</span>
                 <span className="muted small"> · {s.enemy_count ?? 0} enemies</span>
+                {(s.marker_count ?? 0) > 0 && (
+                  <span className="muted small" title="fixtures / clones the game does not count as enemies">
+                    {" "}+ {s.marker_count} markers
+                  </span>
+                )}
                 {s.active === false && <span className="past-tag">past</span>}
               </Link>
             </li>
@@ -81,11 +86,12 @@ function YearBlock({ group, title, events }: {
   );
 }
 
-// Categories whose open (Enable-flagged) missions are limited-time content
-// that belongs in the default "current" view. Rotating always-open tables
-// (Devil Advent / Raid / Tower / Reproduce) are excluded — every one of
-// their missions is flagged open all the time.
-const CURRENT_CATS = new Set(["Emergency", "Subjugation"]);
+// Categories whose open (Enable-flagged) missions belong in the default
+// "current" view: limited-time Emergency / Subjugation content, plus every
+// Empire chapter. Rotating always-open tables (Devil Advent / Raid / Tower /
+// Reproduce) are excluded — every one of their missions is flagged open all
+// the time.
+const CURRENT_CATS = new Set(["Emergency", "Subjugation", "Empire"]);
 
 export default function StageList() {
   const { loading, stages } = useStages();

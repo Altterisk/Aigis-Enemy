@@ -11,7 +11,7 @@ import {
   talkFaceUrl,
   bannerUrl,
 } from "../data";
-import { Sprite, DamageBadge, Effects, Tags, auraRadius, periodicRate, missileOnHitText, HumanText, routerLink } from "../components";
+import { Sprite, DamageBadge, Effects, Tags, auraRadius, periodicRate, missileOnHitText, HumanText, routerLink, extDisplay } from "../components";
 import type {
   StageEnemy,
   StageEnemyForm,
@@ -91,6 +91,7 @@ interface EffectLine {
   id: string;
   meaning: string | null;
   ext?: string;
+  extRaw?: string;
   aura: string | null;
   rate: string | null;
   expr?: string;
@@ -114,7 +115,8 @@ function effectLines(effects: Effect[], labels: InfluenceLabels | null): EffectL
     return {
       id,
       meaning: m,
-      ext: e.ext,
+      ext: extDisplay(e),
+      extRaw: e.ext,
       aura: auraRadius(e),
       rate: periodicRate(e, effects),
       expr: e.expression_human || e.expression,
@@ -218,7 +220,7 @@ function StatRow({
             {f.aura && <span className="eff-meaning"> ({f.aura})</span>}
             {f.rate && <span className="dot-calc"> {f.rate}</span>}
             {f.expr && <span className="eff-cond" title={f.exprRaw}> if <HumanText text={f.expr} /></span>}
-            {f.ext && <span className="eff-cond"> {f.ext}</span>}
+            {f.ext && <span className="eff-cond" title={f.extRaw}> {f.ext}</span>}
           </div>
         ))}
       </td>
@@ -288,6 +290,14 @@ function EnemyCard({
               >
                 {" "}#{e.global_id}
               </Link>
+            )}
+            {e.uncounted && (
+              <span
+                className="badge marker"
+                title="置物 / 分身: the game leaves it out of the enemy count — a marker, not a kill target"
+              >
+                marker
+              </span>
             )}
             {e.form_index === 0 && triggerText(e) && (
               <span className="trigger-badge" title="how this form is reached">

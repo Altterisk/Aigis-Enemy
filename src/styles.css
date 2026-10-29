@@ -104,6 +104,7 @@ main {
 }
 .badge.boss { background: #e0b341; }
 .badge.sky { background: #6fc3d9; }
+.badge.marker { background: #9a8bb5; margin-left: 6px; }
 
 /* off-map flag/timer controller card (not a combat enemy) */
 .flag-card {

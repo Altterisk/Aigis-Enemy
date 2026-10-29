@@ -90,6 +90,8 @@ export interface RouteBehaviour {
 export interface StageEnemyForm {
   tags?: string[];
   fixture?: boolean;
+  /** 置物 / 分身: left out of the game's enemy count (a marker, not a kill target). */
+  uncounted?: boolean;
   hp?: number;
   attack?: number;
   base_hp?: number;
@@ -230,6 +232,7 @@ export interface StageIndexEntry {
   map_no?: number;
   active?: boolean;
   enemy_count?: number;
+  marker_count?: number;
 }
 
 // a global enemy (Enemy.atb row) in enemies.json.
