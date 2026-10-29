@@ -79,3 +79,19 @@ test("enemy effect details are written out instead of raw game keys", async ({ p
   await expect(page.locator(".eff-cond", { hasText: /^ ?blocks / }).first()).toBeVisible();
   await expect(page.locator(".eff-cond", { hasText: "近接物理" })).toHaveCount(0);
 });
+
+test("parked enemies and flag-gated transforms name what happens", async ({ page }) => {
+  await page.goto("/#/stages/45006");
+  await expect(page.locator(".enemy-cards > *").first()).toBeVisible();
+  await expect(page.locator(".trigger-badge", { hasText: "never moves" }).first()).toBeVisible();
+  await expect(page.locator(".trigger-badge", { hasText: "stays put until stage flag 100 is set" })).toBeVisible();
+  await expect(page.locator(".trigger-badge", { hasText: "when stage flag 50 is set → transform into form 2" }).first()).toBeVisible();
+});
+
+test("in-game color markup in stage names renders as colored text", async ({ page }) => {
+  await page.goto("/#/stages/7540");
+  const title = page.locator(".stage-header").getByText("第三陣 飛行部隊の増援").first();
+  await expect(title).toBeVisible();
+  await expect(title).toHaveCSS("color", "rgb(255, 0, 0)");
+  await expect(page.locator(".stage-header")).not.toContainText("%c[");
+});

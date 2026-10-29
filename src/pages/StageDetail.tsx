@@ -11,7 +11,7 @@ import {
   talkFaceUrl,
   bannerUrl,
 } from "../data";
-import { Sprite, DamageBadge, Effects, Tags, auraRadius, periodicRate, missileOnHitText, HumanText, routerLink, extDisplay } from "../components";
+import { Sprite, DamageBadge, Effects, Tags, auraRadius, periodicRate, missileOnHitText, HumanText, routerLink, extDisplay, ColorCodedText } from "../components";
 import type {
   StageEnemy,
   StageEnemyForm,
@@ -44,6 +44,7 @@ function triggerText(d: StageEnemy): string | null {
   if (c === "sp_change") {
     return d.timed_wait ? `after ${Math.round(d.timed_wait / 60)}s` : "alternate attack mode";
   }
+  if (d.from_flag) return `reached when stage flag ${d.from_flag[0]} is set`;
   switch (c) {
     case 2: return "on death";
     case 4: {
@@ -65,7 +66,9 @@ function becomesText(d: StageEnemy): string | null {
   // nothing to show if neither a condition nor a known next form exists.
   if (c == null && d.to_global_id == null) return null;
   const dest =
-    d.to_global_id != null ? `transform into #${d.to_global_id}` : "change form";
+    d.to_global_id != null
+      ? `transform into #${d.to_global_id}`
+      : `transform into form ${(d.form_index ?? 0) + 2}`;
   // CC=0 / unknown trigger but a known next form -> show the link without a "when".
   if (c == null) return `→ ${dest}`;
   let when: string | null;
@@ -228,15 +231,30 @@ function StatRow({
   );
 }
 
+// Movement on its route: a waypoint wait of -1 parks the enemy there for good,
+// unless a stage flag releases it.
+function holdText(h: RB["hold"]): string | null {
+  if (!h) return null;
+  const some = h.held < h.routes ? ` (on ${h.held} of ${h.routes} routes)` : "";
+  return h.release_flags?.length
+    ? `stays put until stage flag ${h.release_flags.join(" / ")} is set${some}`
+    : `never moves${some}`;
+}
+
 // Structured route behaviour: gated transforms, flag sets, events, reroutes.
-function RouteBehaviour({ rb }: { rb: RB }) {
+// A ModeChange with no MasterId moves the enemy to its next form.
+function RouteBehaviour({ rb, formIndex }: { rb: RB; formIndex: number }) {
+  const dest = (x: NonNullable<RB["transforms"]>[number]) =>
+    x.to ? `transform to #${x.to}` : `transform into form ${formIndex + 2}`;
   const t = (x: NonNullable<RB["transforms"]>[number]) =>
     x.flag != null
-      ? `when flag ${x.flag}==${x.val} → transform${x.to ? ` to #${x.to}` : ""}`
-      : `transform${x.to ? ` to #${x.to}` : ""}${x.wait && x.wait > 0 ? ` after ${Math.round(x.wait / 60)}s` : ""}`;
+      ? `when flag ${x.flag}==${x.val} → ${dest(x)}`
+      : `${dest(x)}${x.wait && x.wait > 0 ? ` after ${Math.round(x.wait / 60)}s` : ""}`;
+  const hold = holdText(rb.hold);
   return (
     <details className="commands">
       <summary>route behaviour</summary>
+      {hold && <div>movement: {hold}</div>}
       {rb.transforms && <div>transforms: {rb.transforms.map(t).join(" · ")}</div>}
       {rb.sets_flags && (
         <div>
@@ -299,7 +317,15 @@ function EnemyCard({
                 marker
               </span>
             )}
-            {e.form_index === 0 && triggerText(e) && (
+            {(e.form_count ?? 1) > 1 && (
+              <span className="muted small"> · form {(e.form_index ?? 0) + 1}/{e.form_count}</span>
+            )}
+            {holdText(e.route_behaviour?.hold) && (
+              <span className="trigger-badge" title="route waypoint wait of -1: parked on its route">
+                {holdText(e.route_behaviour?.hold)}
+              </span>
+            )}
+            {(e.form_index ?? 0) > 0 && triggerText(e) && (
               <span className="trigger-badge" title="how this form is reached">
                 {triggerText(e)}
               </span>
@@ -362,7 +388,7 @@ function EnemyCard({
             </details>
           )}
 
-          {e.route_behaviour && <RouteBehaviour rb={e.route_behaviour} />}
+          {e.route_behaviour && <RouteBehaviour rb={e.route_behaviour} formIndex={e.form_index ?? 0} />}
         </div>
       </div>
     </article>
@@ -483,7 +509,7 @@ export default function StageDetail() {
         items={[
           { label: "Stages", href: "/stages" },
           ...(stage.event ? [{ label: stage.event, href: "/stages" }] : []),
-          { label: stage.name },
+          { label: <ColorCodedText text={stage.name} /> },
         ]}
       />
 
@@ -498,7 +524,7 @@ export default function StageDetail() {
             onError={() => setBannerFailed(true)}
           />
         ) : undefined}
-        title={stage.name}
+        title={<ColorCodedText text={stage.name} />}
         subtitle={stage.event ? (
           <span className="event-line">
             <span className="cat-badge">{stage.event_category}</span> {stage.event}

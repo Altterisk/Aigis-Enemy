@@ -233,7 +233,8 @@ export function extDisplay(e: { kind?: string; influence?: number; ext?: string 
 // to flag a "【所持効果】" (possession-effect / 1st-barrack) buff clause in
 // red, matching the color-coded highlight already applied elsewhere to
 // invoke="while in the 1st barrack" influence rows.
-export function ColorCodedText({ text }: { text: string }) {
+export function ColorCodedText({ text }: { text?: string | null }) {
+  if (!text) return null;
   const parts = text.split(/(%c\[[0-9a-fA-F]{6}\])/g);
   let color: string | null = null;
   return (

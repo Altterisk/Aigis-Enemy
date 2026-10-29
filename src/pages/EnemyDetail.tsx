@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useEnemies, useStages, useEnemyStages, useSpecialtyConfig } from "../data";
-import { Sprite, DamageBadge, Stat, Tags, Effects } from "../components";
+import { Sprite, DamageBadge, Stat, Tags, Effects, ColorCodedText } from "../components";
 
 export default function EnemyDetail() {
   const { id } = useParams();
@@ -106,7 +106,7 @@ export default function EnemyDetail() {
             {appearsIn.slice(0, 60).map((s) => (
               <li key={s.quest_id}>
                 <Link to={`/stages/${s.quest_id}`}>
-                  {s.name} <span className="muted">(×{s.multiplier ?? 1})</span>
+                  <ColorCodedText text={s.name} /> <span className="muted">(×{s.multiplier ?? 1})</span>
                 </Link>
               </li>
             ))}

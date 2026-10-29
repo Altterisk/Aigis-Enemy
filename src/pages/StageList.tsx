@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { EmptyState, ListToolbar, SearchBox } from "@altterisk/game-hub";
 import { listState, searchParamsAdapter } from "@altterisk/game-hub/filters";
 import { useStages, useCurrentMissions, useHistoryYears, bannerUrl } from "../data";
+import { ColorCodedText } from "../components";
 import type { StageIndexEntry } from "../types";
 
 interface EventGroup {
@@ -41,7 +42,7 @@ function EventBlock({ event, category, missionId, stages }: EventGroup) {
           .map((s) => (
             <li key={s.quest_id} className={s.active === false ? "archived" : ""}>
               <Link to={`/stages/${s.quest_id}`}>
-                {s.name}
+                <ColorCodedText text={s.name} />
                 <span className="muted small"> ×{s.multiplier ?? 1}</span>
                 <span className="muted small"> · {s.enemy_count ?? 0} enemies</span>
                 {(s.marker_count ?? 0) > 0 && (

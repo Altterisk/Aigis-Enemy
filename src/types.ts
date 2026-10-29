@@ -76,6 +76,7 @@ export interface Commands {
 
 // structured route @OnEvent behaviour.
 export interface RouteBehaviour {
+  hold?: { routes: number; held: number; release_flags?: number[] | null } | null;
   transforms?: { flag: number | null; val: number | null; to: number | null; wait?: number }[];
   sets_flags?: [number, number, number | null][];
   calls_event?: number[];
