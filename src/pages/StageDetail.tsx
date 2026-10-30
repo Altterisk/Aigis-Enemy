@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
-import { Breadcrumbs, MetaChip, MetaChips, PageHeader, Panel, TabPanel, UrlTabs, tabParam } from "@altterisk/game-hub";
+import { Breadcrumbs, FallbackImage, MetaChip, MetaChips, PageHeader, Panel, TabPanel, UrlTabs, tabParam } from "@altterisk/game-hub";
 import { searchParamsAdapter } from "@altterisk/game-hub/filters";
 import { LIST_META, NOT_FOUND_META, stageMeta } from "../meta";
 import { usePageMeta } from "../usePageMeta";
@@ -421,19 +421,14 @@ function dialogueTriggerText(s: DialogueSection): string {
 }
 
 function TalkFace({ line }: { line: DialogueLine }) {
-  const [failed, setFailed] = useState(false);
   const url = talkFaceUrl(line.face);
-  if (!url || failed) {
-    // no portrait (narration / unknown speaker): initial in a placeholder well
-    return <div className="dlg-face dlg-face--none">{(line.name || "…").slice(0, 1)}</div>;
-  }
+  // no portrait (narration / unknown speaker): initial in a placeholder well
   return (
-    <img
+    <FallbackImage
       className="dlg-face"
-      src={url}
+      srcs={[url]}
       alt={line.name || ""}
-      loading="lazy"
-      onError={() => setFailed(true)}
+      missing={<div className="dlg-face dlg-face--none">{(line.name || "…").slice(0, 1)}</div>}
     />
   );
 }

@@ -2,26 +2,26 @@
 // exported JSON (no React, no fetch, no import.meta.env): the pages set them at
 // runtime through usePageMeta, and the build (prerender.js) writes the same
 // text into each page's static HTML, so the two never disagree.
+import { clip as hubClip, createSiteMeta, plainText as hubPlainText, sentence, type PageMeta } from "@altterisk/game-hub/meta";
 
-/** Where the site is served; canonical URLs, the sitemap and og:url use it. */
-export const SITE_URL = "https://aigis.altterisk.cc";
-export const SITE_NAME = "Aigis Database";
-
-export interface PageMeta {
-  /** without the site name: fullTitle adds it */
-  title: string;
-  description: string;
-  /** a site path (/unit-icon/101.png) for og:image */
-  image?: string;
-  /** keep out of search results (an unknown URL, which the SPA fallback answers with 200) */
-  noindex?: boolean;
-}
+export type { PageMeta };
 
 export const DEFAULT_META: PageMeta = {
   title: "",
   description:
     "Fan-made Millennium War Aigis (千年戦争アイギス) database: unit stats, skills and abilities, enemy stats, stage maps and waves, buff index, collection checker, cost generation and DPS calculators.",
 };
+
+export const site = createSiteMeta({
+  game: "aigis",
+  format: (title, s) => `${title} · ${s.name}`,
+  defaultDescription: DEFAULT_META.description,
+  defaultImage: "/favicon.png",
+});
+
+/** Where the site is served; canonical URLs, the sitemap and og:url use it. */
+export const SITE_URL = site.url;
+export const SITE_NAME = site.name;
 
 export const NOT_FOUND_META: PageMeta = { title: "Page not found", description: DEFAULT_META.description, noindex: true };
 
@@ -65,15 +65,14 @@ export const LIST_META: Record<string, PageMeta> = {
   },
 };
 
-export const fullTitle = (title: string) => (title ? `${title} · ${SITE_NAME}` : SITE_NAME);
+export const fullTitle = site.fullTitle;
 /** Each path segment encoded once (tag pages carry Japanese names). */
-export const sitePath = (path: string) => path.split("/").map((s) => encodeURIComponent(decodeURIComponent(s))).join("/");
-export const canonicalUrl = (path: string) => SITE_URL + sitePath(path);
+export const sitePath = site.sitePath;
+export const canonicalUrl = (path: string) => site.canonicalUrl(path);
 
-const clip = (s: string, n = 200) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
-const sentence = (...parts: (string | number | false | null | undefined)[]) => parts.filter(Boolean).join(" ");
+const clip = (s: string) => hubClip(s, 200);
 /** Drops the game's %c[rrggbb] colour codes. */
-export const plainText = (s: string | null | undefined) => (s ?? "").replace(/%c\[[0-9a-fA-F]{6}\]/g, "");
+export const plainText = (s: string | null | undefined) => hubPlainText(s, /%c\[[0-9a-fA-F]{6}\]/g);
 
 export interface UnitMetaSource {
   id: number;
@@ -96,7 +95,7 @@ export function unitMeta(u: UnitMetaSource, className?: string | null): PageMeta
       `${full}${u.name && u.name !== full ? ` (${u.name})` : ""}, ${kind || "a"} unit in Millennium War Aigis:`,
       "stats, class chain, skills, abilities, quotes and art.",
       u.artist && `Art: ${u.artist}.`,
-      u.release_year && `Released ${u.release_year}.`,
+      u.release_year ? `Released ${u.release_year}.` : null,
     )),
     image: `/unit-icon/${u.id}.png`,
   };

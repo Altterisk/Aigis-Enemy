@@ -4,6 +4,7 @@
 // including the no-op 100% entries; those are dropped here. Target 1 is the
 // enemy side, target 2 the ally side.
 import { useMemo, useState } from "react";
+import { FallbackImage, SearchBox } from "@altterisk/game-hub";
 import { useWeather } from "../data";
 import { UnitIconLink } from "../components";
 import type { WeatherEntry, WeatherRow, WeatherSource } from "../types";
@@ -46,15 +47,12 @@ function isNoOp(r: WeatherRow): boolean {
 
 // The banner the game itself puts on screen when the weather starts.
 function WeatherBanner({ id, name }: { id: number; name: string | null }) {
-  const [missing, setMissing] = useState(false);
-  if (missing) return null;
   return (
-    <img
+    <FallbackImage
       className="wx-banner"
-      src={`${import.meta.env.BASE_URL}weather-icon/${id}.png`}
+      srcs={[`${import.meta.env.BASE_URL}weather-icon/${id}.png`]}
       alt={name || `weather ${id}`}
-      loading="lazy"
-      onError={() => setMissing(true)}
+      missing={null}
     />
   );
 }
@@ -123,11 +121,7 @@ export default function Weather() {
       </p>
 
       <div className="toolbar">
-        <input
-          placeholder="Search id / name"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
+        <SearchBox placeholder="Search id / name" value={q} onChange={setQ} />
         <select value={effect} onChange={(e) => setEffect(e.target.value)}>
           <option value="all">any effect</option>
           {[1, 2, 3, 4].map((id) => (

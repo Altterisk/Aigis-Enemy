@@ -40,10 +40,9 @@ test("buff ranking filters rows by a concrete target affiliation and keeps it in
   await page.goto("/buffs");
   await page.getByRole("button", { name: "target filters" }).click();
   const affiliation = page.locator(".filter-group", { hasText: "Affiliation" });
-  const choice = affiliation.locator("input").first();
-  const value = await choice.getAttribute("value");
   await affiliation.locator("label").first().click();
   await expect(page).toHaveURL(/targetFaction=/);
+  const value = new URL(page.url()).searchParams.get("targetFaction");
   await expect(page.locator(".buff-group").first()).toBeVisible();
   await expect(
     page.locator(".buff-table tbody tr").first().locator("td").nth(3)

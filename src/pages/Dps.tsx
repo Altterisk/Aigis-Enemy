@@ -45,6 +45,7 @@ import { useSearchParams } from "react-router-dom";
 import { affectionStat, loadJSONFile, unitImageUrl, useAbilityConfigs, useUnitDetail, useUnits } from "../data";
 import { influenceSelectionRule } from "../influenceLabels";
 import type { AbilityInfluence, BuffRow, SkillStage, Unit, UnitClass, UnitSkill } from "../types";
+import { copyText } from "@altterisk/game-hub";
 import { base64url, packJson, unpackJson } from "@altterisk/game-hub/codec";
 
 type SlotKey = "none" | "base" | "class_evolved" | "awakened";
@@ -892,8 +893,7 @@ export default function Dps() {
       setParams({ z: code }, { replace: true });
       const url = `${window.location.origin}/dps?z=${code}`;
       const done = () => { setCopied(true); setTimeout(() => setCopied(false), 2000); };
-      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).then(done, done);
-      else done();
+      copyText(url).then(done);
     });
   };
 

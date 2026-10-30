@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { FallbackImage } from "@altterisk/game-hub";
+import { RichText, type MarkupRule } from "@altterisk/game-hub/text";
 import type { RenderLink } from "@altterisk/game-hub";
 import { spriteUrl, enemyAnimUrl, unitImageUrl, DMG_COLORS, useInfluenceLabels, useLocalisation } from "./data";
 import type {
@@ -235,21 +236,15 @@ export function extDisplay(e: { kind?: string; influence?: number; ext?: string 
 // invoke="while in the 1st barrack" influence rows.
 export function ColorCodedText({ text }: { text?: string | null }) {
   if (!text) return null;
-  const parts = text.split(/(%c\[[0-9a-fA-F]{6}\])/g);
-  let color: string | null = null;
-  return (
-    <>
-      {parts.map((part, i) => {
-        const m = part.match(/^%c\[([0-9a-fA-F]{6})\]$/);
-        if (m) {
-          color = m[1].toLowerCase() === "ffffff" ? null : `#${m[1]}`;
-          return null;
-        }
-        return color ? <span key={i} style={{ color }}>{part}</span> : part;
-      })}
-    </>
-  );
+  return <RichText text={text} rules={COLOR_CODES} />;
 }
+
+// %c[rrggbb] sets the colour of the text after it; ffffff is the default text colour
+const COLOR_CODES: MarkupRule[] = [{
+  kind: "style",
+  re: /%c\[([0-9a-fA-F]{6})\]/,
+  apply: (m) => (m[1].toLowerCase() === "ffffff" ? {} : { color: `#${m[1]}` }),
+}];
 
 // Humanized condition text with [[class:NAME]] / [[tag:NAME]] filter-link
 // markers (emitted by aigis/expr.py) rendered as clickable unit-list filters,
@@ -322,26 +317,22 @@ export function UnitImage({
   className?: string;
   alt?: string;
 }) {
-  const [tried, setTried] = useState({ kind, tier });
-  useEffect(() => setTried({ kind, tier }), [tier, id, kind]);
-
-  if (tried.tier < 0) {
-    return <div className={`unit-img unit-img--missing ${className || ""}`} />;
-  }
-  const onError = () => {
-    setTried((t) => {
-      if (t.tier > 0) return { ...t, tier: t.tier - 1 };
-      if (fallbackKind && t.kind !== fallbackKind) return { kind: fallbackKind, tier };
-      return { ...t, tier: -1 };
-    });
-  };
+  // this tier down to the base art, then the same for fallbackKind
+  const tiers = (k: UnitImageKind) => Array.from({ length: tier + 1 }, (_, i) => unitImageUrl(k, id, tier - i));
+  const missing = <div className={`unit-img unit-img--missing ${className || ""}`} />;
   return (
-    <img
-      className={`unit-img ${className || ""}${tried.kind !== kind ? " unit-img--fallback" : ""}`}
-      src={unitImageUrl(tried.kind, id, tried.tier)}
+    <FallbackImage
+      className={`unit-img ${className || ""}`}
+      srcs={tiers(kind)}
       alt={alt}
-      loading="lazy"
-      onError={onError}
+      missing={fallbackKind && fallbackKind !== kind ? (
+        <FallbackImage
+          className={`unit-img ${className || ""} unit-img--fallback`}
+          srcs={tiers(fallbackKind)}
+          alt={alt}
+          missing={missing}
+        />
+      ) : missing}
     />
   );
 }
@@ -368,24 +359,20 @@ export function Sprite({
   alt?: string;
   fit?: boolean;
 }) {
-  // try the idle animation first, then the static png, then a placeholder
-  const [state, setState] = useState<"anim" | "png" | "missing">("anim");
-  useEffect(() => setState("anim"), [patternId]);
-  if (state === "missing" || patternId == null) {
-    return <div className="sprite sprite--missing" style={{ width: size, height: size }} />;
-  }
+  // the idle animation first, then the static png, then a placeholder
+  const missing = <div className="sprite sprite--missing" style={{ width: size, height: size }} />;
+  if (patternId == null) return missing;
   // fit: respect the sprite's real proportions, bounded by `size`.
   const style = fit
     ? { maxWidth: size, maxHeight: size, width: "auto", height: "auto" }
     : { width: size, height: size };
   return (
-    <img
+    <FallbackImage
       className="sprite"
-      src={state === "anim" ? enemyAnimUrl(patternId) : spriteUrl(patternId)}
+      srcs={[enemyAnimUrl(patternId), spriteUrl(patternId)]}
       style={style}
       alt={alt}
-      loading="lazy"
-      onError={() => setState(state === "anim" ? "png" : "missing")}
+      missing={missing}
     />
   );
 }

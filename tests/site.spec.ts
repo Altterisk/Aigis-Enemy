@@ -47,7 +47,7 @@ test("pages set their own title and canonical", async ({ page }) => {
 
 test("unknown paths show not found and are noindex", async ({ page }) => {
   await page.goto("/no-such-page");
-  await expect(page.getByText("Page not found.")).toBeVisible();
+  await expect(page.getByText("Page not found")).toBeVisible();
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex");
   await expect(page.locator('link[rel="canonical"]')).toHaveCount(0);
 });

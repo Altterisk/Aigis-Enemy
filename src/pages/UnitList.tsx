@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useUnits, useUnitInfluenceLabels, useLocalisation, loadJSONFile } from "../data";
 import { UnitImage } from "../components";
-import { CheckboxGroup, EmptyState, FilterPanel, ListToolbar, Pager, SearchBox } from "@altterisk/game-hub";
+import { CheckboxGroup, EmptyState, FilterChip, FilterPanel, ListToolbar, Pager, SearchBox } from "@altterisk/game-hub";
 import { useUiStore } from "../store";
 import type { UnitIndexEntry, UnitInfluenceLabel, TagMentions } from "../types";
 
@@ -306,15 +306,9 @@ export default function UnitList() {
           activeFilters={activeParams}
           onClearFilters={resetAll}
           actions={(
-            <label className={`hub-chip${showNpc ? " hub-chip--on" : ""}`}>
-              <input
-                type="checkbox"
-                className="hub-visually-hidden"
-                checked={showNpc}
-                onChange={(e) => setParam("npc", e.target.checked ? "1" : null)}
-              />
+            <FilterChip active={showNpc} onClick={() => setParam("npc", showNpc ? null : "1")}>
               NPC / test / fodder
-            </label>
+            </FilterChip>
           )}
         />
         <div className="unit-toolbar-row">

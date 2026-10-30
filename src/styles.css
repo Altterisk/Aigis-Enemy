@@ -19,7 +19,6 @@ code { font-size: 12px; }
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
 
-.app { min-height: 100vh; display: flex; flex-direction: column; }
 main {
   flex: 1 0 auto;
   width: 100%;

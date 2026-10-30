@@ -8,7 +8,7 @@ import {
   ByteReader, ByteWriter, base64url, idsFromBitset, uniqueSortedIds, verifyChecksum, withChecksum,
 } from "@altterisk/game-hub/codec";
 import { exportFile, readFile } from "@altterisk/game-hub/persist";
-import { BackupPanel, ProgressBar } from "@altterisk/game-hub";
+import { BackupPanel, CheckboxGroup, ProgressBar, SearchBox } from "@altterisk/game-hub";
 import type { UnitIndexEntry } from "../types";
 import ScreenshotImport from "./CollectionScan";
 
@@ -126,34 +126,6 @@ function decodeCharaStatOwned(input: string): number[] {
 
 function toggleNumber(values: number[], value: number): number[] {
   return values.includes(value) ? values.filter((n) => n !== value) : [...values, value];
-}
-
-function FilterGroup({
-  title, options, selected, onToggle,
-}: {
-  title: string;
-  options: { value: string; label: string }[];
-  selected: string[];
-  onToggle: (value: string) => void;
-}) {
-  if (!options.length) return null;
-  return (
-    <div className="filter-group">
-      <div className="filter-group-title">{title}</div>
-      <div className="filter-group-options">
-        {options.map((option) => (
-          <label key={option.value} className={`cg-pill${selected.includes(option.value) ? " on" : ""}`}>
-            <input
-              type="checkbox"
-              checked={selected.includes(option.value)}
-              onChange={() => onToggle(option.value)}
-            />
-            {option.label}
-          </label>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 const POSITION_OPTIONS = [
@@ -666,7 +638,7 @@ export default function Collection() {
       </div>
 
       <div className="collection-tools">
-        <input placeholder="Search id / name / class" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <SearchBox placeholder="Search id / name / class" value={query} onChange={setQuery} />
         <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)}>
           <option value="">all classes</option>
           {filterOptions.classes.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
@@ -703,14 +675,14 @@ export default function Collection() {
 
       <details className="collection-filters">
         <summary>Filters{activeFilterCount ? ` (${activeFilterCount})` : ""}</summary>
-        <FilterGroup title="Rarity" options={filterOptions.rarities} selected={rarityFilters} onToggle={(value) => toggleFilter(rarityFilters, setRarityFilters, value)} />
-        <FilterGroup title="Position" options={POSITION_OPTIONS} selected={positionFilters} onToggle={(value) => toggleFilter(positionFilters, setPositionFilters, value)} />
-        <FilterGroup title="Gender" options={GENDER_OPTIONS} selected={genderFilters} onToggle={(value) => toggleFilter(genderFilters, setGenderFilters, value)} />
-        <FilterGroup title="Affiliation" options={filterOptions.factions} selected={factionFilters} onToggle={(value) => toggleFilter(factionFilters, setFactionFilters, value)} />
-        <FilterGroup title="Race" options={filterOptions.races} selected={raceFilters} onToggle={(value) => toggleFilter(raceFilters, setRaceFilters, value)} />
-        <FilterGroup title="Attribute" options={filterOptions.attributes} selected={attributeFilters} onToggle={(value) => toggleFilter(attributeFilters, setAttributeFilters, value)} />
-        <FilterGroup title="Season" options={filterOptions.seasons} selected={seasonFilters} onToggle={(value) => toggleFilter(seasonFilters, setSeasonFilters, value)} />
-        <FilterGroup title="Implementation year" options={filterOptions.years} selected={yearFilters} onToggle={(value) => toggleFilter(yearFilters, setYearFilters, value)} />
+        <CheckboxGroup className="filter-group" title="Rarity" options={filterOptions.rarities} selected={rarityFilters} onToggle={(value) => toggleFilter(rarityFilters, setRarityFilters, value)} />
+        <CheckboxGroup className="filter-group" title="Position" options={POSITION_OPTIONS} selected={positionFilters} onToggle={(value) => toggleFilter(positionFilters, setPositionFilters, value)} />
+        <CheckboxGroup className="filter-group" title="Gender" options={GENDER_OPTIONS} selected={genderFilters} onToggle={(value) => toggleFilter(genderFilters, setGenderFilters, value)} />
+        <CheckboxGroup className="filter-group" title="Affiliation" options={filterOptions.factions} selected={factionFilters} onToggle={(value) => toggleFilter(factionFilters, setFactionFilters, value)} />
+        <CheckboxGroup className="filter-group" title="Race" options={filterOptions.races} selected={raceFilters} onToggle={(value) => toggleFilter(raceFilters, setRaceFilters, value)} />
+        <CheckboxGroup className="filter-group" title="Attribute" options={filterOptions.attributes} selected={attributeFilters} onToggle={(value) => toggleFilter(attributeFilters, setAttributeFilters, value)} />
+        <CheckboxGroup className="filter-group" title="Season" options={filterOptions.seasons} selected={seasonFilters} onToggle={(value) => toggleFilter(seasonFilters, setSeasonFilters, value)} />
+        <CheckboxGroup className="filter-group" title="Implementation year" options={filterOptions.years} selected={yearFilters} onToggle={(value) => toggleFilter(yearFilters, setYearFilters, value)} />
         {activeFilterCount > 0 && <button type="button" className="filter-clear-btn" onClick={clearFilters}>clear all filters</button>}
       </details>
 

@@ -19,6 +19,7 @@
 //  * deploy cost = cost_min (max level); conditional reductions floor at 0.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { saveBlob } from "@altterisk/game-hub/persist";
 import { loadJSONFile, unitImageUrl } from "../data";
 import { useUiStore, type CostGenSel } from "../store";
 import { RACE_LABELS, TAG_LABELS } from "../tagLabels";
@@ -634,12 +635,7 @@ function Chart({ series, seconds }: { series: Series[]; seconds: number }) {
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         const png = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/png"));
         if (!png) return;
-        const href = URL.createObjectURL(png);
-        const a = document.createElement("a");
-        a.href = href;
-        a.download = `up-gen-${series.length}-units-${seconds}s.png`;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(href), 10000);
+        saveBlob(png, `up-gen-${series.length}-units-${seconds}s.png`);
       } finally {
         URL.revokeObjectURL(svgUrl);
       }

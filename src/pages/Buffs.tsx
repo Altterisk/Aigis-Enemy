@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { loadJSONFile, useUnitInfluenceLabels, useLocalisation, useUnits } from "../data";
-import { FilterChip, FilterRow, GroupCard } from "@altterisk/game-hub";
+import { CheckboxGroup, FilterChip, FilterRow, GroupCard } from "@altterisk/game-hub";
 import { HumanText, UnitIconLink, fmtFrames } from "../components";
 import type { BuffRow, InfluenceSelectionRule, UnitInfluenceLabel } from "../types";
 import { influenceSelectionRule } from "../influenceLabels";
@@ -65,35 +65,6 @@ function targetScopeMatches(target: string, scope: string): boolean {
   if (scope === "all") return /^all\b/.test(text);
   if (scope === "self") return /^self\b/.test(text);
   return text.includes("enemy");
-}
-
-function TargetCheckboxGroup({
-  title, options, selected, onToggle,
-}: {
-  title: string;
-  options: { value: string; label: string }[];
-  selected: string[];
-  onToggle: (value: string) => void;
-}) {
-  if (!options.length) return null;
-  return (
-    <div className="filter-group">
-      <div className="filter-group-title">{title}</div>
-      <div className="filter-group-options">
-        {options.map((option) => (
-          <label key={option.value} className={`cg-pill${selected.includes(option.value) ? " on" : ""}`}>
-            <input
-              type="checkbox"
-              value={option.value}
-              checked={selected.includes(option.value)}
-              onChange={() => onToggle(option.value)}
-            />
-            {option.label}
-          </label>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 const GROUP_PREVIEW = 10; // rows shown per type before "show all"
@@ -406,12 +377,12 @@ export default function Buffs() {
         <span className="hub-toolbar__end hub-muted hub-small">{groups.length} effect types</span>
         {showTargetFilters && (
           <div className="buff-target-panel">
-            <TargetCheckboxGroup title="Scope" options={TARGET_SCOPE_OPTIONS} selected={targetScope} onToggle={(v) => toggleTarget("targetScope", targetScope, v)} />
-            <TargetCheckboxGroup title="Affiliation" options={targetOptions.factions} selected={targetFaction} onToggle={(v) => toggleTarget("targetFaction", targetFaction, v)} />
-            <TargetCheckboxGroup title="Race" options={targetOptions.races} selected={targetRace} onToggle={(v) => toggleTarget("targetRace", targetRace, v)} />
-            <TargetCheckboxGroup title="Attribute" options={targetOptions.attrs} selected={targetAttr} onToggle={(v) => toggleTarget("targetAttr", targetAttr, v)} />
-            <TargetCheckboxGroup title="Season" options={targetOptions.seasons} selected={targetSeason} onToggle={(v) => toggleTarget("targetSeason", targetSeason, v)} />
-            <TargetCheckboxGroup title="Class" options={targetOptions.classes} selected={targetClass} onToggle={(v) => toggleTarget("targetClass", targetClass, v)} />
+            <CheckboxGroup className="filter-group" title="Scope" options={TARGET_SCOPE_OPTIONS} selected={targetScope} onToggle={(v) => toggleTarget("targetScope", targetScope, v)} />
+            <CheckboxGroup className="filter-group" title="Affiliation" options={targetOptions.factions} selected={targetFaction} onToggle={(v) => toggleTarget("targetFaction", targetFaction, v)} />
+            <CheckboxGroup className="filter-group" title="Race" options={targetOptions.races} selected={targetRace} onToggle={(v) => toggleTarget("targetRace", targetRace, v)} />
+            <CheckboxGroup className="filter-group" title="Attribute" options={targetOptions.attrs} selected={targetAttr} onToggle={(v) => toggleTarget("targetAttr", targetAttr, v)} />
+            <CheckboxGroup className="filter-group" title="Season" options={targetOptions.seasons} selected={targetSeason} onToggle={(v) => toggleTarget("targetSeason", targetSeason, v)} />
+            <CheckboxGroup className="filter-group" title="Class" options={targetOptions.classes} selected={targetClass} onToggle={(v) => toggleTarget("targetClass", targetClass, v)} />
             {targetFilterCount > 0 && (
               <button
                 className="hub-btn hub-btn--sm hub-btn--ghost"

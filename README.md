@@ -74,3 +74,13 @@ codecs.
   physical. The raw fields are shown on each enemy's detail page.
 - Effect/term "influence" ids are displayed as raw numbers + params +
   the game's own expression strings; no interpreted labels are added here.
+
+## License
+
+The code is licensed under the [GNU Affero General Public License v3.0](LICENSE)
+(AGPL-3.0-or-later): copy, change and reuse it, as long as anything built from
+it, including a site that only runs a modified copy, is released as open
+source under the same license.
+
+The license covers the code only. Millennium War Aigis names, art, audio, text
+and data shown by the site belong to their rights holders and are not covered.

@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { EmptyState, ListToolbar, SearchBox } from "@altterisk/game-hub";
+import { EmptyState, FallbackImage, ListToolbar, SearchBox } from "@altterisk/game-hub";
 import { listState, searchParamsAdapter } from "@altterisk/game-hub/filters";
 import { useStages, useCurrentMissions, useHistoryYears, bannerUrl } from "../data";
 import { ColorCodedText } from "../components";
@@ -15,19 +15,10 @@ interface EventGroup {
 
 // One event block: banner + title, then its stages.
 function EventBlock({ event, category, missionId, stages }: EventGroup) {
-  const [imgOk, setImgOk] = useState(true);
   return (
     <section className="event-group">
       <div className="event-head">
-        {missionId && imgOk && (
-          <img
-            className="event-banner"
-            src={bannerUrl(missionId)}
-            alt=""
-            loading="lazy"
-            onError={() => setImgOk(false)}
-          />
-        )}
+        {missionId && <FallbackImage className="event-banner" srcs={[bannerUrl(missionId)]} missing={null} />}
         <div>
           <h3>
             {category && <span className="cat-badge">{category}</span>} {event}
@@ -65,20 +56,14 @@ function YearBlock({ group, title, events }: {
   title: string;
   events: EventGroup[];
 }) {
-  const [imgOk, setImgOk] = useState(true);
   return (
     <div className="year-group">
       <div className="year-head">
-        {imgOk && (
-          <img
-            className="year-banner"
-            src={bannerUrl(`history_${group}`)}
-            alt=""
-            loading="lazy"
-            onError={() => setImgOk(false)}
-          />
-        )}
-        {!imgOk && <h2 className="cat-title">{title}</h2>}
+        <FallbackImage
+          className="year-banner"
+          srcs={[bannerUrl(`history_${group}`)]}
+          missing={<h2 className="cat-title">{title}</h2>}
+        />
       </div>
       {events.map((ev) => (
         <EventBlock key={ev.missionId || ev.event} {...ev} />
