@@ -18,6 +18,7 @@
 //    their cooldown only matters for skill-cancel, which is out of scope.
 //  * deploy cost = cost_min (max level); conditional reductions floor at 0.
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { loadJSONFile, unitImageUrl } from "../data";
 import { useUiStore, type CostGenSel } from "../store";
 import { RACE_LABELS, TAG_LABELS } from "../tagLabels";
@@ -905,7 +906,7 @@ export default function CostGen() {
               <div className="cg-card-head">
                 <img src={unitImageUrl("icon", u.id)} alt="" />
                 <div>
-                  <a href={`#/units/${u.id}`}>{u.name}</a>
+                  <Link to={`/units/${u.id}`}>{u.name}</Link>
                   <div className="muted small">
                     #{u.id} · {u.rarity === "black" ? "Black" : "Platinum"}
                     {u.hero ? " Hero" : ""}

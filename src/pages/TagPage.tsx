@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useUnits, useLocalisation, useTexts, loadJSONFile } from "../data";
 import { ColorCodedText, UnitIconLink, UnitImage } from "../components";
+import { tagMeta } from "../meta";
+import { usePageMeta } from "../usePageMeta";
 import type { Localisation, TagMention, TagMentions, Texts } from "../types";
 
 const SOURCE_TYPES = [
@@ -79,9 +81,10 @@ export default function TagPage() {
     loadJSONFile<TagMentions>("tag_mentions").then(setMentions).catch(() => setMentions({}));
   }, []);
 
+  const tagEn = loc?.tags[tag] || loc?.races[tag] || tag;
+  usePageMeta(tagMeta(tag, tagEn));
   if (loading) return <p className="loading">Loading units…</p>;
 
-  const tagEn = loc?.tags[tag] || loc?.races[tag] || tag;
   const carriers = (units || []).filter(
     (u) => (u.tags || []).includes(tag) && !(u.prince && u.id !== 1)
   );

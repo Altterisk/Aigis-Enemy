@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import fs from "fs";
 
 test("buff ranking renders groups and switches stat tabs", async ({ page }) => {
-  await page.goto("/#/buffs");
+  await page.goto("/buffs");
   await expect(page.getByRole("heading", { name: "Buff ranking" })).toBeVisible();
   const groups = page.locator(".buff-group");
   await expect(groups.first()).toBeVisible();
@@ -13,7 +13,7 @@ test("buff ranking renders groups and switches stat tabs", async ({ page }) => {
 });
 
 test("buff categories sit in labelled rows with unit counts", async ({ page }) => {
-  await page.goto("/#/buffs?stat=MR_DEBUFF");
+  await page.goto("/buffs?stat=MR_DEBUFF");
   for (const label of ["Stats", "Debuffs", "Effects"]) {
     await expect(page.getByRole("group", { name: label })).toBeVisible();
   }
@@ -24,7 +24,7 @@ test("buff categories sit in labelled rows with unit counts", async ({ page }) =
 });
 
 test("a large buff group expands and collapses", async ({ page }) => {
-  await page.goto("/#/buffs");
+  await page.goto("/buffs");
   const more = page.locator(".buff-more").first();
   await expect(more).toBeVisible();
   const group = page.locator(".buff-group", { has: more }).first();
@@ -37,7 +37,7 @@ test("a large buff group expands and collapses", async ({ page }) => {
 });
 
 test("buff ranking filters rows by a concrete target affiliation and keeps it in the URL", async ({ page }) => {
-  await page.goto("/#/buffs");
+  await page.goto("/buffs");
   await page.getByRole("button", { name: "target filters" }).click();
   const affiliation = page.locator(".filter-group", { hasText: "Affiliation" });
   const choice = affiliation.locator("input").first();
@@ -56,14 +56,14 @@ test("buff ranking filters rows by a concrete target affiliation and keeps it in
 });
 
 test("on-hit debuffs visibly rank by duration instead of reduction", async ({ page }) => {
-  await page.goto("/#/buffs?stat=DEF_DEBUFF");
+  await page.goto("/buffs?stat=DEF_DEBUFF");
   const group = page.locator(".buff-group", { hasText: "Reduce enemy DEF on hit" });
   await expect(group).toContainText("Longest duration takes priority");
   await expect(group.locator(".buff-priority").first()).toContainText("priority:");
 });
 
 test("costgen adds a unit from the search dropdown", async ({ page }) => {
-  await page.goto("/#/costgen");
+  await page.goto("/costgen");
   const search = page.getByPlaceholder("add unit (name / id)…");
   await search.fill("Jerome");
   const option = page.locator(".cg-search-drop button", { hasText: "Jerome" }).first();
@@ -75,7 +75,7 @@ test("costgen adds a unit from the search dropdown", async ({ page }) => {
 });
 
 test("costgen chart labels carry the unit icon and export to PNG", async ({ page }) => {
-  await page.goto("/#/costgen");
+  await page.goto("/costgen");
   const search = page.getByPlaceholder("add unit (name / id)…");
   await search.fill("Jerome");
   await page.locator(".cg-search-drop button", { hasText: "Jerome" }).first().click();
@@ -95,7 +95,7 @@ test("costgen chart labels carry the unit icon and export to PNG", async ({ page
 });
 
 test("tag page lists mentions for a known tag", async ({ page }) => {
-  await page.goto(`/#/tags/${encodeURIComponent("獣人")}`);
+  await page.goto(`/tags/${encodeURIComponent("獣人")}`);
   await expect(page.locator("h2")).toBeVisible();
   await expect(page.locator(".tag-mentions").first()).toBeVisible();
   const classSection = page
@@ -112,7 +112,7 @@ test("tag page lists mentions for a known tag", async ({ page }) => {
 });
 
 test("class-trait tag effects respect a carrier-specific CardID condition", async ({ page }) => {
-  await page.goto(`/#/tags/${encodeURIComponent("サマー")}`);
+  await page.goto(`/tags/${encodeURIComponent("サマー")}`);
   const classSection = page
     .locator(".tag-effect-section")
     .filter({ has: page.locator(":scope > summary", { hasText: /^Classes\b/ }) })
@@ -124,7 +124,7 @@ test("class-trait tag effects respect a carrier-specific CardID condition", asyn
 });
 
 test("buff rows list every skill-stage tier of a boosted ability", async ({ page }) => {
-  await page.goto("/#/buffs");
+  await page.goto("/buffs");
   const row = page.locator(".buff-table tr", { hasText: "Tristella (Black)" }).first();
   await expect(row.locator(".buff-tiers")).toContainText("base");
   await expect(row.locator(".buff-tiers")).toContainText("awakened skill stage 3");

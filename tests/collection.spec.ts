@@ -1,14 +1,14 @@
 ﻿import { expect, test } from "@playwright/test";
 
 test("collection grid renders with progress at zero", async ({ page }) => {
-  await page.goto("/#/collection");
+  await page.goto("/collection");
   await expect(page.locator(".collection-page h2").first()).toHaveText("Collection");
   await expect(page.locator(".collection-tile").first()).toBeVisible();
   await expect(page.locator(".collection-progress-row").first()).toContainText("0 /");
 });
 
 test("toggling a unit updates ownership and overall progress", async ({ page }) => {
-  await page.goto("/#/collection");
+  await page.goto("/collection");
   const tile = page.locator(".collection-group:not(.collection-prince-group):not(.collection-support-group) .collection-tile-select").first();
   await tile.click();
   await expect(tile).toHaveAttribute("aria-pressed", "true");
@@ -19,7 +19,7 @@ test("toggling a unit updates ownership and overall progress", async ({ page }) 
 });
 
 test("restore code round-trips ownership", async ({ page }) => {
-  await page.goto("/#/collection");
+  await page.goto("/collection");
   const tile = page.locator(".collection-group:not(.collection-prince-group):not(.collection-support-group) .collection-tile-select").first();
   await tile.click();
   await expect(tile).toHaveAttribute("aria-pressed", "true");
@@ -38,7 +38,7 @@ test("restore code round-trips ownership", async ({ page }) => {
 });
 
 test("select all / deselect all cover a whole section", async ({ page }) => {
-  await page.goto("/#/collection");
+  await page.goto("/collection");
   const group = page.locator(".collection-group:not(.collection-prince-group):not(.collection-support-group)").first();
   const selectAll = group.getByRole("button", { name: "Select all", exact: true });
   const deselectAll = group.getByRole("button", { name: "Deselect all", exact: true });
@@ -53,7 +53,7 @@ test("select all / deselect all cover a whole section", async ({ page }) => {
 });
 
 test("owned-only status filter hides unowned units", async ({ page }) => {
-  await page.goto("/#/collection");
+  await page.goto("/collection");
   const tile = page.locator(".collection-group:not(.collection-prince-group):not(.collection-support-group) .collection-tile-select").first();
   await tile.click();
   await page.locator(".collection-tools select").nth(2).selectOption("owned");
@@ -63,7 +63,7 @@ test("owned-only status filter hides unowned units", async ({ page }) => {
 });
 
 test("a damaged restore code is rejected with a message", async ({ page }) => {
-  await page.goto("/#/collection");
+  await page.goto("/collection");
   await page.locator(".collection-transfer summary", { hasText: "Copy / restore" }).click();
   await page.getByPlaceholder("Paste an AIGC1, AIGC2, or AIGC3 code").fill("AIGC3.notarealcode");
   await page.getByRole("button", { name: "Restore", exact: true }).click();
@@ -71,7 +71,7 @@ test("a damaged restore code is rejected with a message", async ({ page }) => {
 });
 
 test("JSON backup file round-trips and rejects other files", async ({ page }) => {
-  await page.goto("/#/collection");
+  await page.goto("/collection");
   const tile = page.locator(".collection-group:not(.collection-prince-group):not(.collection-support-group) .collection-tile-select").first();
   await tile.click();
   await expect(tile).toHaveAttribute("aria-pressed", "true");
@@ -94,7 +94,7 @@ test("JSON backup file round-trips and rejects other files", async ({ page }) =>
 });
 
 test("a collection saved before store versioning still loads", async ({ page }) => {
-  await page.goto("/#/collection");
+  await page.goto("/collection");
   const group = page.locator(".collection-group:not(.collection-prince-group):not(.collection-support-group)").first();
   const href = await group.locator(".collection-tile-name").first().getAttribute("href");
   const id = Number(href?.match(/(\d+)$/)?.[1]);

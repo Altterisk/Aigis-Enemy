@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 async function pickUnit(page: import("@playwright/test").Page, id: number) {
-  await page.goto("/#/dps");
+  await page.goto("/dps");
   await page.getByPlaceholder("pick unit (name / id)…").fill(String(id));
   await page.locator(".cg-search-drop button", { hasText: `#${id}` }).first().click();
   await expect(page.locator(".dps-result")).toBeVisible();
@@ -79,7 +79,7 @@ test("there is no enemy picker, only HP / DEF / MR inputs", async ({ page }) => 
 });
 
 test("lia's ally ATK placeholder reads the ally row, not her self row", async ({ page }) => {
-  await page.goto("/#/units/2901?tab=skills");
+  await page.goto("/units/2901?tab=skills");
   const row = page.locator("tr", { hasText: "女王様の鞭" }).first();
   await expect(row).toContainText("1.6");
 });
@@ -175,7 +175,7 @@ test("Ovie's HP-tier conditional ATK rows replace each other", async ({ page }) 
 test("old ?s= share links still open", async ({ page }) => {
   const st = { u: 2902, c: 1, l: "max", sl: "awakened", st: 0, a: true, e: [0, 500, 0] };
   const code = Buffer.from(JSON.stringify(st)).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-  await page.goto(`/#/dps?s=${code}`);
+  await page.goto(`/dps?s=${code}`);
   await expect(page.locator(".dps-card-head, .cg-card-head").first()).toContainText("#2902");
   await expect(page.getByLabel("DEF", { exact: true })).toHaveValue("500");
   await expect(page.locator(".dps-result tbody tr")).toHaveCount(2);
@@ -192,7 +192,7 @@ test("switched-off buffer rows are shared by content key, not row position", asy
   await expect(page.getByRole("button", { name: "Link copied" })).toBeVisible();
   const url = page.url();
   // the encoded off entry is a hash string, never a bare row number
-  const z = new URL(url.replace("#/dps", "dps")).searchParams.get("z")!;
+  const z = new URL(url).searchParams.get("z")!;
   const zlib = await import("node:zlib");
   const json = JSON.parse(zlib.inflateRawSync(Buffer.from(z.replace(/-/g, "+").replace(/_/g, "/"), "base64")).toString());
   const offs = json[14][0].slice(5);

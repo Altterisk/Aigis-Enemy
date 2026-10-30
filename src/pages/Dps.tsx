@@ -890,7 +890,7 @@ export default function Dps() {
     };
     encodeShare(st).then((code) => {
       setParams({ z: code }, { replace: true });
-      const url = `${window.location.origin}${window.location.pathname}#/dps?z=${code}`;
+      const url = `${window.location.origin}/dps?z=${code}`;
       const done = () => { setCopied(true); setTimeout(() => setCopied(false), 2000); };
       if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).then(done, done);
       else done();

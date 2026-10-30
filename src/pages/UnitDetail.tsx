@@ -7,6 +7,8 @@ import { Breadcrumbs, Lightbox, Panel, StatRows, TabPanel, UrlTabs, tabParam } f
 import type { RenderLink } from "@altterisk/game-hub";
 import { searchParamsAdapter } from "@altterisk/game-hub/filters";
 import { influenceSelectionRule } from "../influenceLabels";
+import { LIST_META, NOT_FOUND_META, unitMeta } from "../meta";
+import { usePageMeta } from "../usePageMeta";
 import type {
   Unit,
   UnitClass,
@@ -1716,6 +1718,8 @@ export default function UnitDetail() {
   const abilityConfigs = useAbilityConfigs();
   const speech = useUnitSpeech(unitId);
   const [tier, setTier] = useState(0);
+  const baseClass = unit?.classes[0]?.name;
+  usePageMeta(loading ? LIST_META["/units"] : unit ? unitMeta(unit, baseClass && (loc?.classes[baseClass] || baseClass)) : NOT_FOUND_META);
   const [galleryAt, setGalleryAt] = useState<number | null>(null);
 
   if (loading) return <p className="loading">Loading…</p>;

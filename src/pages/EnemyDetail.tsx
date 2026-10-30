@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useEnemies, useStages, useEnemyStages, useSpecialtyConfig } from "../data";
 import { Sprite, DamageBadge, Stat, Tags, Effects, ColorCodedText } from "../components";
+import { LIST_META, NOT_FOUND_META, enemyMeta } from "../meta";
+import { usePageMeta } from "../usePageMeta";
 
 export default function EnemyDetail() {
   const { id } = useParams();
@@ -22,8 +24,9 @@ export default function EnemyDetail() {
       .sort((a, b) => a.quest_id - b.quest_id);
   }, [enemyStages, byQuest, enemyId]);
 
-  if (loading) return <p className="loading">Loading…</p>;
   const e = byId?.get(enemyId);
+  usePageMeta(loading ? LIST_META["/enemies"] : e ? enemyMeta(e) : NOT_FOUND_META);
+  if (loading) return <p className="loading">Loading…</p>;
   if (!e) return <p>Enemy not found. <Link to="/enemies">Back</Link></p>;
 
   const effects =

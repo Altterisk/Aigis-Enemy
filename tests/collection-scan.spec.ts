@@ -14,7 +14,7 @@ test("screenshot import recognizes icons and auto-adds owned units", async ({ pa
   test.skip(fixtures.length === 0, "no screenshots in Temp/test");
   test.setTimeout(420_000);
 
-  await page.goto("/#/collection");
+  await page.goto("/collection");
   await expect(page.locator(".collection-progress-row").first()).toContainText("0 /");
 
   await page.locator(".collection-scan summary").click();

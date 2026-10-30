@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("unit header shows the EN name with the JP original underneath", async ({ page }) => {
-  await page.goto("/#/units/10");
+  await page.goto("/units/10");
   const heading = page.locator("h2").first();
   await expect(heading).toContainText("#10");
   await expect(heading).toContainText("Bernard");
@@ -9,7 +9,7 @@ test("unit header shows the EN name with the JP original underneath", async ({ p
 });
 
 test("unit detail opens on the stats tab and switches to the gallery", async ({ page }) => {
-  await page.goto("/#/units/10");
+  await page.goto("/units/10");
   await expect(page.getByRole("tab", { name: "Stats" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: "Stats" })).toBeVisible();
   await expect(page.locator(".unit-stat-table tbody tr").first()).toBeVisible();
@@ -21,18 +21,18 @@ test("unit detail opens on the stats tab and switches to the gallery", async ({ 
 });
 
 test("a ?tab= link opens that tab", async ({ page }) => {
-  await page.goto("/#/units/10?tab=skills");
+  await page.goto("/units/10?tab=skills");
   await expect(page.getByRole("tab", { name: "Skills" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: "Base skill" })).toBeVisible();
 });
 
 test("a ?tab= naming a hidden or unknown tab falls back to stats", async ({ page }) => {
-  await page.goto("/#/units/10?tab=nonsense");
+  await page.goto("/units/10?tab=nonsense");
   await expect(page.getByRole("tab", { name: "Stats" })).toHaveAttribute("aria-selected", "true");
 });
 
 test("Eterna SAW exposes its forced healing-priority rule", async ({ page }) => {
-  await page.goto("/#/units/2864?tab=skills");
+  await page.goto("/units/2864?tab=skills");
   const rule = page.locator(".selection-rule--forced_priority").first();
   await expect(rule).toContainText("forced priority");
   await expect(rule).toContainText("group mode 23");
@@ -57,30 +57,30 @@ const HAND_NAMED: [number, string][] = [
 ];
 for (const [id, name] of HAND_NAMED) {
   test(`hand-translated name #${id} = ${name}`, async ({ page }) => {
-    await page.goto(`/#/units/${id}`);
+    await page.goto(`/units/${id}`);
     await expect(page.locator("h2").first()).toContainText(name);
   });
 }
 
 test("prince page lists his titles", async ({ page }) => {
-  await page.goto("/#/units/1");
+  await page.goto("/units/1");
   await expect(page.locator(".prince-titles summary")).toContainText("Prince titles");
 });
 
 test("a one-copy-only unit shows its formation restriction", async ({ page }) => {
-  await page.goto("/#/units/2874");
+  await page.goto("/units/2874");
   await expect(page.getByRole("heading", { name: "Formation restriction" })).toBeVisible();
   await expect(page.getByText("Only one may be in a team.")).toBeVisible();
 });
 
 test("a mutually exclusive pair links the other card", async ({ page }) => {
-  await page.goto("/#/units/1620");
+  await page.goto("/units/1620");
   await expect(page.getByText("Cannot be in the same team as")).toBeVisible();
   await expect(page.getByRole("link", { name: "Lukifer (Platinum)" })).toBeVisible();
 });
 
 test("an unrestricted unit has no formation-restriction section", async ({ page }) => {
-  await page.goto("/#/units/2873");
+  await page.goto("/units/2873");
   await expect(page.getByRole("heading", { name: "Stats" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Formation restriction" })).toHaveCount(0);
 });
@@ -88,7 +88,7 @@ test("an unrestricted unit has no formation-restriction section", async ({ page 
 test("a per-shot missile list marks its empty slots", async ({ page }) => {
   // #2902's awakened ability fires a 15-slot list where 6 slots are blank
   // Missile.atb rows (#1517)
-  await page.goto("/#/units/2902?tab=abilities");
+  await page.goto("/units/2902?tab=abilities");
   // the influence rows sit in a collapsed section, so check presence
   const list = page.getByText(/15 shot slots: 9 fire, 6 empty/).first();
   await expect(list).toBeAttached();
@@ -97,13 +97,13 @@ test("a per-shot missile list marks its empty slots", async ({ page }) => {
 });
 
 test("?tab=quotes opens the Quotes tab", async ({ page }) => {
-  await page.goto("/#/units/1?tab=quotes");
+  await page.goto("/units/1?tab=quotes");
   await expect(page.getByRole("tab", { name: "Quotes" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: "Quotes & scenes" })).toBeVisible();
 });
 
 test("gallery lightbox steps with arrow keys and closes on Escape", async ({ page }) => {
-  await page.goto("/#/units/10?tab=gallery");
+  await page.goto("/units/10?tab=gallery");
   await page.locator(".gallery-thumb").first().click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
@@ -117,27 +117,27 @@ test("gallery lightbox steps with arrow keys and closes on Escape", async ({ pag
 });
 
 test("unit breadcrumbs return to the filtered list", async ({ page }) => {
-  await page.goto("/#/units?rarity=Black");
+  await page.goto("/units?rarity=Black");
   await page.locator(".unit-grid .unit-tile").first().click();
-  await expect(page).toHaveURL(/#\/units\/\d+$/);
+  await expect(page).toHaveURL(/\/units\/\d+$/);
   await page.locator(".hub-crumbs a", { hasText: "Units" }).click();
-  await expect(page).toHaveURL(/#\/units\?rarity=Black/);
+  await expect(page).toHaveURL(/\/units\?rarity=Black/);
 });
 
 test("unit page fits a phone screen", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 800 });
-  await page.goto("/#/units/10");
+  await page.goto("/units/10");
   await expect(page.locator(".unit-stat-table")).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
 });
 
 test("infobox artist links to that artist's section on the artist list", async ({ page }) => {
-  await page.goto("/#/units/2908");
+  await page.goto("/units/2908");
   const artist = page.locator(".unit-infobox-rows a", { hasText: "内有一馬" });
   await expect(artist).toBeVisible();
   await artist.click();
-  await expect(page).toHaveURL(/#\/artists\?artist=/);
+  await expect(page).toHaveURL(/\/artists\?artist=/);
   const row = page.locator(".artist-table tr.focused");
   await expect(row.locator(".artist-name")).toContainText("内有一馬");
   await expect(row.locator(".artist-links a", { hasText: "Twitter" })).toHaveAttribute("href", /twitter\.com\/utiu_kazuma/);
@@ -148,7 +148,7 @@ test("infobox artist links to that artist's section on the artist list", async (
 });
 
 test("artist search filters by artist or unit name", async ({ page }) => {
-  await page.goto("/#/artists");
+  await page.goto("/artists");
   const search = page.getByPlaceholder("Search artist / unit name");
   const names = page.locator(".artist-table .artist-name");
   await search.fill("ＳＡＬＬＹ");   // full-width upper case still finds "Sally"

@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import App from "./App";
 import StageList from "./pages/StageList";
 import StageDetail from "./pages/StageDetail";
@@ -15,14 +15,18 @@ import CostGen from "./pages/CostGen";
 import Weather from "./pages/Weather";
 import Dps from "./pages/Dps";
 import Collection from "./pages/Collection";
+import NotFound from "./pages/NotFound";
 import "@altterisk/game-hub/hub.css";
 import "@altterisk/game-hub/base.css";
 import "@altterisk/game-hub/components.css";
 import "./styles.css";
 
+// Links from when the site used hash routes: /#/units/1?tab=x -> /units/1?tab=x
+if (location.hash.startsWith("#/")) history.replaceState(null, "", location.hash.slice(1));
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <HashRouter>
+    <BrowserRouter>
       <Routes>
         <Route path="/" element={<App />}>
           <Route index element={<Navigate to="/units" replace />} />
@@ -39,8 +43,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="weather" element={<Weather />} />
           <Route path="dps" element={<Dps />} />
           <Route path="collection" element={<Collection />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
-    </HashRouter>
+    </BrowserRouter>
   </React.StrictMode>
 );

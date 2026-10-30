@@ -1,7 +1,12 @@
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { HubBar, HubFooter } from "@altterisk/game-hub";
+import { LIST_META } from "./meta";
+import { usePageMeta } from "./usePageMeta";
 
 export default function App() {
+  // list pages here; detail pages and NotFound call usePageMeta themselves
+  const { pathname } = useLocation();
+  usePageMeta(LIST_META[pathname.replace(/\/$/, "")] ?? null);
   return (
     <div className="app">
       <HubBar

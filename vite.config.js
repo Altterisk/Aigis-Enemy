@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { prerender } from "./prerender.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -35,7 +36,7 @@ function serveUnitImages(base) {
 const BASE = "/";
 
 export default defineConfig({
-  plugins: [react(), serveUnitImages(BASE)],
+  plugins: [react(), serveUnitImages(BASE), prerender()],
   // Served on the custom domain https://aigis.altterisk.cc/ (see public/CNAME)
   base: BASE,
 });

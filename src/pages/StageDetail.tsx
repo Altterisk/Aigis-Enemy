@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { Breadcrumbs, MetaChip, MetaChips, PageHeader, Panel, TabPanel, UrlTabs, tabParam } from "@altterisk/game-hub";
 import { searchParamsAdapter } from "@altterisk/game-hub/filters";
+import { LIST_META, NOT_FOUND_META, stageMeta } from "../meta";
+import { usePageMeta } from "../usePageMeta";
 import {
   useStageDetail,
   useInfluenceLabels,
@@ -488,6 +490,7 @@ export default function StageDetail() {
   const { available: hasStoryTalk, talk: storyTalk } =
     useStoryTalk(stage?.mission_id);
   const [bannerFailed, setBannerFailed] = useState(false);
+  usePageMeta(loading ? LIST_META["/stages"] : stage ? stageMeta(stage) : NOT_FOUND_META);
   if (loading) return <p className="loading">Loading…</p>;
   if (!stage) return <p>Stage not found. <Link to="/stages">Back</Link></p>;
 
