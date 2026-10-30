@@ -1,63 +1,41 @@
-// `vite build` only: writes a static HTML file per list page and per unit
-// (dist/units/101.html is served at /units/101) with its own title,
-// description, canonical, Open Graph tags and a plain-HTML summary inside
-// #root, which React replaces on load. Crawlers and link previews that don't
-// run JavaScript see the page, not an empty shell. Also writes sitemap.xml.
+// `vite build` only: writes a static HTML file per list page (dist/units.html
+// is served at /units) with its own title, description, canonical, Open Graph
+// tags and a plain-HTML summary inside #root, which React replaces on load.
+// Crawlers and link previews that don't run JavaScript see the page, not an
+// empty shell. Also writes sitemap.xml.
 //
-// Stages, enemies and tag pages get no file: Cloudflare Pages caps a
-// deployment at 20,000 files and there are ~19,000 of them. They are served by
-// the SPA fallback (index.html), set their meta at runtime and are listed in
-// the sitemap.
+// Unit and tag pages get no file: Cloudflare Pages caps a deployment at 20,000
+// files and public/ alone holds ~18,300. They are served by the SPA fallback
+// (index.html), set their meta at runtime and are listed in the sitemap.
+// Stage and enemy pages are left out of the sitemap.
 import fs from "node:fs";
 import path from "node:path";
-import { LIST_META, SITE_NAME, SITE_URL, canonicalUrl, fullTitle, plainText, sitePath, unitMeta } from "./src/meta.ts";
+import { LIST_META, SITE_NAME, SITE_URL, canonicalUrl, fullTitle, sitePath } from "./src/meta.ts";
 
 /** Cloudflare Pages' limit is 20,000; warn while there is still room. */
 const FILE_BUDGET = 19_000;
-/** public/ folders that are gitignored (served from the assets CDN), so never deployed. */
-const LOCAL_ONLY = ["sprites", "sprite-anim", "banners", "talk-face"];
+/** public/ folders that are gitignored and untracked, so never deployed. */
+const LOCAL_ONLY = ["sprite-anim", "talk-face"];
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const a = (href, label) => `<a href="${esc(sitePath(href))}">${esc(label)}</a>`;
 const ul = (items) => (items.length ? `<ul>${items.map((x) => `<li>${x}</li>`).join("")}</ul>` : "");
-const section = (title, html) => (html ? `<h2>${esc(title)}</h2>${html}` : "");
 
 function pages(data) {
   const read = (name) => JSON.parse(fs.readFileSync(path.join(data, `${name}.json`), "utf8"));
   const units = read("units");
-  const stages = read("stages_index");
-  const enemies = read("enemies");
-  const loc = read("localisation");
-  const classEn = (c) => (c ? loc.classes[c] || c : null);
   const unitLabel = (u) => [u.name_en || u.name || `Unit #${u.id}`, u.name_en && u.name].filter(Boolean).join(" · ");
 
   const files = [];
   const list = (p, body = "") => files.push({ path: p, meta: LIST_META[p], crumbs: [[LIST_META[p].title, p]], body });
 
   list("/units", ul(units.map((u) => a(`/units/${u.id}`, unitLabel(u)))));
-  for (const u of units) {
-    const name = u.name_en || u.name || `Unit #${u.id}`;
-    const chain = [...new Set((u.class_names ?? []).map(classEn))];
-    files.push({
-      path: `/units/${u.id}`,
-      meta: unitMeta(u, classEn(u.class)),
-      crumbs: [["Units", "/units"], [name, `/units/${u.id}`]],
-      body: [
-        section("Classes", ul(chain.map(esc))),
-        section("Tags", ul((u.tags ?? []).map((t) => a(`/tags/${t}`, loc.tags[t] || loc.races[t] || t)))),
-      ].join(""),
-    });
-  }
-  list("/stages", ul(stages.map((s) => a(`/stages/${s.quest_id}`, [plainText(s.name) || `#${s.quest_id}`, plainText(s.event)].filter(Boolean).join(" · ")))));
+  list("/stages");
   for (const p of ["/enemies", "/collection", "/buffs", "/costgen", "/dps", "/weather", "/artists"]) list(p);
 
   // served by the SPA fallback: in the sitemap only
   const tags = [...new Set(units.flatMap((u) => u.tags ?? []))];
-  const extra = [
-    ...stages.map((s) => `/stages/${s.quest_id}`),
-    ...enemies.map((e) => `/enemies/${e.id}`),
-    ...tags.map((t) => `/tags/${t}`),
-  ];
+  const extra = [...units.map((u) => `/units/${u.id}`), ...tags.map((t) => `/tags/${t}`)];
   return { files, extra };
 }
 
