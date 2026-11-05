@@ -6,6 +6,7 @@ import { usePageMeta } from "./usePageMeta";
 const FOOTER_LINKS = [
   { label: "Source on GitHub", href: "https://github.com/Altterisk/Aigis-Enemy" },
   { label: "Portfolio", href: "https://altterisk.github.io/portfolio/" },
+  { label: "Ko-fi", href: "https://ko-fi.com/altterisk" },
 ];
 
 export default function App() {
