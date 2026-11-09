@@ -40,6 +40,10 @@ interface UiState {
   ) => void;
   collectionBondDone: number[];
   setCollectionBondDone: (ids: number[] | ((cur: number[]) => number[])) => void;
+  // unit-page skill/ability panels: the composed sentences and the raw rows
+  influenceReadable: boolean;
+  influenceDetails: boolean;
+  toggleInfluenceView: (key: "influenceReadable" | "influenceDetails") => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -76,6 +80,9 @@ export const useUiStore = create<UiState>()(
         set((s) => ({
           collectionBondDone: typeof ids === "function" ? ids(s.collectionBondDone) : ids,
         })),
+      influenceReadable: true,
+      influenceDetails: false,
+      toggleInfluenceView: (key) => set((s) => ({ [key]: !s[key] })),
     }),
     // saves written before versioning are version 0 and carry the same shape
     { name: "aigis-ui-store", version: 1, migrate: (state) => state as UiState }

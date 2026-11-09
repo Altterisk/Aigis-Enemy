@@ -7,6 +7,8 @@ import { Breadcrumbs, Lightbox, Panel, StatRows, TabPanel, UrlTabs, tabParam } f
 import type { RenderLink } from "@altterisk/game-hub";
 import { searchParamsAdapter } from "@altterisk/game-hub/filters";
 import { influenceSelectionRule } from "../influenceLabels";
+import { ABILITY_EXTEND_PROSE, COMMAND_PROSE, EXPR_PROSE, EXTEND_PROSE, TICK_PROSE, buffCategory, mergeClauses, proseClause, recipient } from "../influenceProse";
+import { useUiStore } from "../store";
 import { LIST_META, NOT_FOUND_META, unitMeta } from "../meta";
 import { usePageMeta } from "../usePageMeta";
 import type {
@@ -724,30 +726,15 @@ function abilityLabelName(inf: AbilityInfluence): string | undefined {
   return `${prefix} ${base}`;
 }
 
-function AbilityInfluenceRow({
-  inf, i, label, labelsMap,
-}: {
-  inf: AbilityInfluence; i: number; label?: UnitInfluenceLabel;
-  labelsMap?: Record<string, UnitInfluenceLabel>;
-}) {
-  const missiles = useContext(MissilesContext);
-  const abilityConfigs = useContext(AbilityConfigsContext);
-  if (label?.hidden) return null;
-  // "while in the 1st barrack" is a rare, notable invoke condition (the
-  // possession-item-gated War God Blessing family, plus a handful of real
-  // units) -- the whole type/invoke/name/value group is flagged in red
-  // (below, at render) so it stands out from ordinary rows.
-  const isBarrackInvoke = inf.invoke === "while in the 1st barrack";
-  const parts: ReactNode[] = [
-    `type ${inf.influence_type}`,
-    inf.invoke != null ? `invoke ${inf.invoke}` : null,
-    inf.target != null ? `target ${inf.target}` : null,
-    inf.params && inf.params.length ? `[${inf.params.join(", ")}]` : null,
-  ].filter((p): p is NonNullable<typeof p> => p != null);
+// The value line of an ability influence row: the label's template filled
+// with the row's params, or a per-id reading where the params need one.
+function abilityRowValue(
+  inf: AbilityInfluence, label?: UnitInfluenceLabel, missiles?: Record<string, Missile> | null,
+): string | null {
   // id 34 (Prevent status ailment): p1=100 is full immunity, any other
   // value is a reduction percent instead -- two different sentences, not
   // just a number substitution.
-  let filled: ReactNode | null;
+  let filled: string | null;
   if (inf.influence_type === 34 && inf.params?.[0] != null) {
     filled = inf.params[0] === 100 ? "Status Immunity" : `Status Effect Reduction ${inf.params[0]}%`;
   } else if ((inf.influence_type === 28 || inf.influence_type === 29) && inf.params?.[1] != null) {
@@ -846,6 +833,30 @@ function AbilityInfluenceRow({
       ? fillLabel(label.tpl, inf.params)
       : null;
   }
+  return filled;
+}
+
+function AbilityInfluenceRow({
+  inf, i, label, labelsMap,
+}: {
+  inf: AbilityInfluence; i: number; label?: UnitInfluenceLabel;
+  labelsMap?: Record<string, UnitInfluenceLabel>;
+}) {
+  const missiles = useContext(MissilesContext);
+  const abilityConfigs = useContext(AbilityConfigsContext);
+  if (label?.hidden) return null;
+  // "while in the 1st barrack" is a rare, notable invoke condition (the
+  // possession-item-gated War God Blessing family, plus a handful of real
+  // units) -- the whole type/invoke/name/value group is flagged in red
+  // (below, at render) so it stands out from ordinary rows.
+  const isBarrackInvoke = inf.invoke === "while in the 1st barrack";
+  const parts: ReactNode[] = [
+    `type ${inf.influence_type}`,
+    inf.invoke != null ? `invoke ${inf.invoke}` : null,
+    inf.target != null ? `target ${inf.target}` : null,
+    inf.params && inf.params.length ? `[${inf.params.join(", ")}]` : null,
+  ].filter((p): p is NonNullable<typeof p> => p != null);
+  const filled = abilityRowValue(inf, label, missiles);
   const rate = abilityRate(inf);
   return (
     <li key={i}>
@@ -909,6 +920,257 @@ function AbilityInfluenceRow({
         </>
       )}
     </li>
+  );
+}
+
+// ---- Readable view: influence rows composed into sentences ----------------
+interface ProseClause { text: string; verified: boolean; note?: string; tag?: string; rule?: string }
+interface ProseSentence { lead?: string; clauses: ProseClause[] }
+
+const COSMETIC_EXTEND = /^fx: /;
+
+function extendSummary(
+  extend: InfluenceExtend | undefined, influenceType: number | undefined, missiles?: Record<string, Missile> | null,
+): string[] {
+  if (!extend) return [];
+  return Object.entries(extend)
+    .map(([k, v]) => extendText(k, v, influenceType, missiles, extend))
+    .filter((t) => t && !COSMETIC_EXTEND.test(t));
+}
+
+function tickScaleText(ts: SkillInfluence["tick_scale"]): string | null {
+  if (!ts || ts.per_sec == null) return null;
+  const sign = ts.direction && ts.direction < 0 ? "-" : "+";
+  const rate = ts.per_sec >= 1
+    ? `${ts.per_sec}/s`
+    : `${ts.per_tick} per ${((ts.interval_frames ?? 0) / 60).toFixed(1)}s`;
+  return `${sign}${rate}${ts.cap != null ? `, cap ${ts.cap}` : ""}`;
+}
+
+function withExtras(text: string, extras: (string | null | undefined)[]): string {
+  const xs = extras.filter((x): x is string => !!x);
+  return xs.length ? `${text} (${xs.join("; ")})` : text;
+}
+
+// a script that is just the constant 1 is always true: no condition to state
+const realCondition = (raw?: string | null, human?: string | null): string | undefined =>
+  !raw || /^\s*1\s*;?\s*$/.test(raw) ? undefined : human || raw;
+
+function skillClause(
+  inf: SkillInfluence, label: UnitInfluenceLabel | undefined, siblings: SkillInfluence[],
+  groupChangeFunction: number | undefined, missiles?: Record<string, Missile> | null,
+  skillNames?: Map<number, string>,
+): ProseClause | null {
+  if (label?.hidden || label?.marker) return null;
+  const nameOverride = inf.influence_type === 203
+    ? (siblings.some((s) => s.influence_type === 204 || s.influence_type === 205)
+      ? "Max UP consumed for scaling buff"
+      : "Flat cost to activate")
+    : skillLabelName(inf);
+  const name = nameOverride ?? label?.name ?? `influence ${inf.influence_type}`;
+  // an expression of exactly IsOwnerUnit() narrows any target to the unit itself
+  const ownerOnly = /^\s*IsOwnerUnit\(\);?\s*$/.test(inf.expression ?? "");
+  const target = ownerOnly ? "self" : inf.target;
+  const text = proseClause("skill", inf.influence_type, {
+    target, v: skillRowValue(inf, label), name,
+    mul: inf.mul, mul2: inf.mul2, mul3: inf.mul3, mul3_cap: inf.mul3_cap, add: inf.add,
+    ref: inf.add != null ? skillNames?.get(inf.add) : undefined,
+    expression: inf.expression,
+    expressionHuman: inf.expression_human || inf.expression,
+    extend: inf.extend as Record<string, unknown> | undefined,
+    skillName: (id) => skillNames?.get(id),
+  });
+  if (text == null) return null;
+  const full = withExtras(text, [
+    TICK_PROSE.has(inf.influence_type ?? -1) ? null : tickScaleText(inf.tick_scale),
+    inf.missile ? (inf.influence_type === 21 || inf.influence_type === 165 ? missileText(inf.missile) : `missile: ${missileText(inf.missile)}`) : null,
+    ...(EXTEND_PROSE.has(inf.influence_type ?? -1) ? [] : extendSummary(inf.extend, inf.influence_type, missiles)),
+  ]);
+  // a row's expression is evaluated per recipient, so on a group target it
+  // filters which units receive the effect
+  const self = String(target ?? "self") === "self";
+  const cond = EXPR_PROSE.has(inf.influence_type ?? -1) || ownerOnly ? undefined
+    : realCondition(inf.expression, inf.expression_human);
+  const gated = !cond ? full
+    : self ? `${full} if ${cond}` : `${full} (only units where ${cond})`;
+  const rule = influenceSelectionRule("skill", inf.influence_type, groupChangeFunction);
+  return {
+    text: gated, verified: !!label?.verified, note: label?.note,
+    tag: buffCategory("skill", inf.influence_type, label?.name ?? undefined, target),
+    rule: rule ? SELECTION_RULE_TEXT[rule] : undefined,
+  };
+}
+
+function abilityClause(
+  inf: AbilityInfluence, label: UnitInfluenceLabel | undefined, missiles?: Record<string, Missile> | null,
+): ProseClause | null {
+  if (label?.hidden || label?.marker) return null;
+  const name = abilityLabelName(inf) ?? label?.name ?? `influence ${inf.influence_type}`;
+  const text = proseClause("ability", inf.influence_type, {
+    target: inf.target,
+    // ability 72 is a script: its decoded facts are the whole effect
+    v: inf.influence_type === 72
+      ? decodeAbilityCommand(inf.command).map((f) => commandFactText(f, missiles)).join("; ") || inf.command_human || inf.command || null
+      : abilityRowValue(inf, label, missiles),
+    name, params: inf.params, invoke: inf.invoke,
+    commandHuman: inf.command_human || inf.command,
+    extend: inf.extend as Record<string, unknown> | undefined,
+  });
+  if (text == null) return null;
+  const missileNotes = inf.missiles
+    ? Object.entries(inf.missiles).map(([mid, m]) => `missile ${mid}: ${missileText(m)}`) : [];
+  let full = withExtras(text, [
+    abilityRate(inf), ...missileNotes,
+    ...(ABILITY_EXTEND_PROSE.has(inf.influence_type ?? -1) ? [] : extendSummary(inf.extend, inf.influence_type ?? undefined, missiles)),
+  ]);
+  // like a skill expression, the command filters recipients on a group target
+  const cmd = inf.influence_type === 72 || COMMAND_PROSE.has(inf.influence_type ?? -1) ? null : realCondition(inf.command, inf.command_human);
+  const self = String(inf.target ?? "self") === "self";
+  if (/^\s*!IsOwnerUnit\(\);?\s*$/.test(inf.command ?? "")) full += " (excluding itself)";
+  else if (cmd && !(self && /^\s*IsOwnerUnit\(\);?\s*$/.test(inf.command ?? ""))) full += self ? ` if ${cmd}` : ` (only units where ${cmd})`;
+  const ncc = inf.no_change_condition_human || inf.no_change_condition;
+  if (ncc && inf.no_change_condition !== inf.command) full += ` ${cmd ? "and" : "if"} ${ncc}`;
+  const act = realCondition(inf.activate_command, inf.activate_command_human);
+  if (act) full += ` when ${act}`;
+  const rule = influenceSelectionRule("ability", inf.influence_type, undefined, inf.params);
+  return {
+    text: full, verified: !!label?.verified, note: label?.note,
+    tag: buffCategory("ability", inf.influence_type ?? undefined, label?.name ?? undefined, inf.target, inf.invoke),
+    rule: rule ? SELECTION_RULE_TEXT[rule] : undefined,
+  };
+}
+
+function durationLead(s: SkillStage): string | undefined {
+  if (!s.duration || s.duration >= 9999) return undefined;
+  return s.duration_max && s.duration_max !== s.duration
+    ? `For ${s.duration}s (${s.duration_max}s at max skill level)`
+    : `For ${s.duration}s`;
+}
+
+function skillStageSentences(
+  s: SkillStage, labels: Record<string, UnitInfluenceLabel>, abilityLabels: Record<string, UnitInfluenceLabel>,
+  missiles?: Record<string, Missile> | null, skillNames?: Map<number, string>,
+  abilityConfigs?: Record<string, AbilityInfluence[]> | null,
+): ProseSentence[] {
+  const rows = s.influences || [];
+  const groups = new Map<string, ProseClause[]>();
+  const abilityClauses = (list: AbilityInfluence[]) => list
+    .map((inf) => abilityClause(inf, inf.influence_type != null ? abilityLabels[String(inf.influence_type)] : undefined, missiles))
+    .filter((c): c is ProseClause => !!c);
+  for (const inf of rows) {
+    const key = inf.activate_if_human || inf.activate_if || "";
+    // skill 122 grants an ability config: its rows read under this row's own condition
+    if (inf.influence_type === 122 && inf.add && abilityConfigs) {
+      const granted = abilityClauses(abilityConfigs[String(inf.add)] ?? []);
+      if (granted.length) groups.set(key, [...(groups.get(key) ?? []), ...granted]);
+      continue;
+    }
+    const c = skillClause(inf, inf.influence_type != null ? labels[String(inf.influence_type)] : undefined,
+      rows, s.group_change_function, missiles, skillNames);
+    if (!c) continue;
+    groups.set(key, [...(groups.get(key) ?? []), c]);
+  }
+  if (!abilityConfigs) {
+    const linked = abilityClauses(s.linked_ability_influences || []);
+    if (linked.length) groups.set("", [...(groups.get("") ?? []), ...linked]);
+  }
+  const out: ProseSentence[] = [];
+  const base = groups.get("");
+  if (base?.length) out.push({ lead: durationLead(s), clauses: mergeClauses(base) });
+  for (const [cond, clauses] of groups) if (cond) out.push({ lead: `When ${cond}`, clauses: mergeClauses(clauses) });
+  return out;
+}
+
+const INVOKE_LEAD: Record<string, string> = {
+  sortie: "While in the sortie team",
+  deployed: "While deployed",
+  placement: "When placed",
+  "while in the 1st barrack": "While in the 1st barrack",
+};
+
+function abilitySentences(
+  rows: AbilityInfluence[], labels: Record<string, UnitInfluenceLabel>, missiles?: Record<string, Missile> | null,
+  abilityConfigs?: Record<string, AbilityInfluence[]> | null,
+): ProseSentence[] {
+  const groups = new Map<string, ProseClause[]>();
+  for (const inf of rows) {
+    // ability 189 grants another config: its rows read as what the recipients gain
+    if (inf.influence_type === 189 && inf.params?.[0] && abilityConfigs?.[String(inf.params[0])]) {
+      const who = recipient("ability", inf.target).obj;
+      const granted = abilityConfigs[String(inf.params[0])]
+        .map((g) => abilityClause(g, g.influence_type != null ? labels[String(g.influence_type)] : undefined, missiles))
+        .filter((g): g is ProseClause => !!g);
+      if (granted.length) {
+        const key = String(inf.invoke ?? "");
+        const cmd = realCondition(inf.command, inf.command_human);
+        const head = `${who} gain${cmd ? ` (only units where ${cmd})` : ""}: `;
+        groups.set(key, [...(groups.get(key) ?? []),
+          { ...granted[0], text: head + granted[0].text }, ...granted.slice(1)]);
+        continue;
+      }
+    }
+    const c = abilityClause(inf, inf.influence_type != null ? labels[String(inf.influence_type)] : undefined, missiles);
+    if (!c) continue;
+    const key = String(inf.invoke ?? "");
+    groups.set(key, [...(groups.get(key) ?? []), c]);
+  }
+  return [...groups].map(([invoke, clauses]) => ({
+    lead: invoke === "inherent" || invoke === "" ? undefined : INVOKE_LEAD[invoke] ?? `Invoke "${invoke}"`,
+    clauses: mergeClauses(clauses),
+  }));
+}
+
+function capitalize(t: string): string {
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+function ReadableSentences({ sentences }: { sentences: ProseSentence[] }) {
+  if (!sentences.length) return null;
+  return (
+    <ul className="prose-lines">
+      {sentences.map((sen, i) => (
+        <li key={i}>
+          {sen.lead && <span className="prose-lead">{sen.lead}: </span>}
+          {sen.clauses.map((c, j) => (
+            <span key={j} className={c.verified ? undefined : "prose-unverified"} title={c.note}>
+              {j > 0 && "; "}
+              <HumanText text={j === 0 && !sen.lead ? capitalize(c.text) : c.text} />
+              {(c.tag || c.rule) && (
+                <span className="prose-tag" title={c.rule ? `${capitalize(c.rule)}.` : undefined}>
+                  {c.tag ?? "stacking"}
+                </span>
+              )}
+            </span>
+          ))}
+          .
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// The two influence views under a skill/ability text, switched by the
+// page-wide Readable / Game details toggles.
+function InfluenceViews({ sentences, count, children }: { sentences: ProseSentence[]; count: number; children: ReactNode }) {
+  const readable = useUiStore((st) => st.influenceReadable);
+  const details = useUiStore((st) => st.influenceDetails);
+  return (
+    <>
+      {readable && <ReadableSentences sentences={sentences} />}
+      {details && count > 0 && <div className="inf-details">{children}</div>}
+    </>
+  );
+}
+
+function InfluenceViewToggles() {
+  const readable = useUiStore((st) => st.influenceReadable);
+  const details = useUiStore((st) => st.influenceDetails);
+  const toggle = useUiStore((st) => st.toggleInfluenceView);
+  return (
+    <div className="inf-view-toggles" role="group" aria-label="Effect views">
+      <button type="button" aria-pressed={readable} onClick={() => toggle("influenceReadable")}>Readable</button>
+      <button type="button" aria-pressed={details} onClick={() => toggle("influenceDetails")}>Game details</button>
+    </div>
   );
 }
 
@@ -1068,18 +1330,6 @@ function SkillText({ s }: { s: SkillStage }) {
   );
 }
 
-// Collapsible influence-row list: raw config rows are verification material,
-// not reading material -- fold them behind a toggle by default.
-function InfluenceToggle({ count, children }: { count: number; children: ReactNode }) {
-  if (!count) return null;
-  return (
-    <details className="inf-toggle">
-      <summary>{count} influence row{count !== 1 ? "s" : ""}</summary>
-      {children}
-    </details>
-  );
-}
-
 // A stage's badge: how it is reached. Charge steps get a step counter so a
 // staged charge skill reads as a progression, swaps as "next use".
 function StageBadge({ s, chargePos }: { s: SkillStage; chargePos?: [number, number] }) {
@@ -1095,12 +1345,13 @@ function StageBadge({ s, chargePos }: { s: SkillStage; chargePos?: [number, numb
 }
 
 function SkillStageRow({
-  s, i, labels, abilityLabels, chargePos, inlined,
+  s, i, labels, abilityLabels, chargePos, inlined, skillNames,
 }: {
   s: SkillStage; i: number;
   labels: Record<string, UnitInfluenceLabel>; abilityLabels: Record<string, UnitInfluenceLabel>;
   chargePos?: [number, number];
   inlined?: Set<number>;
+  skillNames?: Map<number, string>;
 }) {
   // swap targets NOT shown as a stage below (e.g. the AW skill swapping back
   // to the base skill, or a charge chain cycling to its origin).
@@ -1109,6 +1360,8 @@ function SkillStageRow({
   const unresolved = [...new Set((s.text || "").match(/<[A-Z_]+>|\[[A-Z_]+\]/g) || [])]
     .filter((t) => !resolveToken(t, s));
   const nInf = (s.influences?.length || 0) + (s.linked_ability_influences?.length || 0);
+  const missiles = useContext(MissilesContext);
+  const abilityConfigs = useContext(AbilityConfigsContext);
   return (
     <tr key={s.id}>
       <td className="unit-class-name-cell">
@@ -1127,7 +1380,7 @@ function SkillStageRow({
         {unresolved.length > 0 && (
           <div className="muted small">unresolved placeholders: {unresolved.join(" ")}</div>
         )}
-        <InfluenceToggle count={nInf}>
+        <InfluenceViews count={nInf} sentences={skillStageSentences(s, labels, abilityLabels, missiles, skillNames, abilityConfigs)}>
           {s.influences && s.influences.length > 0 && (
             <ul className="effects">
               {s.influences.map((inf, j) => (
@@ -1155,7 +1408,7 @@ function SkillStageRow({
               </ul>
             </>
           )}
-        </InfluenceToggle>
+        </InfluenceViews>
       </td>
       <td>{s.duration != null ? `${s.duration}${s.duration_max ? ` → ${s.duration_max}` : ""}` : "-"}</td>
       <td>{s.cooldown ?? "-"}</td>
@@ -1210,8 +1463,10 @@ function SkillBlock({
   if (!skill) return null;
   const plan = planStages(skill.stages);
   const inlined = new Set(skill.stages.map((s) => s.id));
+  const skillNames = new Map(skill.stages.map((s) => [s.id, s.name_en || s.name || `skill #${s.id}`]));
   return (
     <Panel
+      actions={<InfluenceViewToggles />}
       title={(
         <>
           {label}: {skill.name_en || skill.name}
@@ -1235,7 +1490,7 @@ function SkillBlock({
                   key={`s${item.s.id}-${item.i}`}
                   s={item.s} i={item.i}
                   labels={labels} abilityLabels={abilityLabels}
-                  chargePos={item.chargePos} inlined={inlined}
+                  chargePos={item.chargePos} inlined={inlined} skillNames={skillNames}
                 />
               );
             }
@@ -1245,7 +1500,7 @@ function SkillBlock({
                   key={`s${x.s.id}-${x.i}`}
                   s={x.s} i={x.i}
                   labels={labels} abilityLabels={abilityLabels}
-                  chargePos={x.chargePos} inlined={inlined}
+                  chargePos={x.chargePos} inlined={inlined} skillNames={skillNames}
                 />
               ));
             }
@@ -1269,10 +1524,12 @@ function AbilityBlock({
   label, ability, labels,
 }: { label: string; ability?: UnitAbility | null; labels: Record<string, UnitInfluenceLabel> }) {
   const texts = useContext(TextsContext);
+  const missiles = useContext(MissilesContext);
+  const abilityConfigs = useContext(AbilityConfigsContext);
   if (!ability) return null;
   const abilityEn = ability.text ? texts.ability[ability.text] : undefined;
   return (
-    <Panel title={label}>
+    <Panel title={label} actions={<InfluenceViewToggles />}>
       <table className="grid unit-detail-table">
         <thead>
           <tr><th>Ability Name</th><th>Effect</th></tr>
@@ -1293,7 +1550,7 @@ function AbilityBlock({
               ) : (
                 <ColorCodedText text={ability.text} />
               ))}
-              <InfluenceToggle count={ability.influences?.length || 0}>
+              <InfluenceViews count={ability.influences?.length || 0} sentences={abilitySentences(ability.influences || [], labels, missiles, abilityConfigs)}>
                 <ul className="effects">
                   {(ability.influences || []).map((inf, j) => (
                     <AbilityInfluenceRow
@@ -1302,7 +1559,7 @@ function AbilityBlock({
                     />
                   ))}
                 </ul>
-              </InfluenceToggle>
+              </InfluenceViews>
             </td>
           </tr>
         </tbody>
@@ -1538,6 +1795,8 @@ function ClassAttributes({
   classes, labels, classMap,
 }: { classes: UnitClass[]; labels: Record<string, UnitInfluenceLabel>; classMap?: Record<string, string> }) {
   const texts = useContext(TextsContext);
+  const missiles = useContext(MissilesContext);
+  const abilityConfigs = useContext(AbilityConfigsContext);
   // The per-tier text (Explanation) is the primary source of "class
   // attribute" info -- it carries mechanics even when there's no linked
   // ClassAbility1 config (e.g. #523's per-tier escalating aura %, which has
@@ -1548,7 +1807,7 @@ function ClassAttributes({
   );
   if (withContent.length === 0) return null;
   return (
-    <Panel title="Class Attributes">
+    <Panel title="Class Attributes" actions={<InfluenceViewToggles />}>
       <table className="grid unit-detail-table">
         <thead>
           <tr><th>Class Name</th><th>Description</th></tr>
@@ -1575,7 +1834,7 @@ function ClassAttributes({
                 ) : (
                   cl.description
                 )}
-                <InfluenceToggle count={cl.class_ability_influences?.length || 0}>
+                <InfluenceViews count={cl.class_ability_influences?.length || 0} sentences={abilitySentences(cl.class_ability_influences || [], labels, missiles, abilityConfigs)}>
                   <ul className="effects">
                     {(cl.class_ability_influences || []).map((inf, j) => (
                       <AbilityInfluenceRow
@@ -1584,7 +1843,7 @@ function ClassAttributes({
                       />
                     ))}
                   </ul>
-                </InfluenceToggle>
+                </InfluenceViews>
               </td>
             </tr>
           ))}
@@ -2116,7 +2375,7 @@ export default function UnitDetail() {
                 </div>
               )}
               {t.class_ability_influences && t.class_ability_influences.length > 0 && (
-                <InfluenceToggle count={t.class_ability_influences.length}>
+                <InfluenceViews count={t.class_ability_influences.length} sentences={abilitySentences(t.class_ability_influences, abilityLabels, missiles, abilityConfigs)}>
                   <ul className="effects">
                     {t.class_ability_influences.map((inf, j) => (
                       <AbilityInfluenceRow
@@ -2125,7 +2384,7 @@ export default function UnitDetail() {
                       />
                     ))}
                   </ul>
-                </InfluenceToggle>
+                </InfluenceViews>
               )}
               {t.skills?.base && (
                 <SkillBlock label="Token skill" skill={t.skills.base}

@@ -225,8 +225,8 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
     "35": {
       "name": "Attack restores HP",
       "verified": true,
-      "note": "each attack heals the unit for a percent of the damage dealt. mul3 is the percent directly, not a x-multiplier.",
-      "tpl": "{mul3pct} of damage dealt"
+      "note": "each attack heals the unit for a percent of its MAX HP (every carrier text: 攻撃毎に最大HPのX％HPが回復). mul3 is the percent directly, not a x-multiplier.",
+      "tpl": "{mul3pct} of max HP"
     },
     "36": {
       "name": "Immortal",
@@ -318,7 +318,8 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
     "53": {
       "name": "Ground only area attack",
       "verified": true,
-      "note": "wiki-maintainer-sourced."
+      "note": "attacks every ground enemy around the unit (spinning attack). add sets the activation chance in percent (Nadia add 50/70/100 = text 'activation rate rises to 50%/70%/100%'; Ganimard add 60 doubles her ability-56 chance of 30). On units with ability 56 it raises that ability's chance; on units without it, add 100 makes every attack an area attack during the skill. A row with only a Power-filled mul3 carries no value of its own.",
+      "tpl": "{add}% chance"
     },
     "54": {
       "name": "Nullify attack chance",

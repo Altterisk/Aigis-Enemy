@@ -33,6 +33,7 @@ test("a ?tab= naming a hidden or unknown tab falls back to stats", async ({ page
 
 test("Eterna SAW exposes its forced healing-priority rule", async ({ page }) => {
   await page.goto("/units/2864?tab=skills");
+  await page.getByRole("button", { name: "Game details" }).first().click();
   const rule = page.locator(".selection-rule--forced_priority").first();
   await expect(rule).toContainText("forced priority");
   await expect(rule).toContainText("group mode 23");
@@ -89,7 +90,7 @@ test("a per-shot missile list marks its empty slots", async ({ page }) => {
   // #2902's awakened ability fires a 15-slot list where 6 slots are blank
   // Missile.atb rows (#1517)
   await page.goto("/units/2902?tab=abilities");
-  // the influence rows sit in a collapsed section, so check presence
+  // the Readable view repeats the extend and missile facts
   const list = page.getByText(/15 shot slots: 9 fire, 6 empty/).first();
   await expect(list).toBeAttached();
   await expect(list).toContainText("∅");
@@ -162,4 +163,27 @@ test("artist search filters by artist or unit name", async ({ page }) => {
   await expect(names.first()).toContainText("内有一馬");
   await search.fill("");
   expect(await names.count()).toBeGreaterThan(100);
+});
+
+test("skill effects read as sentences, with the raw rows behind Game details", async ({ page }) => {
+  await page.goto("/units/1455?tab=skills");
+  const prose = page.locator(".prose-lines").first();
+  await expect(prose).toContainText("For 5s (10s at max skill level):");
+  await expect(prose).toContainText("its HP cannot drop to 0");
+  await expect(prose).toContainText("when the skill ends, it is paralyzed");
+  await expect(page.getByText("type 36 · target self")).toHaveCount(0);
+  await page.getByRole("button", { name: "Game details" }).first().click();
+  await expect(page.getByText(/type 36 · target self/).first()).toBeVisible();
+});
+
+test("same-value stat clauses merge into one", async ({ page }) => {
+  await page.goto("/units/1104?tab=skills");
+  await expect(page.locator(".prose-lines").first()).toContainText("multiplies its ATK and DEF by 1.6");
+});
+
+test("buff clauses carry their family tag", async ({ page }) => {
+  await page.goto("/units/1104?tab=skills");
+  const tags = page.locator(".prose-lines .prose-tag");
+  await expect(tags.filter({ hasText: "Self" }).first()).toBeVisible();
+  await expect(tags.filter({ hasText: "Type-C" }).first()).toBeVisible();
 });
