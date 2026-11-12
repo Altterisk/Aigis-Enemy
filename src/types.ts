@@ -22,7 +22,6 @@ export interface Effect {
   params?: number[];
   ext?: string;
   expression?: string;
-  expression_human?: string;
 }
 
 // SpEff id (string) -> its influence rows.
@@ -341,12 +340,10 @@ export interface SkillInfluence {
   collision_state?: number;
   change_function?: number;
   expression?: string;
-  expression_human?: string;
   // this row's own gating condition (many SkillTypes are shared templates,
   // e.g. by a card's own AW2A/AW2B paths -- NOT filtered/evaluated, every
   // row is kept and shown with its raw condition so nothing is hidden).
   activate_if?: string;
-  activate_if_human?: string;
   extend?: InfluenceExtend;
 }
 
@@ -359,14 +356,11 @@ export interface AbilityInfluence {
   // counter missile), resolved like skill influence 21: id -> facts.
   missiles?: Record<string, Missile>;
   command?: string;
-  command_human?: string;
   activate_command?: string;
-  activate_command_human?: string;
   // separate gate condition from AbilityConfig.NoChangeCondition -- distinct
   // from both command and activate_command (e.g. a class restriction on a
   // War God Blessing row whose own command is an unrelated HP-ratio check).
   no_change_condition?: string;
-  no_change_condition_human?: string;
   extend?: InfluenceExtend;
 }
 
@@ -607,9 +601,11 @@ export interface BuffRow {
   vk?: "pct" | "flag" | "flat" | "sec" | "share";
   cond?: string;
   // raw expressions: x = which units the row applies to (evaluated per
-  // target), ax = the owner-side activation gate
+  // target), ax = the owner-side activation gate, tr = the script narrowing
+  // the target (shown humanized next to it); cond on effect rows is raw too
   x?: string;
   ax?: string;
+  tr?: string;
   // functional group override: ability 13/70 (ATK) and 14/71 (DEF) split by
   // their OWN invoke into "sortie_atk"/"deploy_atk"/"sortie_def"/
   // "deploy_def"; 223/224 (War God Blessing ATK/DEF) get their own

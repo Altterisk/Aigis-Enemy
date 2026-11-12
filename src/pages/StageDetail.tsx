@@ -4,16 +4,9 @@ import { Breadcrumbs, FallbackImage, MetaChip, MetaChips, PageHeader, Panel, Tab
 import { searchParamsAdapter } from "@altterisk/game-hub/filters";
 import { LIST_META, NOT_FOUND_META, stageMeta } from "../meta";
 import { usePageMeta } from "../usePageMeta";
-import {
-  useStageDetail,
-  useInfluenceLabels,
-  useRaceLabels,
-  useSpecialtyConfig,
-  useStoryTalk,
-  talkFaceUrl,
-  bannerUrl,
-} from "../data";
+import { useStageDetail, useInfluenceLabels, useRaceLabels, useSpecialtyConfig, useStoryTalk, talkFaceUrl, bannerUrl, useExprNames } from "../data";
 import { Sprite, DamageBadge, Effects, Tags, auraRadius, periodicRate, missileOnHitText, HumanText, routerLink, extDisplay, ColorCodedText } from "../components";
+import { humanize } from "../humanize";
 import type {
   StageEnemy,
   StageEnemyForm,
@@ -124,7 +117,7 @@ function effectLines(effects: Effect[], labels: InfluenceLabels | null): EffectL
       extRaw: e.ext,
       aura: auraRadius(e),
       rate: periodicRate(e, effects),
-      expr: e.expression_human || e.expression,
+      expr: humanize(e.expression) || e.expression,
       exprRaw: e.expression,
     };
   });
@@ -476,6 +469,7 @@ function DialogueSectionBlock({ s }: { s: DialogueSection }) {
 }
 
 export default function StageDetail() {
+  useExprNames();
   const { questId } = useParams();
   const { loading, stage } = useStageDetail(Number(questId));
   const labels = useInfluenceLabels();

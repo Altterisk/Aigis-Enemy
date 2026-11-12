@@ -1,8 +1,9 @@
 import { useState, useEffect, createContext, useContext } from "react";
 import type { ReactNode } from "react";
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useUnitDetail, useUnitInfluenceLabels, useLocalisation, useTexts, usePrinceTitles, useMissiles, useAbilityConfigs, useUnitSpeech, unitImageUrl, unitAnimUrl, affectionStat } from "../data";
-import { UnitImage, missileText, fillLabel, HumanText, fmtFrames, ColorCodedText, routerLink } from "../components";
+import { useUnitDetail, useUnitInfluenceLabels, useLocalisation, useTexts, usePrinceTitles, useMissiles, useAbilityConfigs, useUnitSpeech, unitImageUrl, unitAnimUrl, affectionStat, useExprNames } from "../data";
+import { UnitImage, missileText, fillLabel, HumanText, fmtFrames, ColorCodedText, routerLink, plainConditionText } from "../components";
+import { humanize } from "../humanize";
 import { Breadcrumbs, Lightbox, Panel, StatRows, TabPanel, UrlTabs, tabParam } from "@altterisk/game-hub";
 import type { RenderLink } from "@altterisk/game-hub";
 import { searchParamsAdapter } from "@altterisk/game-hub/filters";
@@ -419,7 +420,8 @@ function extendText(
     case "自身含む": return Number(v) ? "includes self" : "excludes self";
     case "重複番号": return `stack-id ${v}`;
     case "永続": return Number(v) ? "permanent" : `${k}=${v}`;
-    case "射程範囲内のみ": return "within range only";
+    case "射程範囲内のみ": return Number(v) ? "counters ranged attackers at any distance" : "";
+    case "最終ダメージ値を対象に": return Number(v) ? "based on the damage it takes" : "";
     // inverted flips the trigger direction -- the stat increases with each
     // attack instead of over time (seen on ability 191's gradual-ATK effect).
     // 増減反転 (ability 191's trigger-direction flag) is folded into the
@@ -684,14 +686,14 @@ function SkillInfluenceRow({
         <span className="meaning"> missile: {missileText(inf.missile)}</span>
       )}
       <ExtendProps extend={inf.extend} influenceType={inf.influence_type ?? undefined} />
-      {(inf.expression_human || inf.expression) && (
+      {(humanize(inf.expression) || inf.expression) && (
         <span className="expr" title={inf.expression}>
-          {" "}if <HumanText text={inf.expression_human || inf.expression || ""} />
+          {" "}if <HumanText text={humanize(inf.expression) || inf.expression || ""} />
         </span>
       )}
-      {(inf.activate_if_human || inf.activate_if) && (
+      {(humanize(inf.activate_if) || inf.activate_if) && (
         <span className="expr" title={inf.activate_if}>
-          {" "}(applies when <HumanText text={inf.activate_if_human || inf.activate_if || ""} />)
+          {" "}(applies when <HumanText text={humanize(inf.activate_if) || inf.activate_if || ""} />)
         </span>
       )}
     </li>
@@ -887,21 +889,21 @@ function AbilityInfluenceRow({
       <ExtendProps extend={inf.extend} influenceType={inf.influence_type ?? undefined} />
       {inf.influence_type === 72 ? (
         <CommandFacts cmd={inf.command} kind="ability" />
-      ) : (inf.command_human || inf.command) && (
+      ) : (humanize(inf.command) || inf.command) && (
         <span className="expr" title={inf.command}>
-          {" "}if <HumanText text={inf.command_human || inf.command || ""} />
+          {" "}if <HumanText text={humanize(inf.command) || inf.command || ""} />
         </span>
       )}
-      {(inf.no_change_condition_human || inf.no_change_condition) &&
+      {(humanize(inf.no_change_condition) || inf.no_change_condition) &&
         inf.no_change_condition !== inf.command && (
         <span className="expr" title={inf.no_change_condition}>
-          {" "}{(inf.command_human || inf.command) ? "and" : "if"}{" "}
-          <HumanText text={inf.no_change_condition_human || inf.no_change_condition || ""} />
+          {" "}{(humanize(inf.command) || inf.command) ? "and" : "if"}{" "}
+          <HumanText text={humanize(inf.no_change_condition) || inf.no_change_condition || ""} />
         </span>
       )}
-      {(inf.activate_command_human || inf.activate_command) && (
+      {(humanize(inf.activate_command) || inf.activate_command) && (
         <span className="expr" title={inf.activate_command}>
-          {" "}on <HumanText text={inf.activate_command_human || inf.activate_command || ""} />
+          {" "}on <HumanText text={humanize(inf.activate_command) || inf.activate_command || ""} />
         </span>
       )}
       {inf.influence_type === 206 && inf.params?.length ? (
@@ -991,7 +993,7 @@ function skillClause(
     mul: inf.mul, mul2: inf.mul2, mul3: inf.mul3, mul3_cap: inf.mul3_cap, add: inf.add,
     ref: inf.add != null ? skillNames?.get(inf.add) : undefined,
     expression: inf.expression,
-    expressionHuman: inf.expression_human || inf.expression,
+    expressionHuman: humanize(inf.expression) || inf.expression,
     extend: inf.extend as Record<string, unknown> | undefined,
     skillName: (id) => skillNames?.get(id),
   });
@@ -1005,7 +1007,7 @@ function skillClause(
   // filters which units receive the effect
   const self = String(target ?? "self") === "self";
   const cond = EXPR_PROSE.has(inf.influence_type ?? -1) || ownerOnly ? undefined
-    : realCondition(inf.expression, inf.expression_human);
+    : realCondition(inf.expression, humanize(inf.expression));
   const gated = !cond ? full
     : self ? `${full} if ${cond}` : `${full} (only units where ${cond})`;
   const rule = influenceSelectionRule("skill", inf.influence_type, groupChangeFunction);
@@ -1014,20 +1016,6 @@ function skillClause(
     tag: buffCategory("skill", inf.influence_type, label?.name ?? undefined, target),
     rule: rule ? SELECTION_RULE_TEXT[rule] : undefined,
   };
-}
-
-// "its skill is #4014" -> the skill's name, when the page knows it
-function nameSkills(text: string, names?: UnitNames | null): string {
-  if (!names) return text;
-  return text
-    .replace(/\(its skill is #(\d+) and its skill is active\)/g, (m, id) => {
-      const n = names.skill(Number(id));
-      return n ? `“${n}” is active` : m;
-    })
-    .replace(/its skill is #(\d+)/g, (m, id) => {
-      const n = names.skill(Number(id));
-      return n ? `its skill is “${n}”` : m;
-    });
 }
 
 // an activate_command that only picks the class-change tier
@@ -1046,10 +1034,10 @@ function abilityClause(
     target: inf.target,
     // ability 72 is a script: its decoded facts are the whole effect
     v: inf.influence_type === 72
-      ? decodeAbilityCommand(inf.command).map((f) => commandFactText(f, missiles)).join("; ") || inf.command_human || inf.command || null
+      ? decodeAbilityCommand(inf.command).map((f) => commandFactText(f, missiles)).join("; ") || humanize(inf.command) || inf.command || null
       : abilityRowValue(inf, label, missiles),
     name, params: inf.params, invoke: inf.invoke,
-    commandHuman: inf.command_human || inf.command,
+    commandHuman: humanize(inf.command) || inf.command,
     extend: inf.extend as Record<string, unknown> | undefined,
     unitName: names ? (id) => names.unit(id) : undefined,
   });
@@ -1061,17 +1049,16 @@ function abilityClause(
     ...(ABILITY_EXTEND_PROSE.has(inf.influence_type ?? -1) ? [] : extendSummary(inf.extend, inf.influence_type ?? undefined, missiles)),
   ]);
   // like a skill expression, the command filters recipients on a group target
-  const rawCmd = inf.influence_type === 72 || COMMAND_PROSE.has(inf.influence_type ?? -1) ? null : realCondition(inf.command, inf.command_human);
-  const cmd = rawCmd ? nameSkills(rawCmd, names) : rawCmd;
+  const cmd = inf.influence_type === 72 || COMMAND_PROSE.has(inf.influence_type ?? -1) ? null : realCondition(inf.command, humanize(inf.command));
   const self = String(inf.target ?? "self") === "self";
   const core = full;
   if (/^\s*!IsOwnerUnit\(\);?\s*$/.test(inf.command ?? "")) full += " (excluding itself)";
   else if (cmd && !(self && /^\s*IsOwnerUnit\(\);?\s*$/.test(inf.command ?? ""))) full += self ? ` if ${cmd}` : ` (only units where ${cmd})`;
-  const ncc = inf.no_change_condition_human || inf.no_change_condition;
+  const ncc = humanize(inf.no_change_condition) || inf.no_change_condition;
   if (ncc && inf.no_change_condition !== inf.command) full += ` ${cmd ? "and" : "if"} ${ncc}`;
   // a tier-only activate condition becomes the sentence lead instead
   const tier = tierOnly(inf.activate_command);
-  const act = tier != null ? undefined : realCondition(inf.activate_command, inf.activate_command_human);
+  const act = tier != null ? undefined : realCondition(inf.activate_command, humanize(inf.activate_command));
   if (act) full += ` when ${act}`;
   // exactly one self condition: kept apart so abilitySentences can merge
   // rows that differ only in it
@@ -1103,7 +1090,7 @@ function skillStageSentences(
     .map((inf) => abilityClause(inf, inf.influence_type != null ? abilityLabels[String(inf.influence_type)] : undefined, missiles))
     .filter((c): c is ProseClause => !!c);
   for (const inf of rows) {
-    const key = inf.activate_if_human || inf.activate_if || "";
+    const key = humanize(inf.activate_if) || inf.activate_if || "";
     // skill 122 grants an ability config: its rows read under this row's own condition
     if (inf.influence_type === 122 && inf.add && abilityConfigs) {
       const granted = abilityClauses(abilityConfigs[String(inf.add)] ?? []);
@@ -1211,7 +1198,7 @@ function abilitySentences(
         .filter((g): g is ProseClause => !!g);
       if (granted.length) {
         const key = String(inf.invoke ?? "");
-        const cmd = realCondition(inf.command, inf.command_human);
+        const cmd = realCondition(inf.command, humanize(inf.command));
         const head = `${who} gain${cmd ? ` (only units where ${cmd})` : ""}: `;
         groups.set(key, [...(groups.get(key) ?? []),
           { ...granted[0], text: head + granted[0].text }, ...granted.slice(1)]);
@@ -1247,7 +1234,7 @@ function ReadableSentences({ sentences }: { sentences: ProseSentence[] }) {
     <ul className="prose-lines">
       {sentences.map((sen, i) => (
         <li key={i}>
-          {sen.lead && <span className="prose-lead">{sen.lead}: </span>}
+          {sen.lead && <span className="prose-lead"><HumanText text={sen.lead} />: </span>}
           {sen.clauses.map((c, j) => (
             <span key={j} className={c.verified ? undefined : "prose-unverified"} title={c.note}>
               {j > 0 && "; "}
@@ -1339,7 +1326,7 @@ function resolveToken(
   const tagRow = tagged.find((r) => !r.activate_if) || tagged[0];
   if (tagRow) {
     return rowValue(tagRow, "mul3", tagRow.activate_if
-      ? ` (gated: ${tagRow.activate_if_human || tagRow.activate_if})` : ", tagged");
+      ? ` (gated: ${plainConditionText(humanize(tagRow.activate_if) || tagRow.activate_if || "")})` : ", tagged");
   }
 
   const name = token.slice(1, -1);
@@ -1369,7 +1356,7 @@ function resolveToken(
     const gatedValue = (candidates: SkillInfluence[]) => {
       const gated = candidates.find((r) => r[spec.field] != null);
       return gated ? rowValue(gated, spec.field,
-        ` (gated: ${gated.activate_if_human || gated.activate_if})`) : null;
+        ` (gated: ${plainConditionText(humanize(gated.activate_if) || gated.activate_if || "")})`) : null;
     };
     if (COUNT_TOKENS.has(name)) {
       // counts are never Power-filled; a gated row is better than an
@@ -2084,6 +2071,7 @@ const crumbLink: RenderLink = ({ href, className, children }) =>
     : routerLink({ href, className, children });
 
 export default function UnitDetail() {
+  useExprNames();
   const { id } = useParams();
   const [params, setParams] = useSearchParams();
   const unitId = Number(id);

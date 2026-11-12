@@ -42,8 +42,10 @@
 // value shape, and how several damage modifiers combine.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { affectionStat, loadJSONFile, unitImageUrl, useAbilityConfigs, useUnitDetail, useUnits } from "../data";
+import { affectionStat, loadJSONFile, unitImageUrl, useAbilityConfigs, useUnitDetail, useUnits, useExprNames } from "../data";
 import { influenceSelectionRule } from "../influenceLabels";
+import { HumanText, plainConditionText } from "../components";
+import { humanize } from "../humanize";
 import type { AbilityInfluence, BuffRow, SkillStage, Unit, UnitClass, UnitSkill } from "../types";
 import { copyText } from "@altterisk/game-hub";
 import { base64url, packJson, unpackJson } from "@altterisk/game-hub/codec";
@@ -372,7 +374,7 @@ function ownEffects(u: Unit, cl: UnitClass): OwnEffect[] {
     const t = r.influence_type;
     if (r.target !== "self") return;
     const p = (r.params || []) as number[];
-    const cond = [r.command_human, r.activate_command_human].filter(Boolean).join(" AND ") || "always";
+    const cond = [humanize(r.command), humanize(r.activate_command)].filter(Boolean).join(" AND ") || "always";
     const exprs = [r.command, r.activate_command].filter((x): x is string => !isAlways(x));
     const key = nextKey([src, r.influence_type, r.invoke, JSON.stringify(r.params ?? []),
       r.command ?? "", r.activate_command ?? ""].join("|"));
@@ -611,7 +613,7 @@ function bufferEffects(
     granted.forEach((g, j) => {
       const p = (g.params || []) as number[];
       const exprs = [g.command, g.activate_command].filter((x): x is string => !isAlways(x));
-      const cond = [g.command_human, g.activate_command_human].filter((x) => x && x !== "1").join(" AND ") || "always";
+      const cond = [humanize(g.command), humanize(g.activate_command)].filter((x) => x && x !== "1").join(" AND ") || "always";
       let eff: OwnEffect | null = null;
       if (g.influence_type === 1) {
         eff = { key: `g${gi}-${j}`, src: `granted by ${bu.name_en || bu.name}`, type: 1, label: "Damage modifier on hit",
@@ -628,7 +630,7 @@ function bufferEffects(
         key: nextKey(`grant|${grantBase}|${j}|${g.influence_type}`), legacyKey: `grant${gi}-${j}`, cat: "GRANT", label: `${src} (${r.invoke}) grants ability ${g.influence_type}`,
         value: eff.kind === "dmg" ? `x${eff.value / 100}${eff.chance! < 100 ? ` (${eff.chance}% chance)` : ""}`
           : eff.kind === "pad_zero" ? `${eff.value}% no-PAD chance` : `${eff.value}% true damage`,
-        target: [r.command_human, cond !== "always" ? `when ${cond}` : ""].filter(Boolean).join(" · ") || "all",
+        target: [humanize(r.command), cond !== "always" ? `when ${cond}` : ""].filter(Boolean).join(" · ") || "all",
         grant: eff, needsDeploy: r.invoke !== "sortie", needsSkill: skill,
         gate: r.activate_command && !isAlways(r.activate_command) ? r.activate_command : null,
         filter: r.command && !isAlways(r.command) ? r.command : null,
@@ -789,6 +791,7 @@ async function decodeShare(code: string): Promise<ShareState | null> {
 }
 
 export default function Dps() {
+  useExprNames();
   const [buffIndex, setBuffIndex] = useState<BuffRow[] | null>(null);
   useEffect(() => {
     loadJSONFile<BuffRow[]>("buff_index").then(setBuffIndex).catch(() => setBuffIndex([]));
@@ -1034,12 +1037,12 @@ export default function Dps() {
         const ch = (e.chance ?? 100) / 100;
         const full = e.value / 100;
         const f = ch >= 1 || procMode === "always" ? full : procMode === "never" ? 1 : 1 + (full - 1) * ch;
-        dmgMods.push({ label: `${e.src.startsWith("granted") ? e.src : "Ability 1"} (${e.cond}${ch < 1 ? `, ${e.chance}% chance` : ""})`, f });
+        dmgMods.push({ label: `${e.src.startsWith("granted") ? e.src : "Ability 1"} (${plainConditionText(e.cond)}${ch < 1 ? `, ${e.chance}% chance` : ""})`, f });
       }
     }
 
     for (const e of bestPct.values()) {
-      factors.push({ label: `Ability ${e.type} (${e.cond})`, f: 1 + e.value / 100 });
+      factors.push({ label: `Ability ${e.type} (${plainConditionText(e.cond)})`, f: 1 + e.value / 100 });
     }
 
     // ATK buffs
@@ -1204,7 +1207,7 @@ export default function Dps() {
                 </td>
                 <td><span className="dps-badge">{CATS.find((c) => c.k === e.cat)?.label}</span></td>
                 <td><strong>{e.value}</strong></td>
-                <td className="small">{e.label}<div className="muted">{e.target}</div></td>
+                <td className="small">{e.label}<div className="muted"><HumanText text={e.target} /></div></td>
                 <td className="small">{st === true ? "applies" : st === false ? "not now" : "?"}</td>
               </tr>
             );
@@ -1356,7 +1359,7 @@ export default function Dps() {
                           );
                         })()}
                       </td>
-                      <td className="small">{e.cond}</td>
+                      <td className="small"><HumanText text={e.cond} /></td>
                       <td>{m === true ? "yes" : m === false ? "no" : "?"}</td>
                     </tr>
                   );

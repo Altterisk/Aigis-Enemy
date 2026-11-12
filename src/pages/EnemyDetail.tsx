@@ -1,11 +1,12 @@
 import { useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useEnemies, useStages, useEnemyStages, useSpecialtyConfig } from "../data";
+import { useEnemies, useStages, useEnemyStages, useSpecialtyConfig, useExprNames } from "../data";
 import { Sprite, DamageBadge, Stat, Tags, Effects, ColorCodedText } from "../components";
 import { LIST_META, NOT_FOUND_META, enemyMeta } from "../meta";
 import { usePageMeta } from "../usePageMeta";
 
 export default function EnemyDetail() {
+  useExprNames();
   const { id } = useParams();
   const enemyId = Number(id);
   const { loading, byId } = useEnemies();

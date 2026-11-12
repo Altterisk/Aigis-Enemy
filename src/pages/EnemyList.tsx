@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { EmptyState, ListToolbar, Pager, SearchBox } from "@altterisk/game-hub";
 import { listState, searchParamsAdapter } from "@altterisk/game-hub/filters";
-import { useEnemies, useSpecialtyConfig, useInfluenceLabels } from "../data";
+import { useEnemies, useSpecialtyConfig, useInfluenceLabels, useExprNames } from "../data";
 import { Sprite, DamageBadge, fillLabel } from "../components";
 import type { GlobalEnemy, SpecialtyConfig } from "../types";
 
@@ -17,6 +17,7 @@ function enemyInfluences(e: GlobalEnemy, spcfg: SpecialtyConfig | null): number[
 }
 
 export default function EnemyList() {
+  useExprNames();
   const { loading, enemies } = useEnemies();
   const spcfg = useSpecialtyConfig();
   const labels = useInfluenceLabels();

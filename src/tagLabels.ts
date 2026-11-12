@@ -83,3 +83,14 @@ export const TAG_LABELS: Record<string, string> = {
   "温泉": "Hot Spring",
   "エッグハント": "Egg Hunt",
 };
+
+// Enemy element tags (_Attribute) named in unit conditions that neither the
+// enemy race table nor the unit tag maps cover.
+export const ENEMY_TAG_LABELS: Record<string, string> = {
+  "水中": "Underwater",
+  "水棲": "Aquatic",
+  "水面": "Water Surface",
+  "植物": "Plant",
+  "魔神": "Majin",
+  "ニーズヘッグ": "Nidhogg",
+};

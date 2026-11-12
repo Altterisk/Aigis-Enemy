@@ -729,7 +729,11 @@ export const ABILITY_PROSE: Record<number, ProseTpl> = {
   260: "raises {of:range} by {p1}",
   261: (c) => {
     const school = ({ "物理": "physical", "魔法": "magic", "貫通": "true" } as Record<string, string>)[String(c.extend?.["反撃攻撃属性"])];
-    return `counters attackers for {p1}% of their ATK as ${school ?? "normal"} damage`;
+    // 最終ダメージ値を対象に: the counter is a share of the damage it actually took
+    const base = Number(c.extend?.["最終ダメージ値を対象に"]) ? "of the damage it takes" : "of their ATK";
+    // 射程範囲内のみ: ranged attackers are countered too, from any distance
+    const ranged = Number(c.extend?.["射程範囲内のみ"]) ? " (ranged ones from any distance too)" : "";
+    return `counters attackers${ranged} for {p1}% ${base} as ${school ?? "normal"} damage`;
   },
   262: "generates {p1} UP every {secs:p2}",
   263: (c) => (c.commandHuman ? `sets the deployment cost of units where ${c.commandHuman} to {p1}% of normal` : "sets the deployment cost of all units to {p1}% of normal"),

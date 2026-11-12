@@ -24,6 +24,7 @@ import type {
   WeatherData,
 } from "./types";
 import { INFLUENCE_LABELS } from "./influenceLabels";
+import { setExprNames, type ExprNames } from "./humanize";
 import { RACE_LABELS, TAG_LABELS } from "./tagLabels";
 import { bucketFor, createJsonLoader, parseBounds } from "@altterisk/game-hub/data";
 
@@ -203,6 +204,37 @@ export function useUnits() {
     });
   }, []);
   return state;
+}
+
+// Loads data/expr_names.json (the id -> name tables of the condition
+// humanizer) once. Pages that show condition text call it so they re-render
+// when the names arrive.
+let exprNamesLoaded = false;
+export function useExprNames(): boolean {
+  const [ready, set] = useState(exprNamesLoaded);
+  useEffect(() => {
+    if (exprNamesLoaded) return;
+    loadJSON<ExprNames>("expr_names")
+      .then((n) => {
+        if (!exprNamesLoaded) setExprNames(n);
+        exprNamesLoaded = true;
+        set(true);
+      })
+      .catch(() => set(true));
+  }, []);
+  return ready;
+}
+
+// Unit id -> English (else JP) name, for [[unit:ID]] markers in conditions.
+// Shares the cached unit index with useUnits.
+export function useUnitNameMap(): Map<number, string> | null {
+  const [names, set] = useState<Map<number, string> | null>(null);
+  useEffect(() => {
+    loadJSON<UnitIndexEntry[]>("units")
+      .then((units) => set(new Map(units.map((u) => [u.id, u.name_en || u.name || `#${u.id}`]))))
+      .catch(() => set(new Map()));
+  }, []);
+  return names;
 }
 
 // One unit's FULL data, loaded on demand (per-unit file).

@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 import { FallbackImage } from "@altterisk/game-hub";
 import { RichText, type MarkupRule } from "@altterisk/game-hub/text";
 import type { RenderLink } from "@altterisk/game-hub";
-import { spriteUrl, enemyAnimUrl, unitImageUrl, DMG_COLORS, useInfluenceLabels, useLocalisation } from "./data";
+import { spriteUrl, enemyAnimUrl, unitImageUrl, DMG_COLORS, useInfluenceLabels, useLocalisation, useRaceLabels, useUnitNameMap } from "./data";
+import { ENEMY_TAG_LABELS } from "./tagLabels";
+import { humanize } from "./humanize";
 import type {
   Effect, DamageType, UnitImageKind, Missile, MissileOnHit,
   Localisation as LocalisationT,
@@ -246,18 +248,40 @@ const COLOR_CODES: MarkupRule[] = [{
   apply: (m) => (m[1].toLowerCase() === "ffffff" ? {} : { color: `#${m[1]}` }),
 }];
 
-// Humanized condition text with [[class:NAME]] / [[tag:NAME]] filter-link
-// markers (emitted by aigis/expr.py) rendered as clickable unit-list filters,
-// displayed with their EN translation where one exists.
+// The same marked-up condition text as plain words, for places that build a
+// string (labels, tooltips) instead of rendering HumanText.
+export function plainConditionText(text: string): string {
+  return text.replace(/\[\[(class|tag|unit|skill|etag):([^\]]+)\]\]/g, (_m, kind, name) =>
+    kind === "unit" ? `#${name}` : kind === "skill" ? `“${name}”` : name);
+}
+
+// Humanized condition text with markers emitted by aigis/expr.py:
+// [[class:NAME]] / [[tag:NAME]] render as clickable unit-list filters,
+// [[unit:ID]] as a link to that unit, [[skill:NAME]] as the quoted skill name
+// and [[etag:NAME]] as an enemy race / element tag -- each in English where a
+// translation exists.
 export function HumanText({ text }: { text: string }) {
   const loc: LocalisationT | null = useLocalisation();
-  const parts = text.split(/(\[\[(?:class|tag):[^\]]+\]\])/g);
+  const races = useRaceLabels();
+  const units = useUnitNameMap();
+  const raceEn = new Map(Object.values(races ?? {}).map((r) => [r.name, r.en]));
+  const parts = text.split(/(\[\[(?:class|tag|unit|skill|etag):[^\]]+\]\])/g);
   return (
     <>
       {parts.map((part, i) => {
-        const m = part.match(/^\[\[(class|tag):([^\]]+)\]\]$/);
+        const m = part.match(/^\[\[(class|tag|unit|skill|etag):([^\]]+)\]\]$/);
         if (!m) return part;
         const [, kind, name] = m;
+        if (kind === "unit") {
+          return <Link key={i} to={`/units/${name}`}>{units?.get(Number(name)) ?? `#${name}`}</Link>;
+        }
+        if (kind === "skill") {
+          return <span key={i} title={name}>“{loc?.skills[name] || name}”</span>;
+        }
+        if (kind === "etag") {
+          const en = raceEn.get(name) || loc?.tags[name] || loc?.races[name] || ENEMY_TAG_LABELS[name];
+          return <span key={i} title={name}>{en || name}</span>;
+        }
         const en = kind === "class"
           ? loc?.classes[name]
           : loc?.tags[name] || loc?.races[name];
@@ -477,9 +501,9 @@ export function Effects({ effects, foldAt = 5 }: { effects?: Effect[]; foldAt?: 
             {meaning && <span className="meaning"> {meaning}</span>}
             {dot && <span className="dot-calc"> {dot}</span>}
             {aura && <span className="dot-calc"> {aura}</span>}
-            {(e.expression_human || e.expression) && (
+            {(humanize(e.expression) || e.expression) && (
               <span className="expr" title={e.expression}>
-                {" "}if <HumanText text={e.expression_human || e.expression || ""} />
+                {" "}if <HumanText text={humanize(e.expression) || e.expression || ""} />
               </span>
             )}
             {e.ext && extDisplay(e) && (

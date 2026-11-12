@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { loadJSONFile, useUnitInfluenceLabels, useLocalisation, useUnits } from "../data";
+import { loadJSONFile, useExprNames, useUnitInfluenceLabels, useLocalisation, useUnits } from "../data";
+import { humanize } from "../humanize";
 import { CheckboxGroup, FilterChip, FilterRow, GroupCard } from "@altterisk/game-hub";
 import { HumanText, UnitIconLink, fmtFrames } from "../components";
 import type { BuffRow, InfluenceSelectionRule, UnitInfluenceLabel } from "../types";
@@ -138,7 +139,16 @@ function rawTitle(r: BuffRow): string | undefined {
 // Buff ranking, grouped by effect type (values are only comparable within
 // one type), ranked by the buff's CAP. Taxonomy follows the wiki Buff
 // System page; self-only, token-targeted and specific-unit buffs excluded.
+// The row's target with the condition narrowing it, as "target (condition)".
+function rowTarget(row: BuffRow): string {
+  const tgt = row.tgt == null ? "" : String(row.tgt);
+  const restrict = row.tr ? humanize(row.tr) : null;
+  if (!restrict) return tgt;
+  return tgt ? `${tgt} (${restrict})` : restrict;
+}
+
 export default function Buffs() {
+  const namesReady = useExprNames();
   const [rows, setRows] = useState<BuffRow[] | null>(null);
   const [failed, setFailed] = useState(false);
   const labels = useUnitInfluenceLabels();
@@ -190,7 +200,7 @@ export default function Buffs() {
     const classValues = new Set<string>();
     (rows || []).forEach((row) => {
       if (row.stat !== stat) return;
-      const target = String(row.tgt ?? "");
+      const target = rowTarget(row);
       for (const match of target.matchAll(/\[\[tag:([^\]]+)\]\]/g)) tagValues.add(match[1]);
       for (const match of target.matchAll(/\[\[class:([^\]]+)\]\]/g)) classValues.add(match[1]);
     });
@@ -217,10 +227,10 @@ export default function Buffs() {
       seasons: options(seasons, loc?.tags),
       classes: options(classValues, loc?.classes),
     };
-  }, [rows, units, loc, stat]);
+  }, [rows, units, loc, stat, namesReady]);
 
   const targetMatches = (row: BuffRow): boolean => {
-    const target = String(row.tgt ?? "");
+    const target = rowTarget(row);
     if (targetScope.length && !targetScope.some((scope) => targetScopeMatches(target, scope))) return false;
     const hasTag = (values: string[]) => values.some((value) => target.includes(`[[tag:${value}]]`));
     if (targetFaction.length && !hasTag(targetFaction)) return false;
@@ -456,11 +466,11 @@ export default function Buffs() {
                       </td>
                       <td data-label="Unit"><UnitIconLink id={r.u} name={r.n} /></td>
                       <td data-label="Target" className="muted small">
-                        {typeof r.tgt === "string" ? <HumanText text={r.tgt} /> : (r.tgt ?? "-")}
+                        {rowTarget(r) ? <HumanText text={rowTarget(r)} /> : "-"}
                       </td>
                       {isEffect && (
                         <td data-label="Condition" className="muted small buff-cond">
-                          {r.cond ? <HumanText text={r.cond} /> : "-"}
+                          {r.cond ? <HumanText text={humanize(r.cond) || r.cond} /> : "-"}
                         </td>
                       )}
                       <td data-label="Source" className="muted small">{loc?.classes[r.s] || r.s}</td>

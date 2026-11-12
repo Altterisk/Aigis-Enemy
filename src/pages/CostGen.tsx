@@ -20,9 +20,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { saveBlob } from "@altterisk/game-hub/persist";
-import { loadJSONFile, unitImageUrl } from "../data";
+import { loadJSONFile, unitImageUrl, useExprNames } from "../data";
 import { useUiStore, type CostGenSel } from "../store";
 import { RACE_LABELS, TAG_LABELS } from "../tagLabels";
+import { plainConditionText } from "../components";
+import { humanize } from "../humanize";
 
 // ---------------------------------------------------------------- data types
 
@@ -32,12 +34,12 @@ type Cond =
   | { kind: "tag_count"; card: number; tag: string; op: string; n: number; self: boolean }
   | { kind: "team_count"; var: string; op: string; n: number }
   | { kind: "deployed_count"; op: string; n: number }
-  | { kind: "env"; text: string; human: string }
-  | { kind: "self_tag"; tag: string; match: boolean; human: string }
+  | { kind: "env"; text: string }
+  | { kind: "self_tag"; tag: string; match: boolean }
   | { kind: "skill_evolved"; ids: number[] }
   | { kind: "cc"; op: string; n: number }
   | { kind: "all"; of: Cond[] }
-  | { kind: "raw"; human: string; raw: string };
+  | { kind: "raw"; raw: string };
 
 interface GenRow {
   type: number; // 170 / 262 / 169
@@ -437,7 +439,7 @@ function controlsFor(u: CGUnit, sel: Sel): ControlSpec {
           : c.kind === "env"
             ? `Map effect: ${c.text}`
             : c.kind === "raw"
-              ? c.human
+              ? plainConditionText(humanize(c.raw) || c.raw)
               : tk;
       toggles.set(tk, { key: tk, label });
     }
@@ -745,6 +747,7 @@ function Chart({ series, seconds }: { series: Series[]; seconds: number }) {
 // ---------------------------------------------------------------------- page
 
 export default function CostGen() {
+  useExprNames();
   const [data, setData] = useState<{ units: CGUnit[] } | null>(null);
   // selection + sim settings persist in the UI store so navigating away and
   // back (or reloading) keeps the comparison setup
