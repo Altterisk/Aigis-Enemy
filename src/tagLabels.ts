@@ -47,6 +47,7 @@ export const RACE_LABELS: Record<string, string> = {
   "機械": "Machine",
   "サキュバス": "Succubus",
   "天眼ノ国": "Divine Eye Country",
+  "竜ノ国": "Dragon Country",
   "ルドラサウム": "Rudrathaum",
 };
 
