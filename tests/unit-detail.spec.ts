@@ -76,8 +76,9 @@ test("a one-copy-only unit shows its formation restriction", async ({ page }) =>
 
 test("a mutually exclusive pair links the other card", async ({ page }) => {
   await page.goto("/units/1620");
-  await expect(page.getByText("Cannot be in the same team as")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Lukifer (Platinum)" })).toBeVisible();
+  const restriction = page.locator("section, .hub-panel").filter({ has: page.getByRole("heading", { name: "Formation restriction" }) });
+  await expect(restriction.getByText("Cannot be in the same team as")).toBeVisible();
+  await expect(restriction.getByRole("link", { name: "Lukifer (Platinum)" })).toBeVisible();
 });
 
 test("an unrestricted unit has no formation-restriction section", async ({ page }) => {

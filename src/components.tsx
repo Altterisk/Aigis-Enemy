@@ -263,8 +263,10 @@ export function plainConditionText(text: string): string {
 export function HumanText({ text }: { text: string }) {
   const loc: LocalisationT | null = useLocalisation();
   const races = useRaceLabels();
-  const units = useUnitNameMap();
-  const raceEn = new Map(Object.values(races ?? {}).map((r) => [r.name, r.en]));
+  const units = useUnitNameMap(text.includes("[[unit:"));
+  const raceEn = text.includes("[[etag:")
+    ? new Map(Object.values(races ?? {}).map((r) => [r.name, r.en]))
+    : null;
   const parts = text.split(/(\[\[(?:class|tag|unit|skill|etag):[^\]]+\]\])/g);
   return (
     <>
@@ -279,7 +281,7 @@ export function HumanText({ text }: { text: string }) {
           return <span key={i} title={name}>“{loc?.skills[name] || name}”</span>;
         }
         if (kind === "etag") {
-          const en = raceEn.get(name) || loc?.tags[name] || loc?.races[name] || ENEMY_TAG_LABELS[name];
+          const en = raceEn?.get(name) || loc?.tags[name] || loc?.races[name] || ENEMY_TAG_LABELS[name];
           return <span key={i} title={name}>{en || name}</span>;
         }
         const en = kind === "class"

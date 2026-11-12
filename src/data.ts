@@ -227,13 +227,24 @@ export function useExprNames(): boolean {
 
 // Unit id -> English (else JP) name, for [[unit:ID]] markers in conditions.
 // Shares the cached unit index with useUnits.
-export function useUnitNameMap(): Map<number, string> | null {
-  const [names, set] = useState<Map<number, string> | null>(null);
+// Built once and shared: HumanText renders hundreds of times per page.
+// `needed` = false skips loading the unit index at all.
+let unitNameMap: Map<number, string> | null = null;
+let unitNameLoad: Promise<Map<number, string>> | null = null;
+export function useUnitNameMap(needed = true): Map<number, string> | null {
+  const [names, set] = useState<Map<number, string> | null>(unitNameMap);
   useEffect(() => {
-    loadJSON<UnitIndexEntry[]>("units")
-      .then((units) => set(new Map(units.map((u) => [u.id, u.name_en || u.name || `#${u.id}`]))))
-      .catch(() => set(new Map()));
-  }, []);
+    if (!needed || unitNameMap) return;
+    unitNameLoad ??= loadJSON<UnitIndexEntry[]>("units")
+      .then((units) => new Map(units.map((u) => [u.id, u.name_en || u.name || `#${u.id}`] as [number, string])))
+      .catch(() => new Map<number, string>());
+    let alive = true;
+    unitNameLoad.then((m) => {
+      unitNameMap = m;
+      if (alive) set(m);
+    });
+    return () => { alive = false; };
+  }, [needed]);
   return names;
 }
 
