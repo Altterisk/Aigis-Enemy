@@ -10,11 +10,19 @@ interface EventGroup {
   event: string;
   category?: string | null;
   missionId?: number | null;
+  until?: string;
   stages: StageIndexEntry[];
 }
 
+// "2026/11/19 11:00:00" -> "11/19 11:00", "2026-11-19" -> "11/19"
+function untilText(until: string): string {
+  const m = until.match(/^\d{4}[/-](\d{2})[/-](\d{2})(?:[ T](\d{2}:\d{2}))?/);
+  if (!m) return until;
+  return `${Number(m[1])}/${Number(m[2])}${m[3] ? ` ${m[3]}` : ""}`;
+}
+
 // One event block: banner + title, then its stages.
-function EventBlock({ event, category, missionId, stages }: EventGroup) {
+function EventBlock({ event, category, missionId, until, stages }: EventGroup) {
   return (
     <section className="event-group">
       <div className="event-head">
@@ -23,7 +31,10 @@ function EventBlock({ event, category, missionId, stages }: EventGroup) {
           <h3>
             {category && <span className="cat-badge">{category}</span>} {event}
           </h3>
-          <div className="muted small">{stages.length} stage(s)</div>
+          <div className="muted small">
+            {stages.length} stage(s)
+            {until && <span className="event-until"> · until {untilText(until)}</span>}
+          </div>
         </div>
       </div>
       <ul className="stage-row">
@@ -72,12 +83,6 @@ function YearBlock({ group, title, events }: {
   );
 }
 
-// Categories whose open (Enable-flagged) missions belong in the default
-// "current" view: limited-time Emergency / Subjugation content, plus every
-// Empire chapter. Rotating always-open tables (Devil Advent / Raid / Tower /
-// Reproduce) are excluded — every one of their missions is flagged open all
-// the time.
-const CURRENT_CATS = new Set(["Emergency", "Subjugation", "Empire"]);
 
 export default function StageList() {
   const { loading, stages } = useStages();
@@ -89,12 +94,12 @@ export default function StageList() {
   const q = list.text("q");
   const cat = list.text("cat", "current");
 
-  const currentSet = useMemo(() => {
-    return new Set(
-      (currentMissions || [])
-        .filter((m) => CURRENT_CATS.has(m.category))
-        .map((m) => m.mission_id),
-    );
+  // mission ids by timing (data/current_missions.json): limited-time events
+  // open now, and the always-available ones
+  const [currentSet, permanentSet, untilById] = useMemo(() => {
+    const ids = (t: string) => new Set((currentMissions || []).filter((m) => m.timing === t).map((m) => m.mission_id));
+    const until = new Map((currentMissions || []).filter((m) => m.until).map((m) => [m.mission_id, m.until!]));
+    return [ids("running"), ids("permanent"), until];
   }, [currentMissions]);
 
   const categories = useMemo(() => {
@@ -110,6 +115,8 @@ export default function StageList() {
     const filtered = stages.filter((s) => {
       if (cat === "current") {
         if (!s.mission_id || !currentSet.has(s.mission_id)) return false;
+      } else if (cat === "permanent") {
+        if (!s.mission_id || !permanentSet.has(s.mission_id)) return false;
       } else if (cat !== "all" && s.event_category !== cat) {
         return false;
       }
@@ -130,6 +137,7 @@ export default function StageList() {
           event: s.event || "(ungrouped)",
           category: s.event_category,
           missionId: s.mission_id,
+          until: s.mission_id ? untilById.get(s.mission_id) : undefined,
           stages: [],
         };
         byEvent.set(key, g);
@@ -158,7 +166,7 @@ export default function StageList() {
       list.sort((a, b) => (a.missionId || 0) - (b.missionId || 0));
     }
     return [...byCat.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [stages, q, cat, currentSet]);
+  }, [stages, q, cat, currentSet, permanentSet, untilById]);
 
   // History events clustered into year groups (falls back to a flat list
   // when the year data is missing).
@@ -209,6 +217,7 @@ export default function StageList() {
             <SearchBox value={q} onChange={(v) => list.setText("q", v)} placeholder="Search stage / event / quest id" />
             <select className="hub-select" value={cat} onChange={(e) => list.setText("cat", e.target.value === "current" ? "" : e.target.value)}>
               <option value="current">now running</option>
+              <option value="permanent">permanent</option>
               <option value="all">all categories</option>
               {categories.map((c) => (
                 <option key={c} value={c}>{c}</option>

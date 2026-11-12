@@ -312,6 +312,11 @@ export interface CurrentMission {
   mission_id: number;
   name: string;
   category: string;
+  // "running" = limited-time and open now, "permanent" = always available
+  timing: "running" | "permanent";
+  // a running mission's end: "2026/11/19 11:00:00" (home banner) or
+  // "2026-11-19" (hand-kept entry, last day)
+  until?: string;
 }
 
 // missions whose config row is currently OPEN (Enable day-bitmask set)

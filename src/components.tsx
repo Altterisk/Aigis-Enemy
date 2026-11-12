@@ -307,7 +307,13 @@ export function missileText(m: Missile): string {
     // no DamageArea).
     parts.push(`penetrates all in path${m.width ? ` (width ${m.width}px)` : ""}`);
   }
-  if (m.slow) parts.push(`slow ${m.slow[0]}% / ${fmtFrames(m.slow[1])}`);
+  // a 100% slow is a stop; it runs from the first hit, and later hits from the
+  // same unit neither refresh nor replace it while it lasts
+  if (m.slow) {
+    parts.push(m.slow[0] >= 100
+      ? `stops the target for ${fmtFrames(m.slow[1])} (later hits from it don't refresh an active stop)`
+      : `slow ${m.slow[0]}% / ${fmtFrames(m.slow[1])}`);
+  }
   if (m.deflectable) parts.push("deflectable");
   if (m.heal) parts.push("heal");
   if (m.blast_residue) {
