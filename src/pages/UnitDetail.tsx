@@ -76,6 +76,15 @@ const AbilityConfigsContext = createContext<Record<string, AbilityInfluence[]> |
 type TextMaps = { skill: Record<string, string>; ability: Record<string, string>; cls: Record<string, string> };
 const TextsContext = createContext<TextMaps>({ skill: {}, ability: {}, cls: {} });
 
+// Names the Readable view puts in place of raw ids: class-change tier -> that
+// tier's class name, token card id -> token name, skill id -> skill name.
+interface UnitNames {
+  tier: (cc: number) => string | undefined;
+  unit: (id: number) => string | undefined;
+  skill: (id: number) => string | undefined;
+}
+const UnitNamesContext = createContext<UnitNames | null>(null);
+
 // ---- "Command" script decoding (client-side, so iterating doesn't need a
 // re-export) ---------------------------------------------------------------
 // Two ids are literally named "Command" -- UnitSpecialty type 34 and
@@ -370,6 +379,7 @@ function extendText(
     case "移動時間": return `move time ${frames(v)}`;
     case "爆撃間隔フレーム": return `bombardment every ${frames(v)}`;
     // amounts / caps
+    case "飛行敵含む": return Number(v) ? "flying enemies included" : "flying enemies not included";
     case "効果割合": return `${v}%`;
     case "効果固定量": return `${v} flat`;
     case "mulLim": return `cap ${v}%`;
@@ -924,7 +934,12 @@ function AbilityInfluenceRow({
 }
 
 // ---- Readable view: influence rows composed into sentences ----------------
-interface ProseClause { text: string; verified: boolean; note?: string; tag?: string; rule?: string }
+interface ProseClause {
+  text: string; verified: boolean; note?: string; tag?: string; rule?: string;
+  // ability rows: the effect without its condition, the condition, and the
+  // class-change tier the row is limited to -- read by abilitySentences
+  core?: string; cond?: string; tier?: number;
+}
 interface ProseSentence { lead?: string; clauses: ProseClause[] }
 
 const COSMETIC_EXTEND = /^fx: /;
@@ -1001,8 +1016,29 @@ function skillClause(
   };
 }
 
+// "its skill is #4014" -> the skill's name, when the page knows it
+function nameSkills(text: string, names?: UnitNames | null): string {
+  if (!names) return text;
+  return text
+    .replace(/\(its skill is #(\d+) and its skill is active\)/g, (m, id) => {
+      const n = names.skill(Number(id));
+      return n ? `“${n}” is active` : m;
+    })
+    .replace(/its skill is #(\d+)/g, (m, id) => {
+      const n = names.skill(Number(id));
+      return n ? `its skill is “${n}”` : m;
+    });
+}
+
+// an activate_command that only picks the class-change tier
+const tierOnly = (raw?: string | null): number | undefined => {
+  const m = raw?.match(/^\s*GetClassChange\(\)\s*==\s*(\d+)\s*;?\s*$/);
+  return m ? Number(m[1]) : undefined;
+};
+
 function abilityClause(
   inf: AbilityInfluence, label: UnitInfluenceLabel | undefined, missiles?: Record<string, Missile> | null,
+  names?: UnitNames | null,
 ): ProseClause | null {
   if (label?.hidden || label?.marker) return null;
   const name = abilityLabelName(inf) ?? label?.name ?? `influence ${inf.influence_type}`;
@@ -1015,6 +1051,7 @@ function abilityClause(
     name, params: inf.params, invoke: inf.invoke,
     commandHuman: inf.command_human || inf.command,
     extend: inf.extend as Record<string, unknown> | undefined,
+    unitName: names ? (id) => names.unit(id) : undefined,
   });
   if (text == null) return null;
   const missileNotes = inf.missiles
@@ -1024,16 +1061,24 @@ function abilityClause(
     ...(ABILITY_EXTEND_PROSE.has(inf.influence_type ?? -1) ? [] : extendSummary(inf.extend, inf.influence_type ?? undefined, missiles)),
   ]);
   // like a skill expression, the command filters recipients on a group target
-  const cmd = inf.influence_type === 72 || COMMAND_PROSE.has(inf.influence_type ?? -1) ? null : realCondition(inf.command, inf.command_human);
+  const rawCmd = inf.influence_type === 72 || COMMAND_PROSE.has(inf.influence_type ?? -1) ? null : realCondition(inf.command, inf.command_human);
+  const cmd = rawCmd ? nameSkills(rawCmd, names) : rawCmd;
   const self = String(inf.target ?? "self") === "self";
+  const core = full;
   if (/^\s*!IsOwnerUnit\(\);?\s*$/.test(inf.command ?? "")) full += " (excluding itself)";
   else if (cmd && !(self && /^\s*IsOwnerUnit\(\);?\s*$/.test(inf.command ?? ""))) full += self ? ` if ${cmd}` : ` (only units where ${cmd})`;
   const ncc = inf.no_change_condition_human || inf.no_change_condition;
   if (ncc && inf.no_change_condition !== inf.command) full += ` ${cmd ? "and" : "if"} ${ncc}`;
-  const act = realCondition(inf.activate_command, inf.activate_command_human);
+  // a tier-only activate condition becomes the sentence lead instead
+  const tier = tierOnly(inf.activate_command);
+  const act = tier != null ? undefined : realCondition(inf.activate_command, inf.activate_command_human);
   if (act) full += ` when ${act}`;
+  // exactly one self condition: kept apart so abilitySentences can merge
+  // rows that differ only in it
+  const cond = full === `${core} if ${cmd}` ? cmd ?? undefined : full === `${core} when ${act}` ? act : undefined;
   const rule = influenceSelectionRule("ability", inf.influence_type, undefined, inf.params);
   return {
+    core: full === core || cond ? core : undefined, cond, tier,
     text: full, verified: !!label?.verified, note: label?.note,
     tag: buffCategory("ability", inf.influence_type ?? undefined, label?.name ?? undefined, inf.target, inf.invoke),
     rule: rule ? SELECTION_RULE_TEXT[rule] : undefined,
@@ -1088,9 +1133,73 @@ const INVOKE_LEAD: Record<string, string> = {
   "while in the 1st barrack": "While in the 1st barrack",
 };
 
+const CC_LABEL: Record<number, string> = { 0: "base", 1: "CC", 2: "AW", 3: "AW2A", 4: "AW2B" };
+
+// "team count with identity [[tag:X]] >= 5" and the like
+const TEAM_COUNT = /^team count (?:with identity|of race|of genus|assigned to) (.+?) (==|>=) (\d+)$/;
+const NUM = /\d+(?:\.\d+)?/g;
+
+// the unit glued to the at-th number ("s" in "20s", "%"), so an alternative keeps it
+function unitAfter(core: string, at: number): string {
+  let k = -1;
+  let tail = "";
+  core.replace(/(\d+(?:\.\d+)?)(s\b|%)?/g, (m, _n, u) => { if (++k === at) tail = u ?? ""; return m; });
+  return tail;
+}
+
+// Rows that say the same thing with one number changed, under different
+// conditions, read as one clause: a per-unit team-count ladder becomes
+// "N for each X in the team", and skill-state variants hang off the base row.
+function mergeVariants(clauses: ProseClause[]): ProseClause[] {
+  const shape = (c: ProseClause) => (c.core ? `${c.core.replace(NUM, "#")}|${c.verified}|${c.tag ?? ""}` : null);
+  const out: ProseClause[] = [];
+  const used = new Set<number>();
+  clauses.forEach((c, i) => {
+    if (used.has(i)) return;
+    const key = shape(c);
+    const group = key == null ? [i]
+      : clauses.map((x, j) => (!used.has(j) && shape(x) === key ? j : -1)).filter((j) => j >= 0);
+    if (group.length < 2) { used.add(i); out.push(c); return; }
+    const items = group.map((j) => clauses[j]);
+    const nums = items.map((x) => x.core!.match(NUM) ?? []);
+    const diff = nums[0].map((_, k) => k).filter((k) => nums.some((n) => n[k] !== nums[0][k]));
+    if (diff.length !== 1) { used.add(i); out.push(c); return; }
+    const at = diff[0];
+    const swap = (core: string, v: string) => { let k = -1; return core.replace(NUM, (m) => (++k === at ? v : m)); };
+    // team-count ladder: value = step x count at every rung
+    const ladder = items.map((x, j) => {
+      const m = x.cond?.match(TEAM_COUNT);
+      return m ? { who: m[1], n: Number(m[3]), v: Number(nums[j][at]) } : null;
+    });
+    if (ladder.every((l) => l && l.who === ladder[0]!.who)) {
+      const rungs = ladder as { who: string; n: number; v: number }[];
+      const step = rungs[0].v / rungs[0].n;
+      if (rungs.every((r) => r.v === step * r.n)) {
+        const max = Math.max(...rungs.map((r) => r.n));
+        group.forEach((j) => used.add(j));
+        out.push({ ...c, text: `${swap(c.core!, String(step))} for each ${rungs[0].who} in the team (up to ${max})`, core: undefined, cond: undefined });
+        return;
+      }
+    }
+    // skill-state variants: the row with no condition (or "its skill is not
+    // active") is the base, the others are alternatives under their condition
+    const base = items.findIndex((x) => !x.cond || x.cond === "its skill is not active");
+    if (base < 0 || items.some((x, j) => j !== base && !x.cond)) { used.add(i); out.push(c); return; }
+    const alts = items.filter((_, j) => j !== base)
+      .map((x) => `${x.core!.match(NUM)![at]}${unitAfter(x.core!, at)} if ${x.cond}`);
+    group.forEach((j) => used.add(j));
+    // the alternatives go right after the number they replace
+    const baseCore = items[base].core!;
+    let k = -1;
+    const text = baseCore.replace(/(\d+(?:\.\d+)?)(s\b|%)?/g, (m) => (++k === at ? `${m} (${alts.join("; ")})` : m));
+    out.push({ ...items[base], text, core: undefined, cond: undefined });
+  });
+  return out;
+}
+
 function abilitySentences(
   rows: AbilityInfluence[], labels: Record<string, UnitInfluenceLabel>, missiles?: Record<string, Missile> | null,
-  abilityConfigs?: Record<string, AbilityInfluence[]> | null,
+  abilityConfigs?: Record<string, AbilityInfluence[]> | null, names?: UnitNames | null,
 ): ProseSentence[] {
   const groups = new Map<string, ProseClause[]>();
   for (const inf of rows) {
@@ -1098,7 +1207,7 @@ function abilitySentences(
     if (inf.influence_type === 189 && inf.params?.[0] && abilityConfigs?.[String(inf.params[0])]) {
       const who = recipient("ability", inf.target).obj;
       const granted = abilityConfigs[String(inf.params[0])]
-        .map((g) => abilityClause(g, g.influence_type != null ? labels[String(g.influence_type)] : undefined, missiles))
+        .map((g) => abilityClause(g, g.influence_type != null ? labels[String(g.influence_type)] : undefined, missiles, names))
         .filter((g): g is ProseClause => !!g);
       if (granted.length) {
         const key = String(inf.invoke ?? "");
@@ -1109,15 +1218,23 @@ function abilitySentences(
         continue;
       }
     }
-    const c = abilityClause(inf, inf.influence_type != null ? labels[String(inf.influence_type)] : undefined, missiles);
+    const c = abilityClause(inf, inf.influence_type != null ? labels[String(inf.influence_type)] : undefined, missiles, names);
     if (!c) continue;
-    const key = String(inf.invoke ?? "");
+    const key = `${inf.invoke ?? ""}|${c.tier ?? ""}`;
     groups.set(key, [...(groups.get(key) ?? []), c]);
   }
-  return [...groups].map(([invoke, clauses]) => ({
-    lead: invoke === "inherent" || invoke === "" ? undefined : INVOKE_LEAD[invoke] ?? `Invoke "${invoke}"`,
-    clauses: mergeClauses(clauses),
-  }));
+  return [...groups].map(([key, clauses]) => {
+    const [invoke, tierRaw] = key.split("|");
+    const invokeLead = invoke === "inherent" || invoke === "" ? undefined : INVOKE_LEAD[invoke] ?? `Invoke "${invoke}"`;
+    let lead = invokeLead;
+    if (tierRaw !== "") {
+      const tier = Number(tierRaw);
+      const cls = names?.tier(tier);
+      const as = cls ? `as ${cls} (${CC_LABEL[tier] ?? `tier ${tier}`})` : `at class-change tier ${CC_LABEL[tier] ?? tier}`;
+      lead = invokeLead ? `${invokeLead}, ${as}` : capitalize(as);
+    }
+    return { lead, clauses: mergeClauses(mergeVariants(clauses)) };
+  });
 }
 
 function capitalize(t: string): string {
@@ -1526,6 +1643,7 @@ function AbilityBlock({
   const texts = useContext(TextsContext);
   const missiles = useContext(MissilesContext);
   const abilityConfigs = useContext(AbilityConfigsContext);
+  const names = useContext(UnitNamesContext);
   if (!ability) return null;
   const abilityEn = ability.text ? texts.ability[ability.text] : undefined;
   return (
@@ -1550,7 +1668,7 @@ function AbilityBlock({
               ) : (
                 <ColorCodedText text={ability.text} />
               ))}
-              <InfluenceViews count={ability.influences?.length || 0} sentences={abilitySentences(ability.influences || [], labels, missiles, abilityConfigs)}>
+              <InfluenceViews count={ability.influences?.length || 0} sentences={abilitySentences(ability.influences || [], labels, missiles, abilityConfigs, names)}>
                 <ul className="effects">
                   {(ability.influences || []).map((inf, j) => (
                     <AbilityInfluenceRow
@@ -1797,6 +1915,7 @@ function ClassAttributes({
   const texts = useContext(TextsContext);
   const missiles = useContext(MissilesContext);
   const abilityConfigs = useContext(AbilityConfigsContext);
+  const names = useContext(UnitNamesContext);
   // The per-tier text (Explanation) is the primary source of "class
   // attribute" info -- it carries mechanics even when there's no linked
   // ClassAbility1 config (e.g. #523's per-tier escalating aura %, which has
@@ -1834,7 +1953,7 @@ function ClassAttributes({
                 ) : (
                   cl.description
                 )}
-                <InfluenceViews count={cl.class_ability_influences?.length || 0} sentences={abilitySentences(cl.class_ability_influences || [], labels, missiles, abilityConfigs)}>
+                <InfluenceViews count={cl.class_ability_influences?.length || 0} sentences={abilitySentences(cl.class_ability_influences || [], labels, missiles, abilityConfigs, names)}>
                   <ul className="effects">
                     {(cl.class_ability_influences || []).map((inf, j) => (
                       <AbilityInfluenceRow
@@ -2062,6 +2181,16 @@ export default function UnitDetail() {
     cls: texts.class_texts,
   };
 
+  const tierClass = new Map(unit.classes.map((c) => [c.cc, (c.name && loc?.classes?.[c.name]) || c.name]));
+  const tokenName = new Map(unit.classes.flatMap((c) => c.tokens).map((t) => [t.unit, t.unit_name]));
+  const skillName = new Map(Object.values(unit.skills ?? {}).flatMap((sk) => sk?.stages ?? [])
+    .map((st) => [st.id, st.name_en || st.name]));
+  const unitNames: UnitNames = {
+    tier: (cc) => tierClass.get(cc) ?? undefined,
+    unit: (id) => tokenName.get(id) ?? undefined,
+    skill: (id) => skillName.get(id) ?? undefined,
+  };
+
   // the active tab lives in ?tab= (absent = stats); tabs with nothing to
   // show are hidden, and a ?tab= naming one of them falls back to stats
   const UNIT_TABS_WITH_HIDDEN = [
@@ -2078,6 +2207,7 @@ export default function UnitDetail() {
     <MissilesContext.Provider value={missiles}>
     <AbilityConfigsContext.Provider value={abilityConfigs}>
     <TextsContext.Provider value={textMaps}>
+    <UnitNamesContext.Provider value={unitNames}>
     <div className="detail unit-page">
       <Breadcrumbs renderLink={crumbLink} items={[{ label: "Units", href: "/units" }, { label: displayName }]} />
 
@@ -2375,7 +2505,7 @@ export default function UnitDetail() {
                 </div>
               )}
               {t.class_ability_influences && t.class_ability_influences.length > 0 && (
-                <InfluenceViews count={t.class_ability_influences.length} sentences={abilitySentences(t.class_ability_influences, abilityLabels, missiles, abilityConfigs)}>
+                <InfluenceViews count={t.class_ability_influences.length} sentences={abilitySentences(t.class_ability_influences, abilityLabels, missiles, abilityConfigs, unitNames)}>
                   <ul className="effects">
                     {t.class_ability_influences.map((inf, j) => (
                       <AbilityInfluenceRow
@@ -2411,6 +2541,7 @@ export default function UnitDetail() {
       )}
 
     </div>
+    </UnitNamesContext.Provider>
     </TextsContext.Provider>
     </AbilityConfigsContext.Provider>
     </MissilesContext.Provider>

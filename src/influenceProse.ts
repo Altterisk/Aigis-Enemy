@@ -38,6 +38,8 @@ export interface ProseCtx {
   skillName?: (id: number) => string | undefined;
   // name of the skill/config the row references, when the page knows it
   ref?: string;
+  // card id -> name for tokens shown on this page
+  unitName?: (id: number) => string | undefined;
 }
 
 export type ProseTpl = string | ((c: ProseCtx) => string | null | undefined);
@@ -769,7 +771,10 @@ export const ABILITY_PROSE: Record<number, ProseTpl> = {
   295: "raises {of:DEF} by {p1}% for every {p2} HP it loses (counting up to {p3} HP lost)",
   296: "raises {of:MR} by {p1} for every {p2} HP it loses (counting up to {p3} HP lost)",
   297: (c) => `on deployment, gives {p2} nearby allies${c.commandHuman ? ` (where ${c.commandHuman})` : ""} attacks that restore {p1}% of their max HP`,
-  298: "automatically places a token (unit #{p2}) every {secs:p1}",
+  298: (c) => {
+    const token = c.unitName?.(c.params?.[1] ?? 0);
+    return token ? `automatically places a ${token} token every {secs:p1}` : "automatically places a token (unit #{p2}) every {secs:p1}";
+  },
   301: "is placed on top of another unit and cannot stand on a tile alone",
   302: (c) => (c.commandHuman ? `lowers the PAD of allies in its song range by {p1}% (only units where ${c.commandHuman})` : "lowers the PAD of allies in its song range by {p1}%"),
   303: "raises the PAD of enemies in range by {p1}%",

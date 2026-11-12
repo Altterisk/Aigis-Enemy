@@ -187,3 +187,14 @@ test("buff clauses carry their family tag", async ({ page }) => {
   await expect(tags.filter({ hasText: "Self" }).first()).toBeVisible();
   await expect(tags.filter({ hasText: "Type-C" }).first()).toBeVisible();
 });
+
+test("readable abilities group class tiers and fold condition variants", async ({ page }) => {
+  await page.goto("/units/2935?tab=abilities");
+  const lines = page.locator(".prose-lines li");
+  await expect(lines.filter({ hasText: /^As Dragon Retainer \(AW2A\): automatically places a \S+ token every 10s \(5s if “Blue Dragon's Hospitality” is active; 2\.5s if/ })).toHaveCount(1);
+  await expect(lines.filter({ hasText: "Lowers its deployment cost by 4 for each Dragon in the team (up to 5)" })).toHaveCount(1);
+  const all = (await page.locator(".prose-lines").allInnerTexts()).join(" ");
+  expect(all).not.toContain("class-change stage");
+  expect(all).not.toContain("unit #2937");
+  expect(all).not.toContain("ドラゴン");
+});
