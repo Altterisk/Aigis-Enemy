@@ -13,15 +13,18 @@ test("home shows current events and new units", async ({ page }) => {
 });
 
 test("home lists every running rate-up with its units", async ({ page }) => {
-  const summons: { open: string; close: string; units: number[] }[] = JSON.parse(
+  const summons: { key: string; banner_id: number; open: string; close: string; units: number[] }[] = JSON.parse(
     fs.readFileSync("public/data/current_summons.json", "utf-8"));
   const jst = (t: string) => Date.parse(`${t.replace(/\//g, "-").replace(" ", "T")}+09:00`);
   const live = summons.filter((s) => s.units.length && jst(s.open) <= Date.now() && (!s.close || Date.now() <= jst(s.close)));
   test.skip(!live.length, "no rate-up running");
+  // banners are gitignored (served from the assets CDN), so a CI checkout has none
+  const withArt = live.filter((s) =>
+    fs.existsSync(`public/banners/summon_${s.banner_id ? `b${s.banner_id}` : s.key}.png`));
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Current rate-up" })).toBeVisible();
   await expect(page.locator(".home-summon")).toHaveCount(live.length);
-  await expect(page.locator(".home-summon img.home-summon-banner")).toHaveCount(live.length);
+  await expect(page.locator(".home-summon img.home-summon-banner")).toHaveCount(withArt.length);
   for (const id of live.flatMap((s) => s.units)) {
     await expect(page.locator(`.home-summon a[href="/units/${id}"]`)).toBeVisible();
   }
@@ -30,7 +33,7 @@ test("home lists every running rate-up with its units", async ({ page }) => {
 test("unit list puts the newest unit first", async ({ page }) => {
   await page.goto("/units");
   await expect(page.locator(".unit-grid .unit-tile").first()).toBeVisible();
-  const ids =await page.locator(".unit-grid .unit-tile-sub").evaluateAll((els) =>
+  const ids = await page.locator(".unit-grid .unit-tile-sub").evaluateAll((els) =>
     els.slice(0, 5).map((e) => Number(/#(\d+)/.exec(e.textContent ?? "")?.[1])));
   expect(ids).toEqual([...ids].sort((a, b) => b - a));
 });
