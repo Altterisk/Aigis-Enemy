@@ -1,4 +1,5 @@
-﻿import { expect, test } from "@playwright/test";
+﻿import fs from "node:fs";
+import { expect, test } from "@playwright/test";
 
 test("stage index lists events with stage links", async ({ page }) => {
   await page.goto("/stages");
@@ -94,4 +95,22 @@ test("in-game color markup in stage names renders as colored text", async ({ pag
   await expect(title).toBeVisible();
   await expect(title).toHaveCSS("color", "rgb(255, 0, 0)");
   await expect(page.locator(".stage-header")).not.toContainText("%c[");
+});
+
+test("map tab labels deployment spots and offers download and copy", async ({ page }) => {
+  const stage = JSON.parse(fs.readFileSync("public/data/stage/11038.json", "utf-8"));
+  const spots: { k: string }[] = stage.map.spots;
+  const count = (k: string) => spots.filter((s) => s.k === k).length;
+  await page.goto("/stages/11038?tab=map");
+  await expect(page.getByRole("tab", { name: /Map/ })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByText(`Melee (${count("m")})`)).toBeVisible();
+  await expect(page.getByText(`Ranged (${count("r")})`)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Copy link" })).toBeVisible();
+  // map art is gitignored (served from the assets CDN), so a CI checkout has none
+  if (fs.existsSync(`public/maps/${stage.map.image}.webp`)) {
+    await expect(page.locator("canvas.stage-map-canvas")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Download PNG" })).toBeEnabled();
+  } else {
+    await expect(page.getByText("Map image unavailable.")).toBeVisible();
+  }
 });

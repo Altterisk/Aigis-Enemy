@@ -2,11 +2,12 @@ import { useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { Breadcrumbs, FallbackImage, MetaChip, MetaChips, PageHeader, Panel, TabPanel, UrlTabs, tabParam } from "@altterisk/game-hub";
 import { searchParamsAdapter } from "@altterisk/game-hub/filters";
-import { LIST_META, NOT_FOUND_META, stageMeta } from "../meta";
+import { LIST_META, NOT_FOUND_META, plainText, stageMeta } from "../meta";
 import { usePageMeta } from "../usePageMeta";
 import { useStageDetail, useInfluenceLabels, useRaceLabels, useSpecialtyConfig, useStoryTalk, talkFaceUrl, bannerUrl, useExprNames } from "../data";
 import { Sprite, DamageBadge, Effects, Tags, auraRadius, periodicRate, missileOnHitText, HumanText, routerLink, extDisplay, ColorCodedText } from "../components";
 import { humanize } from "../humanize";
+import { StageMap } from "../stageMap";
 import type {
   StageEnemy,
   StageEnemyForm,
@@ -488,8 +489,10 @@ export default function StageDetail() {
   const storySections = storyTalk?.sections ?? [];
   const dialogueCount = dialogue.length + storySections.length;
   const hasDialogue = dialogueCount > 0 || hasStoryTalk;
+  const hasMap = !!stage.map;
   const TABS = [
     { id: "enemies", label: "Enemies", count: enemies.length },
+    { id: "map", label: "Map", hidden: !hasMap },
     { id: "dialogue", label: "Dialogue", count: dialogueCount, hidden: !hasDialogue },
   ];
   const [activeTab, setTab] = tabParam(searchParamsAdapter(params, setParams), TABS);
@@ -566,7 +569,7 @@ export default function StageDetail() {
         </Panel>
       )}
 
-      {hasDialogue && <UrlTabs tabs={TABS} active={activeTab} onChange={setTab} label="Stage sections" idBase="stage" />}
+      {(hasDialogue || hasMap) && <UrlTabs tabs={TABS} active={activeTab} onChange={setTab} label="Stage sections" idBase="stage" />}
 
       {activeTab === "enemies" && (
         <TabPanel tab="enemies" idBase="stage">
@@ -580,13 +583,19 @@ export default function StageDetail() {
             </Panel>
           )}
           <section>
-            {!hasDialogue && <h3>Enemies ({enemies.length})</h3>}
+            {!hasDialogue && !hasMap && <h3>Enemies ({enemies.length})</h3>}
             <div className="enemy-cards">
               {enemies.map((e, i) => (
                 <EnemyCard key={`${e.enemy_id}-${i}`} e={e} labels={labels} races={races} spcfg={spcfg} />
               ))}
             </div>
           </section>
+        </TabPanel>
+      )}
+
+      {activeTab === "map" && stage.map && (
+        <TabPanel tab="map" idBase="stage">
+          <StageMap map={stage.map} questId={stage.quest_id} name={plainText(stage.name) || `Stage ${stage.quest_id}`} />
         </TabPanel>
       )}
 

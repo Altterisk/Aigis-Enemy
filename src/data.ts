@@ -426,6 +426,15 @@ export function bannerUrl(missionId: number | string): string {
   return assetUrl(`banners/${missionId}.png`);
 }
 
+// Stage map art: its own jsDelivr repo (aigis-maps) in production, public/maps in dev.
+const MAPS_CDN: string =
+  (import.meta.env.VITE_MAPS_CDN as string | undefined)?.replace(/\/$/, "") || "";
+
+export function mapImageUrl(image: string): string {
+  if (MAPS_CDN && !import.meta.env.DEV) return `${MAPS_CDN}/${image}.webp`;
+  return `${import.meta.env.BASE_URL}maps/${image}.webp`;
+}
+
 // Skill/ability influence names/templates are a static import from
 // influenceLabels.ts, not a fetched JSON file, so editing wording doesn't
 // require a Python re-export.

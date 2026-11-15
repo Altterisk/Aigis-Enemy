@@ -219,6 +219,23 @@ export interface Stage {
     multiplier?: number;
     modifiers?: Effect[];
   } | null;
+  map?: StageMapInfo | null;
+}
+
+// A deployment spot or base on the map, in map pixels. k: b = base, m = melee, r = ranged.
+export interface MapSpot {
+  k: "b" | "m" | "r";
+  x: number;
+  y: number;
+  id: number; // Location ObjectID; spots are sorted by it
+}
+
+// image = maps/<image>.webp
+export interface StageMapInfo {
+  image: string;
+  w: number;
+  h: number;
+  spots: MapSpot[];
 }
 
 // slim stage-list index entry.

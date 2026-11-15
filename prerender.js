@@ -17,7 +17,7 @@ import { LIST_META, SITE_NAME, canonicalUrl, site, sitePath } from "./src/meta.t
 /** Cloudflare Pages' limit is 20,000; warn while there is still room. */
 const FILE_BUDGET = 19_000;
 /** public/ folders that are gitignored and untracked, so never deployed. */
-const LOCAL_ONLY = ["sprite-anim", "talk-face"];
+const LOCAL_ONLY = ["sprite-anim", "talk-face", "maps"];
 
 const a = (href, label) => `<a href="${esc(sitePath(href))}">${esc(label)}</a>`;
 const ul = (items) => (items.length ? `<ul>${items.map((x) => `<li>${x}</li>`).join("")}</ul>` : "");
