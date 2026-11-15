@@ -38,26 +38,21 @@ test("unit list puts the newest unit first", async ({ page }) => {
   expect(ids).toEqual([...ids].sort((a, b) => b - a));
 });
 
+// Each page's data rendering has its own spec; this one only checks the header links route,
+// so it does not wait on the large list downloads (enemies.json is ~7 MB).
 test("header navigation reaches every page", async ({ page }) => {
-  await page.goto("/units");
-
-  await page.getByRole("link", { name: "Collection", exact: true }).click();
-  await expect(page.locator(".collection-page h2").first()).toHaveText("Collection");
-
-  await page.getByRole("link", { name: "Enemies", exact: true }).click();
-  await expect(page.locator(".enemy-grid .enemy-tile").first()).toBeVisible();
-
-  await page.getByRole("link", { name: "Stages", exact: true }).click();
-  await expect(page.locator(".stage-row li").first()).toBeVisible();
-
-  await page.getByRole("link", { name: "Buffs", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Buff ranking" })).toBeVisible();
-
-  await page.getByRole("link", { name: "Cost Gen", exact: true }).click();
-  await expect(page.getByPlaceholder("add unit (name / id)…")).toBeVisible();
-
-  await page.getByRole("link", { name: "Units", exact: true }).click();
-  await expect(page.locator(".unit-grid .unit-tile").first()).toBeVisible();
+  await page.goto("/");
+  const nav = [
+    ["Units", "/units"], ["Collection", "/collection"], ["Enemies", "/enemies"], ["Stages", "/stages"],
+    ["Buffs", "/buffs"], ["Cost Gen", "/costgen"], ["DPS", "/dps"], ["Weather", "/weather"],
+  ] as const;
+  for (const [name, path] of nav) {
+    const link = page.getByRole("link", { name, exact: true });
+    await link.click();
+    await expect(page).toHaveURL(new RegExp(`${path}$`));
+    await expect(link).toHaveAttribute("aria-current", "page");
+    await expect(page.locator("main")).toHaveText(/\S/);
+  }
 });
 
 test("old hash links move to the same path", async ({ page }) => {
