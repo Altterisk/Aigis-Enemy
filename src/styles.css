@@ -740,9 +740,9 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   font-weight: 700;
   text-align: center;
 }
-.stage-map-key--m { background: #ffd84a; color: #1b1b1b; }
-.stage-map-key--r { background: #ff9a3c; color: #1b1b1b; }
-.stage-map-key--b { background: #e5484d; color: #fff; }
+.stage-map-key--m { background: #e5484d; color: #fff; }
+.stage-map-key--r { background: #3b82f6; color: #fff; }
+.stage-map-key--b { background: #fff; color: #1b1b1b; }
 .stage-map-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: auto; }
 .stage-map-canvas {
   display: block;

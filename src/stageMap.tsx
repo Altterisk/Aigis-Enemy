@@ -5,11 +5,30 @@ import { mapImageUrl } from "./data";
 import type { MapSpot, StageMapInfo } from "./types";
 
 const COLORS: Record<MapSpot["k"], { fill: string; text: string }> = {
-  m: { fill: "#ffd84a", text: "#1b1b1b" },
-  r: { fill: "#ff9a3c", text: "#1b1b1b" },
-  b: { fill: "#e5484d", text: "#ffffff" },
+  m: { fill: "#e5484d", text: "#ffffff" },
+  r: { fill: "#3b82f6", text: "#ffffff" },
+  b: { fill: "#ffffff", text: "#1b1b1b" },
 };
 const FOOTER = 30;
+
+// The game's own spot markers (Battle.atx MeleePlace / MissilePlace / Goal), exported by the pipeline.
+type Markers = { img: Record<MapSpot["k"], HTMLImageElement>; origin: Record<MapSpot["k"], [number, number]> };
+let markersPromise: Promise<Markers | null> | null = null;
+
+function loadMarkers(): Promise<Markers | null> {
+  const base = `${import.meta.env.BASE_URL}map-icons/`;
+  const load = (k: string) => new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = reject;
+    el.src = `${base}${k}.png`;
+  });
+  markersPromise ??= Promise.all([
+    fetch(`${base}origins.json`).then((r) => r.json()),
+    load("m"), load("r"), load("b"),
+  ]).then(([origin, m, r, b]) => ({ img: { m, r, b }, origin })).catch(() => null);
+  return markersPromise;
+}
 
 // M1.. / R1.. in ObjectID order; bases are B, or B1.. when there are several.
 export function spotLabels(spots: MapSpot[]): string[] {
@@ -22,7 +41,10 @@ export function spotLabels(spots: MapSpot[]): string[] {
   });
 }
 
-function draw(canvas: HTMLCanvasElement, img: HTMLImageElement, map: StageMapInfo, show: Set<MapSpot["k"]>, footer: string) {
+function draw(
+  canvas: HTMLCanvasElement, img: HTMLImageElement, markers: Markers | null,
+  map: StageMapInfo, show: Set<MapSpot["k"]>, footer: string,
+) {
   canvas.width = map.w;
   canvas.height = map.h + FOOTER;
   const ctx = canvas.getContext("2d")!;
@@ -31,20 +53,29 @@ function draw(canvas: HTMLCanvasElement, img: HTMLImageElement, map: StageMapInf
   ctx.font = "bold 15px Inter, system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+  if (markers) {
+    for (const s of map.spots) {
+      if (!show.has(s.k)) continue;
+      const [ox, oy] = markers.origin[s.k];
+      ctx.drawImage(markers.img[s.k], s.x - ox, s.y - oy);
+    }
+  }
   map.spots.forEach((s, i) => {
     if (!show.has(s.k)) return;
     const label = labels[i];
     const w = Math.max(30, ctx.measureText(label).width + 12);
     const h = 22;
+    // above the marker ring, so its sword / staff stays visible
+    const cy = markers ? s.y - markers.origin[s.k][1] - 2 : s.y;
     ctx.beginPath();
-    ctx.roundRect(s.x - w / 2, s.y - h / 2, w, h, 6);
+    ctx.roundRect(s.x - w / 2, cy - h / 2, w, h, 6);
     ctx.fillStyle = COLORS[s.k].fill;
     ctx.fill();
     ctx.lineWidth = 2;
     ctx.strokeStyle = "rgba(0,0,0,0.85)";
     ctx.stroke();
     ctx.fillStyle = COLORS[s.k].text;
-    ctx.fillText(label, s.x, s.y + 1);
+    ctx.fillText(label, s.x, cy + 1);
   });
   ctx.fillStyle = "#11141b";
   ctx.fillRect(0, map.h, map.w, FOOTER);
@@ -57,6 +88,7 @@ function draw(canvas: HTMLCanvasElement, img: HTMLImageElement, map: StageMapInf
 export function StageMap({ map, questId, name }: { map: StageMapInfo; questId: number; name: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [img, setImg] = useState<HTMLImageElement | null>(null);
+  const [markers, setMarkers] = useState<Markers | null | undefined>(undefined);
   const [failed, setFailed] = useState(false);
   const [show, setShow] = useState<Set<MapSpot["k"]>>(new Set(["m", "r", "b"]));
   const [note, setNote] = useState("");
@@ -73,9 +105,11 @@ export function StageMap({ map, questId, name }: { map: StageMapInfo; questId: n
     el.src = mapImageUrl(map.image);
   }, [map.image]);
 
+  useEffect(() => { loadMarkers().then(setMarkers); }, []);
+
   useEffect(() => {
-    if (img && canvasRef.current) draw(canvasRef.current, img, map, show, footer);
-  }, [img, map, show, footer]);
+    if (img && markers !== undefined && canvasRef.current) draw(canvasRef.current, img, markers, map, show, footer);
+  }, [img, markers, map, show, footer]);
 
   const flash = (text: string) => {
     setNote(text);

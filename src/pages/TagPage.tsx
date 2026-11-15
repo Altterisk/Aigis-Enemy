@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { useUnits, useLocalisation, useTexts, loadJSONFile } from "../data";
+import { useUnits, useLocalisation, useTexts, loadJSONFile, tagName } from "../data";
 import { ColorCodedText, UnitIconLink, UnitImage } from "../components";
 import { tagMeta } from "../meta";
 import { usePageMeta } from "../usePageMeta";
@@ -139,7 +139,7 @@ export default function TagPage() {
               </div>
               {u.tags && u.tags.length > 0 && (
                 <div className="muted small unit-tile-tags">
-                  {u.tags.map((t) => loc?.tags[t] || t).join(", ")}
+                  {u.tags.map((t) => tagName(loc, t)).join(", ")}
                 </div>
               )}
             </div>

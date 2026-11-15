@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useUnits, useUnitInfluenceLabels, useLocalisation, loadJSONFile } from "../data";
+import { useUnits, useUnitInfluenceLabels, useLocalisation, loadJSONFile, tagName } from "../data";
 import { UnitImage } from "../components";
 import { CheckboxGroup, EmptyState, FilterChip, FilterPanel, ListToolbar, Pager, SearchBox } from "@altterisk/game-hub";
 import { useUiStore } from "../store";
@@ -421,7 +421,7 @@ export default function UnitList() {
               </div>
               {u.tags && u.tags.length > 0 && (
                 <div className="muted small unit-tile-tags">
-                  {u.tags.map((t) => loc?.tags[t] || t).join(", ")}
+                  {u.tags.map((t) => tagName(loc, t)).join(", ")}
                 </div>
               )}
             </div>

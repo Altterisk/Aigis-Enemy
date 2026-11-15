@@ -1,7 +1,7 @@
 import { useState, useEffect, createContext, useContext } from "react";
 import type { ReactNode } from "react";
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useUnitDetail, useUnitInfluenceLabels, useLocalisation, useTexts, usePrinceTitles, useMissiles, useAbilityConfigs, useUnitSpeech, unitImageUrl, unitAnimUrl, affectionStat, useExprNames } from "../data";
+import { tagName, useUnitDetail, useUnitInfluenceLabels, useLocalisation, useTexts, usePrinceTitles, useMissiles, useAbilityConfigs, useUnitSpeech, unitImageUrl, unitAnimUrl, affectionStat, useExprNames } from "../data";
 import { UnitImage, missileText, fillLabel, HumanText, fmtFrames, ColorCodedText, routerLink, plainConditionText } from "../components";
 import { humanize } from "../humanize";
 import { Breadcrumbs, Lightbox, Panel, StatRows, TabPanel, UrlTabs, tabParam } from "@altterisk/game-hub";
@@ -2238,7 +2238,7 @@ export default function UnitDetail() {
           {unit.gender && (
             <div>
               <dt>Gender</dt>
-              <dd><Link to={`/units?gender=${encodeURIComponent(String(unit.gender))}`}>{unit.gender}</Link></dd>
+              <dd><Link to={`/units?gender=${encodeURIComponent(String(unit.gender))}`}>{tagName(loc, String(unit.gender))}</Link></dd>
             </div>
           )}
           {(unit.implementation_date || unit.release_year) && (
@@ -2266,12 +2266,12 @@ export default function UnitDetail() {
           )}
           {(unit.identity_tags || []).map((t) => (
             <Link className="meta-chip" to={`/tags/${encodeURIComponent(t)}`} key={t} title={t}>
-              {loc?.tags[t] || t}
+              {tagName(loc, t)}
             </Link>
           ))}
           {unit.genus && (
             <Link className="meta-chip" to={`/tags/${encodeURIComponent(unit.genus)}`} title={unit.genus}>
-              {loc?.tags[unit.genus] || unit.genus}
+              {tagName(loc, unit.genus)}
             </Link>
           )}
         </div>

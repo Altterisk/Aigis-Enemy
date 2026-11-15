@@ -270,6 +270,11 @@ export function useUnitDetail(id: number) {
 // takes effect immediately, no Python re-export needed. classes/skills/
 // abilities still come from the published export (they need the wiki-crawl
 // voting pipeline, which can't move client-side the same way).
+// A unit tag in English: identity/season tags are in `tags`, factions and races in `races`.
+export function tagName(loc: Localisation | null, tag: string): string {
+  return loc?.tags[tag] || loc?.races[tag] || tag;
+}
+
 export function useLocalisation(): Localisation | null {
   const [loc, set] = useState<Localisation | null>(null);
   useEffect(() => {

@@ -81,3 +81,19 @@ test("filter panel toggles and the list fits a phone screen", async ({ page }) =
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
 });
+
+test("unit tiles show faction and race tags in English", async ({ page }) => {
+  await page.goto("/units?q=2913");
+  const tags = page.locator(".unit-grid .unit-tile .unit-tile-tags").first();
+  await expect(tags).toContainText("White Empire");
+  await expect(tags).not.toContainText("白の帝国");
+});
+
+test("gender codes 100 and 4 show as Support and Genderless", async ({ page }) => {
+  await page.goto("/units?q=2913");
+  const support = page.locator(".unit-grid .unit-tile .unit-tile-tags").first();
+  await expect(support).toContainText("Support");
+  await expect(support).not.toContainText("100");
+  await page.goto("/units?q=Platinum%20Armor&npc=1");
+  await expect(page.locator(".unit-grid .unit-tile .unit-tile-tags").first()).toContainText("Genderless");
+});

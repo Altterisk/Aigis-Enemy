@@ -54,6 +54,9 @@ export const RACE_LABELS: Record<string, string> = {
 // identity attributes + seasonal genus tags, combined (matches aigis/
 // localisation.py's tag_map = {**Identity, **Genus}).
 export const TAG_LABELS: Record<string, string> = {
+  // gender codes the game never names: 100 = exactly the support units, 4 = EXP/bond fodder
+  "100": "Support",
+  "4": "Genderless",
   "高貴": "Noble",
   "影の帝国": "Shadow Empire",
   "魔術師": "Magician",
