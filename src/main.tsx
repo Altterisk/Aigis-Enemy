@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import App from "./App";
 import StageList from "./pages/StageList";
 import StageDetail from "./pages/StageDetail";
@@ -16,6 +16,7 @@ import Weather from "./pages/Weather";
 import Dps from "./pages/Dps";
 import Collection from "./pages/Collection";
 import NotFound from "./pages/NotFound";
+import Home from "./pages/Home";
 import "@altterisk/game-hub/hub.css";
 import "@altterisk/game-hub/base.css";
 import "@altterisk/game-hub/components.css";
@@ -29,7 +30,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<App />}>
-          <Route index element={<Navigate to="/units" replace />} />
+          <Route index element={<Home />} />
           <Route path="stages" element={<StageList />} />
           <Route path="stages/:questId" element={<StageDetail />} />
           <Route path="enemies" element={<EnemyList />} />

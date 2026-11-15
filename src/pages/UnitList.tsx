@@ -281,7 +281,7 @@ export default function UnitList() {
         if (!hay.includes(term)) return false;
       }
       return true;
-    });
+    }).sort((a, b) => b.id - a.id);
   }, [
     units, q, sInf, aInf, cls, showNpc, classFilter, tagFilter,
     rarityF, positionF, genderF, factionF, raceF, attrF, seasonF, yearF,

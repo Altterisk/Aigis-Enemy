@@ -339,6 +339,68 @@ export function useCurrentMissions(): CurrentMission[] | null {
   return cur;
 }
 
+// Summon lineups, live plus every one seen before; times are JST ("2026/11/19 11:30:00"), close "" = no end.
+export interface CurrentSummon {
+  key: string; // summon_id, or "b<banner_id>" for a rotation known only from banner art
+  summon_id: number | null;
+  series: number; // title text id: rotations of one banner share it (0 = home-rotation only)
+  title: string;
+  open: string;
+  close: string;
+  units: number[]; // rate-up card ids
+  currency: number;
+  consume_item: string | null;
+  banner_id: number;
+  source: "server" | "art";
+  banner: boolean; // banners/summon_<key>.png exists
+}
+
+// The live summon worker (workers/aigis-summons); unset = the exported file only.
+const SUMMONS_API: string =
+  (import.meta.env.VITE_SUMMONS_API as string | undefined)?.replace(/\/$/, "") || "";
+
+type LiveSummon = Omit<CurrentSummon, "key" | "title" | "banner">;
+
+const sameRotation = (a: { series: number; units: number[] }, b: { series: number; units: number[] }) =>
+  a.series === b.series && [...a.units].sort().join() === [...b.units].sort().join();
+
+// Live lineups override the exported ones by id; an art-only rotation the server now lists is dropped.
+export function mergeSummons(
+  exported: CurrentSummon[], titles: Record<string, string>, live: LiveSummon[],
+): CurrentSummon[] {
+  const byKey = new Map(exported.map((s) => [s.key, { ...s, title: s.title || titles[s.series] || "" }]));
+  for (const r of live) {
+    const key = String(r.summon_id);
+    const prev = byKey.get(key);
+    byKey.set(key, { ...r, key, title: titles[r.series] || prev?.title || "", banner: prev?.banner ?? r.banner_id > 0 });
+  }
+  const all = [...byKey.values()];
+  return all.filter((s) => s.source !== "art" || !all.some((o) => o.source === "server" && sameRotation(o, s)));
+}
+
+export function useCurrentSummons(): CurrentSummon[] | null {
+  const [cur, set] = useState<CurrentSummon[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const live = SUMMONS_API
+      ? fetch(`${SUMMONS_API}/summons`).then((r) => (r.ok ? r.json() : { lineups: [] }))
+        .then((d: { lineups?: LiveSummon[] }) => d.lineups ?? []).catch(() => [] as LiveSummon[])
+      : Promise.resolve([] as LiveSummon[]);
+    Promise.all([
+      loadJSON<CurrentSummon[]>("current_summons").catch(() => [] as CurrentSummon[]),
+      loadJSON<Record<string, string>>("summon_titles").catch(() => ({} as Record<string, string>)),
+      live,
+    ]).then(([exported, titles, lineups]) => { if (alive) set(mergeSummons(exported, titles, lineups)); });
+    return () => { alive = false; };
+  }, []);
+  return cur;
+}
+
+// Temple banners are exported by BannerID; a home-rotation-only summon by its key.
+export function summonBannerUrl(s: { key: string; banner_id: number }): string {
+  return assetUrl(`banners/summon_${s.banner_id ? `b${s.banner_id}` : s.key}.png`);
+}
+
 export interface HistoryYear {
   group: number;
   title: string;
