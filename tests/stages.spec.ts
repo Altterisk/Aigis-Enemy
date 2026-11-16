@@ -114,3 +114,33 @@ test("map tab labels deployment spots and offers download and copy", async ({ pa
     await expect(page.getByText("Map image unavailable.")).toBeVisible();
   }
 });
+
+test("map phases add the spots the battle creates later", async ({ page }) => {
+  // stage 11011: clouds bring 8 ranged spots during the battle
+  await page.goto("/stages/11011?tab=map");
+  const phases = page.locator(".stage-map-phases button");
+  await expect(phases.first()).toHaveText(/Start/);
+  expect(await phases.count()).toBeGreaterThan(1);
+  await expect(page.getByText(/^Ranged/)).toHaveCount(0);
+  await phases.last().click();
+  await expect(page.getByText("Ranged (8)")).toBeVisible();
+});
+
+test("damage tiles show their damage per second in the map key", async ({ page }) => {
+  // stage 7563 (Nidhogg, 極級): lava spots deal 120 every second to the unit on them
+  await page.goto("/stages/7563?tab=map");
+  await expect(page.getByText("Damage tile (6)")).toBeVisible();
+  await expect(page.locator(".stage-map-key--dmg")).toHaveText("120/s");
+});
+
+test("spot changes caused by enemies are numbered in a legend", async ({ page }) => {
+  // stage 9516 (Leraje Lv.16): defeating enemies #1 and #4 opens ranged spots
+  await page.goto("/stages/9516?tab=map");
+  const toggle = page.locator(".stage-map-toggle", { hasText: "Triggered changes (2)" });
+  await expect(toggle).toBeVisible();
+  const items = page.locator(".stage-map-triggers li");
+  await expect(items).toHaveCount(2);
+  await expect(items.first()).toContainText("when enemy #1 is defeated");
+  await toggle.locator("input").uncheck();
+  await expect(items).toHaveCount(0);
+});

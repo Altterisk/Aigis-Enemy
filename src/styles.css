@@ -728,6 +728,10 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 
 /* stage map tab */
 .stage-map { display: flex; flex-direction: column; gap: 10px; }
+.stage-map-phases { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.stage-map-phases .hub-btn { display: inline-flex; flex-direction: column; align-items: flex-start; line-height: 1.2; height: auto; padding-top: 4px; padding-bottom: 4px; }
+.stage-map-phase-note { font-size: 11px; opacity: 0.8; font-weight: 400; }
+.stage-map-phase--active { border-color: var(--hub-accent); background: var(--hub-accent-soft); }
 .stage-map-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 .stage-map-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
 .stage-map-key {
@@ -743,6 +747,9 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 .stage-map-key--m { background: #e5484d; color: #fff; }
 .stage-map-key--r { background: #3b82f6; color: #fff; }
 .stage-map-key--b { background: #fff; color: #1b1b1b; }
+.stage-map-key--dmg { background: #f59e0b; color: #1b1b1b; }
+.stage-map-key--trigger { background: #8b5cf6; color: #fff; border-radius: 999px; }
+.stage-map-triggers { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
 .stage-map-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: auto; }
 .stage-map-canvas {
   display: block;

@@ -228,6 +228,27 @@ export interface MapSpot {
   x: number;
   y: number;
   id: number; // Location ObjectID; spots are sorted by it
+  dmg?: [number, number]; // damage tile: [fixed damage, interval in ticks (60/s)] to the unit on it
+}
+
+// A map change from the spawn scripts: +s/-s add/remove a spot, +fx/-fx an effect object (cloud, map piece).
+export type MapOp =
+  | { op: "+s"; name: string; id: number; k: MapSpot["k"]; x: number; y: number }
+  | { op: "-s"; name: string }
+  | { op: "+fx"; name: string; fx: string; x: number; y: number }
+  | { op: "-fx"; name: string };
+
+// t = seconds into the battle for "time"; the other triggers have no fixed time.
+// by = stage enemy ids the trigger belongs to; spot = the spot ObjectID of a "spot" hook;
+// hook = the game's hook name (OnDead, ...); cond = the stage condition it needs.
+export interface MapEvent {
+  t: number | null;
+  when: "time" | "event" | "defeat" | "attack" | "route" | "hook" | "spot";
+  ops: MapOp[];
+  by?: number[];
+  spot?: number;
+  hook?: string;
+  cond?: string;
 }
 
 // image = maps/<image>.webp
@@ -236,6 +257,7 @@ export interface StageMapInfo {
   w: number;
   h: number;
   spots: MapSpot[];
+  events?: MapEvent[];
 }
 
 // slim stage-list index entry.
