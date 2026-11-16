@@ -421,6 +421,30 @@ export function useHistoryYears(): HistoryYear[] | null {
   return years;
 }
 
+// Stage-list category tiles in the in-game mission portal's order; banner =
+// banners/category_<key>.png exists (the game's general banner for the menu).
+export interface StageCategoryTile {
+  key: string;
+  title: string;
+  categories: string[];
+  banner: boolean;
+}
+
+export interface StageCategories {
+  tiles: StageCategoryTile[];
+  // MissionConfig DisplayOrder by mission id: a category's in-game list order
+  display_order: Record<string, number>;
+}
+
+export function useStageCategories(): StageCategories | null {
+  const [cats, set] = useState<StageCategories | null>(null);
+  useEffect(() => {
+    loadJSON<StageCategories>("stage_categories").then(set)
+      .catch(() => set({ tiles: [], display_order: {} }));
+  }, []);
+  return cats;
+}
+
 // Enemy idle animation; EnemyDot archives are shared per dot number.
 export function enemyAnimUrl(patternId: number): string {
   const dot = Math.floor((patternId - 0x200000) / 16);

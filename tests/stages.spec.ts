@@ -3,9 +3,44 @@ import { expect, test } from "@playwright/test";
 
 test("stage index lists events with stage links", async ({ page }) => {
   await page.goto("/stages");
+  await expect(page.locator(".portal-grid .portal-tile").first()).toBeVisible();
+  await page.locator(".mission-card").first().click();
+  await expect(page).toHaveURL(/m=\d+/);
   const links = page.locator(".stage-row li a");
   await expect(links.first()).toBeVisible();
-  expect(await links.count()).toBeGreaterThan(10);
+  expect(await links.count()).toBeGreaterThan(0);
+});
+
+test("stage portal opens a category, then a mission from its banner", async ({ page }) => {
+  await page.goto("/stages");
+  await page.locator(".portal-grid .portal-tile", { hasText: "Tower" }).click();
+  await expect(page).toHaveURL(/cat=tower/);
+  await expect(page.locator(".portal-head-title")).toHaveText("Tower");
+  await page.locator(".mission-card").first().click();
+  await expect(page).toHaveURL(/cat=tower&m=\d+/);
+  await expect(page.locator(".stage-row li a").first()).toBeVisible();
+  await page.getByRole("button", { name: /← Tower/ }).click();
+  await expect(page.locator(".mission-card").first()).toBeVisible();
+  await page.getByRole("button", { name: /Mission portal/ }).click();
+  await expect(page.locator(".portal-grid")).toBeVisible();
+});
+
+test("the advent tile lists every advent kind", async ({ page }) => {
+  await page.goto("/stages?cat=advent");
+  await expect(page.locator(".mission-card", { hasText: "魔神降臨(" }).first()).toBeVisible();
+  for (const name of ["大神降臨", "魔神最終決戦", "影の帝国降臨"]) {
+    await expect(page.locator(".mission-card", { hasText: name }).first()).toBeVisible();
+  }
+});
+
+test("event history shows one year per page", async ({ page }) => {
+  await page.goto("/stages?cat=history");
+  await expect(page.getByRole("tab", { name: /^1年目の戦い/ })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator(".mission-card", { hasText: "魔女を救え！" })).toBeVisible();
+  await page.getByRole("tab", { name: /^2年目の戦い/ }).click();
+  await expect(page).toHaveURL(/year=2/);
+  await expect(page.locator(".mission-card").first()).toBeVisible();
+  await expect(page.locator(".mission-card", { hasText: "魔女を救え！" })).toHaveCount(0);
 });
 
 test("stage detail loads from the index", async ({ page }) => {
