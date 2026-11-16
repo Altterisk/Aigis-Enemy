@@ -43,7 +43,7 @@ test("unit list puts the newest unit first", async ({ page }) => {
 test("header navigation reaches every page", async ({ page }) => {
   await page.goto("/");
   const nav = [
-    ["Units", "/units"], ["Collection", "/collection"], ["Enemies", "/enemies"], ["Stages", "/stages"],
+    ["Units", "/units"], ["Prince", "/prince"], ["Collection", "/collection"], ["Enemies", "/enemies"], ["Stages", "/stages"],
     ["Buffs", "/buffs"], ["Cost Gen", "/costgen"], ["DPS", "/dps"], ["Weather", "/weather"],
   ] as const;
   for (const [name, path] of nav) {

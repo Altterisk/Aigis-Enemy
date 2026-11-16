@@ -16,7 +16,9 @@ import type {
   UnitInfluenceLabels,
   Localisation,
   Texts,
-  PrinceTitle,
+  PrinceData,
+  PossessionBuffs,
+  WarGodBlessings,
   Missile,
   AbilityInfluence,
   StoryTalk,
@@ -301,13 +303,38 @@ export function useTexts(): Texts {
   return texts;
 }
 
-// the Prince title group (empty until the export has produced it).
-export function usePrinceTitles(): PrinceTitle[] | null {
-  const [titles, set] = useState<PrinceTitle[] | null>(null);
+// War God Blessing items and rows; empty until the export has produced it.
+export function useWarGodBlessings(): WarGodBlessings | null {
+  const [data, set] = useState<WarGodBlessings | null>(null);
   useEffect(() => {
-    loadJSON<PrinceTitle[]>("prince_titles").then(set).catch(() => set([]));
+    loadJSON<WarGodBlessings>("war_god_blessings")
+      .then((d) => set(Array.isArray(d?.rows) ? d : { items: {}, rows: [] }))
+      .catch(() => set({ items: {}, rows: [] }));
   }, []);
-  return titles;
+  return data;
+}
+
+// 【所持効果】 possession-effect rows of every real unit.
+export function usePossessionBuffs(): PossessionBuffs | null {
+  const [data, set] = useState<PossessionBuffs | null>(null);
+  useEffect(() => {
+    loadJSON<PossessionBuffs>("possession_buffs")
+      .then((d) => set(Array.isArray(d?.rows) ? d : { rows: [] }))
+      .catch(() => set({ rows: [] }));
+  }, []);
+  return data;
+}
+
+// Prince titles (PlayerTitle.atb); empty until the export has produced it.
+const EMPTY_PRINCE: PrinceData = { base: { id: 1 }, titles: [] };
+export function usePrinceTitles(): PrinceData | null {
+  const [data, set] = useState<PrinceData | null>(null);
+  useEffect(() => {
+    loadJSON<PrinceData>("prince_titles")
+      .then((d) => set(Array.isArray(d?.titles) ? d : EMPTY_PRINCE))
+      .catch(() => set(EMPTY_PRINCE));
+  }, []);
+  return data;
 }
 
 // Site assets that are gitignored locally (enemy sprites, banners, enemy

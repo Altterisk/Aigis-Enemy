@@ -328,12 +328,39 @@ export interface Texts {
   class_texts: Record<string, string>;
 }
 
-// one Prince title card (data/prince_titles.json).
+// one PlayerTitle.atb row (data/prince_titles.json). effect 1 HP%, 2 ATK%,
+// 3 DEF%, 4 skill-effect up (power = the %); 5 = the Prince becomes `card`.
 export interface PrinceTitle {
-  id: number;
-  name: string;
-  name_en?: string | null;
-  level?: number; // repeated identical titles = successive upgrade levels
+  title: string;
+  group: number;        // one title family; its rows are levels 1..n
+  level: number;
+  effect: number;
+  power: number;
+  explan: string;
+  card?: number;
+  card_name?: string | null;
+  card_name_en?: string | null;
+  condition?: string;   // in-game unlock text (JP)
+  player_rank?: number;
+  quests?: number[];
+}
+
+// data/war_god_blessings.json: War God Blessing items (ItemID -> name) and
+// their AbilityConfig rows, each tagged with the item that gates it.
+export interface WarGodBlessings {
+  items: Record<string, string>;
+  rows: (AbilityInfluence & { item: string; config_id: number })[];
+}
+
+// data/possession_buffs.json: every real unit's 【所持効果】 rows (ability
+// invoke 7), tagged with the carrier `u`, its ability slot and ability id.
+export interface PossessionBuffs {
+  rows: (AbilityInfluence & { u: number; slot: string; ability?: number | null })[];
+}
+
+export interface PrinceData {
+  base: { id: number; name?: string | null; name_en?: string | null };
+  titles: PrinceTitle[];
 }
 
 // global enemy id -> quest ids it appears in.

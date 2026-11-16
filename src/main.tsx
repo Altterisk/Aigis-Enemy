@@ -8,6 +8,7 @@ import EnemyList from "./pages/EnemyList";
 import EnemyDetail from "./pages/EnemyDetail";
 import UnitList from "./pages/UnitList";
 import UnitDetail from "./pages/UnitDetail";
+import Prince from "./pages/Prince";
 import TagPage from "./pages/TagPage";
 import ArtistPage from "./pages/ArtistPage";
 import Buffs from "./pages/Buffs";
@@ -37,6 +38,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="enemies/:id" element={<EnemyDetail />} />
           <Route path="units" element={<UnitList />} />
           <Route path="units/:id" element={<UnitDetail />} />
+          <Route path="prince" element={<Prince />} />
           <Route path="tags/:tag" element={<TagPage />} />
           <Route path="artists" element={<ArtistPage />} />
           <Route path="buffs" element={<Buffs />} />

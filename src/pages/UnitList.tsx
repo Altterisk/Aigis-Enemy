@@ -180,7 +180,7 @@ export default function UnitList() {
   }, [mentionTag, mentions]);
 
   const princeCount = useMemo(
-    () => (units || []).filter((u) => u.prince && u.id !== 1).length,
+    () => (units || []).filter((u) => u.prince).length,
     [units]
   );
 
@@ -258,9 +258,8 @@ export default function UnitList() {
     const anyExplicit = Boolean(term || classFilter || tagFilter);
     return units.filter((u) => {
       if (!showNpc && u.npc && !anyExplicit) return false;
-      // prince titles collapse into the CardID 1 tile (explicit search /
-      // class / tag lookups still surface them individually)
-      if (u.prince && u.id !== 1 && !anyExplicit) return false;
+      // the Prince and his title cards live on /prince
+      if (u.prince) return false;
       if (classFilter && !(u.class_names || []).includes(classFilter)) return false;
       if (tagFilter && !(u.tags || []).includes(tagFilter)) return false;
       if (cls && !(u.class_names || []).includes(cls)) return false;
@@ -404,6 +403,17 @@ export default function UnitList() {
 
       {shown.length === 0 && <EmptyState title="No units match these filters." hint="Change the search or clear the filters." />}
 
+      {princeCount > 0 && (
+        <Link to="/prince" className="prince-list-link">
+          <UnitImage kind="icon" id={1} className="unit-icon-mini" alt="" />
+          <span>
+            <strong>Prince</strong>
+            <span className="muted"> — the Prince and his {princeCount - 1} title cards are on their own page</span>
+          </span>
+          <span aria-hidden="true" className="prince-list-arrow">→</span>
+        </Link>
+      )}
+
       <div className="unit-grid">
         {shown.map((u) => (
           <Link to={`/units/${u.id}`} className="enemy-tile unit-tile" key={u.id}>
@@ -417,7 +427,6 @@ export default function UnitList() {
               </div>
               <div className="enemy-tile-attr">
                 {u.rarity} · {(u.class && loc?.classes[u.class]) || u.class || "?"} {u.ranged ? "(ranged)" : ""}
-                {u.id === 1 && princeCount > 0 && ` · +${princeCount} titles`}
               </div>
               {u.tags && u.tags.length > 0 && (
                 <div className="muted small unit-tile-tags">

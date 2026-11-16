@@ -170,6 +170,8 @@ export interface ExprNames {
   classes: [number, string][]; // class id -> chain base name, in table order
   class_root: Record<string, number>; // class id -> chain root id (only when different)
   skills: Record<string, string>; // skill id -> JP name
+  non_omni_types?: number[]; // class types some real unit deploys melee-only or ranged-only
+  npc_cards?: number[]; // NPC / placeholder card ids
 }
 
 interface Tables {
@@ -177,9 +179,14 @@ interface Tables {
   classTypeNames: Map<number, string[]>;
   classRoot: Map<number, number>;
   skillName: Map<number, string>;
+  nonOmniTypes: Set<number>;
+  npcCards: Set<number>;
 }
 
-let tables: Tables = { className: new Map(), classTypeNames: new Map(), classRoot: new Map(), skillName: new Map() };
+let tables: Tables = {
+  className: new Map(), classTypeNames: new Map(), classRoot: new Map(), skillName: new Map(),
+  nonOmniTypes: new Set(), npcCards: new Set(),
+};
 const memo = new Map<string, string | null>();
 
 export function setExprNames(n: ExprNames): void {
@@ -195,6 +202,8 @@ export function setExprNames(n: ExprNames): void {
     classTypeNames,
     classRoot: new Map(Object.entries(n.class_root).map(([k, v]) => [Number(k), v])),
     skillName: new Map(Object.entries(n.skills).map(([k, v]) => [Number(k), v])),
+    nonOmniTypes: new Set(n.non_omni_types ?? []),
+    npcCards: new Set(n.npc_cards ?? []),
   };
   memo.clear();
 }
@@ -414,10 +423,26 @@ function humanizeRaw(expr: string): string | null {
   s = s.replace(/\(\s*(and|or)\s+/g, "(");
   s = s.replace(/^(and|or)\s+|\s+(and|or)$/g, "").trim();
   s = s.replace(/\(\s*([^()]*?)\s*\)/g, "($1)");
-  s = unwrap(s);
+  s = unwrap(balanceParens(s));
   quoted.forEach((q, i) => { s = s.split(`\x00Q${i}\x00`).join(q); });
   stashed.forEach((q, i) => { s = s.split(`\x00S${i}\x00`).join(q); });
   return s || null;
+}
+
+// Drops parentheses with no partner -- a few game scripts carry a stray ")"
+// (e.g. `IsIdentitiy("飛行"));`), which would otherwise show up in the text.
+function balanceParens(s: string): string {
+  const drop = new Set<number>();
+  const open: number[] = [];
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === "(") open.push(i);
+    else if (s[i] === ")") {
+      if (open.length) open.pop();
+      else drop.add(i);
+    }
+  }
+  open.forEach((i) => drop.add(i));
+  return drop.size ? [...s].filter((_, i) => !drop.has(i)).join("") : s;
 }
 
 // "(A and B)" -> "A and B" when one pair of parentheses wraps the whole text
@@ -435,6 +460,250 @@ function unwrap(s: string): string {
     out = out.slice(1, -1).trim();
   }
   return out;
+}
+
+// ---- recipient phrases ----------------------------------------------------
+// A recipient filter (a group-target row's command / expression) rewritten as
+// the recipients themselves: "raises the ATK of the Prince and Dragon allies"
+// instead of "of all allies (only units where it is the Prince or ...)".
+// The filter is parsed into a tree; unit traits become adjectives or nouns,
+// negated ones exclusions. Anything that is not a plain unit trait (enemy-side
+// checks, card-id ranges, counts, emblems, ...) returns null and the caller
+// keeps the "(only units where ...)" wording.
+
+type Node =
+  | { t: "call"; name: string; args: string }
+  | { t: "not"; x: Node }
+  | { t: "and" | "or"; xs: Node[] }
+  | { t: "num"; v: number }
+  | { t: "cmp"; op: string; l: Node; r: Node };
+
+function parseExpr(src: string): Node | null {
+  const toks = src.match(/"[^"]*"|\d+|[A-Za-z_]\w*\s*\((?:"[^"]*"|[^()"])*\)|&&|\|\||==|!=|>=|<=|[()!<>]/g) || [];
+  let i = 0;
+  const fail = (): never => { throw new Error("parse"); };
+  const primary = (): Node => {
+    const t = toks[i++];
+    if (t === undefined) return fail();
+    if (t === "(") {
+      const n = or();
+      if (toks[i++] !== ")") fail();
+      return n;
+    }
+    if (t === "!") return { t: "not", x: unary() };
+    if (/^\d+$/.test(t)) return { t: "num", v: Number(t) };
+    const m = t.match(/^([A-Za-z_]\w*)\s*\(((?:"[^"]*"|[^()"])*)\)$/);
+    return m ? { t: "call", name: m[1], args: m[2] } : fail();
+  };
+  const unary = (): Node => {
+    const l = primary();
+    const op = toks[i];
+    if (op && ["==", "!=", ">=", "<=", "<", ">"].includes(op)) {
+      i++;
+      return { t: "cmp", op, l, r: primary() };
+    }
+    return l;
+  };
+  const and = (): Node => {
+    const xs = [unary()];
+    while (toks[i] === "&&") { i++; xs.push(unary()); }
+    return xs.length > 1 ? { t: "and", xs } : xs[0];
+  };
+  const or = (): Node => {
+    const xs = [and()];
+    while (toks[i] === "||") { i++; xs.push(and()); }
+    return xs.length > 1 ? { t: "or", xs } : xs[0];
+  };
+  try {
+    const n = or();
+    return i === toks.length ? norm(n) : null;
+  } catch {
+    return null;
+  }
+}
+
+// X()==1 / X()!=0 -> X(); X()==0 / X()!=1 -> !X(); nested and/or flattened
+function norm(n: Node): Node {
+  if (n.t === "cmp" && n.r.t === "num" && (n.r.v === 0 || n.r.v === 1) && (n.op === "==" || n.op === "!=")) {
+    const truthy = (n.op === "==") === (n.r.v === 1);
+    const l = norm(n.l);
+    if (l.t === "call" && /^Get/.test(l.name)) return n;
+    return truthy ? l : { t: "not", x: l };
+  }
+  if (n.t === "not") {
+    const x = norm(n.x);
+    return x.t === "not" ? x.x : { t: "not", x };
+  }
+  if (n.t === "and" || n.t === "or") {
+    const kind = n.t;
+    const xs = n.xs.map(norm).flatMap((x) => (x.t === kind ? (x as { xs: Node[] }).xs : [x]));
+    return { t: kind, xs };
+  }
+  return n;
+}
+
+// gender first, then melee/ranged, then tags: "female melee Flying"
+const adjRank = (w: string) => (w === "male" || w === "female" ? 0 : /^(melee|ranged)/.test(w) ? 1 : 2);
+const sortAdj = (xs: string[]) => [...xs].sort((a, b) => adjRank(a) - adjRank(b));
+
+// one member of a recipient set: an adjective ("Flying") or a noun ("the Prince")
+interface Atom { adj?: string; noun?: string }
+interface Desc {
+  union: Atom[] | null; // alternatives; null = no list
+  adj: string[];        // ANDed adjectives
+  other: boolean;       // !IsOwnerUnit
+  except: string[];
+  flags: Set<string>;   // excluded kinds: tokens / guests / borrowed units
+}
+// card Rare id -> rarity name (as the unit list shows it)
+const RARITY_NAME: Record<number, string> = {
+  0: "Iron", 1: "Bronze", 2: "Silver", 3: "Gold", 4: "Platinum", 5: "Black", 7: "Sapphire",
+  10: "Platinum Hero", 11: "Black Hero",
+};
+const RECIPIENT_TAG_PREDS = new Set(["IsIdentitiy", "IsIdentity", "IsRace", "IsGenus", "IsAssign"]);
+const FLAG_PREDS: Record<string, string> = {
+  IsToken: "tokens", IsGuestUnit: "guest units", IsPlayerSupportUnit: "borrowed support units",
+};
+
+const listAnd = (xs: string[]) => (xs.length < 3 ? xs.join(" and ") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
+const listOr = (xs: string[]) => (xs.length < 3 ? xs.join(" or ") : `${xs.slice(0, -1).join(", ")} or ${xs[xs.length - 1]}`);
+const nums = (args: string) => args.split(",").map((p) => p.trim()).filter(isDigits).map(Number);
+
+function classAtom(name: string, args: string): Atom {
+  const ids = nums(args);
+  if (name === "IsClassID") return { adj: classIdListText(ids.map(String)) };
+  if (ids.length > 4) return { noun: `allies of ${ids.length} class types` };
+  return { adj: ids.map((t) => classTypeText(String(t))).join(" / ") };
+}
+
+// a positive unit trait as recipient atoms, or null. `flags` collects the
+// token / guest / borrowed exclusions found inside OR branches.
+function atomsOf(n: Node, flags?: Set<string>): Atom[] | null {
+  if (n.t === "and") {
+    // one OR branch that is several traits at once: "melee and omni White Empire"
+    const d = describe(n);
+    if (!d || d.other || d.except.length) return null;
+    // "the Prince and not a token": the noun alone
+    if (d.union && d.union.length === 1 && d.union[0].noun && !d.adj.length) {
+      d.flags.forEach((f) => flags?.add(f));
+      return d.union;
+    }
+    if (d.union || !d.adj.length) return null;
+    d.flags.forEach((f) => flags?.add(f));
+    return [{ adj: sortAdj(d.adj).join(" ") }];
+  }
+  if (n.t === "or") {
+    const calls = n.xs.filter((x): x is Extract<Node, { t: "call" }> => x.t === "call");
+    // melee/ranged OR a list of omni class types: "melee and omni"
+    const pos = calls.find((c) => c.name === "IsVanguard" || c.name === "IsRearguard");
+    const cls = calls.find((c) => c.name === "IsClassType");
+    if (n.xs.length === 2 && pos && cls && tables.nonOmniTypes.size
+      && nums(cls.args).every((t) => !tables.nonOmniTypes.has(t))) {
+      return [{ adj: `${pos.name === "IsVanguard" ? "melee" : "ranged"} and omni` }];
+    }
+    const out: Atom[] = [];
+    for (const x of n.xs) {
+      const a = atomsOf(x, flags);
+      if (!a) return null;
+      out.push(...a);
+    }
+    return out;
+  }
+  if (n.t !== "call") return null;
+  const raw = n.args.trim();
+  if (n.name === "IsOwnerUnit" && !raw) return [{ noun: "itself" }];
+  if ((n.name === "IsRarity" || n.name === "IsRaryty") && nums(raw).length && nums(raw).every((r) => RARITY_NAME[r])) {
+    return [{ adj: listOr(nums(raw).map((r) => RARITY_NAME[r])) }];
+  }
+  if (n.name === "IsPrince" && !raw) return [{ noun: "the Prince" }];
+  if (n.name === "IsVanguard" && !raw) return [{ adj: "melee" }];
+  if (n.name === "IsRearguard" && !raw) return [{ adj: "ranged" }];
+  if (n.name === "IsGender" && GENDER[raw]) return [{ adj: GENDER[raw] }];
+  if (n.name === "IsToken" && !raw) return [{ noun: "tokens" }];
+  if (n.name === "IsServantToken" && !raw) return [{ noun: "servant tokens" }];
+  if (RECIPIENT_TAG_PREDS.has(n.name) && raw) return fmtArgs(n.name, n.args).split(", ").map((a) => ({ adj: a }));
+  if ((n.name === "IsClassType" || n.name === "IsClassID") && nums(raw).length) return [classAtom(n.name, raw)];
+  if (n.name === "IsCardID" && nums(raw).length) {
+    const ids = nums(raw);
+    return ids.length > 6 ? [{ noun: `${ids.length} specific units` }] : ids.map((id) => ({ noun: `[[unit:${id}]]` }));
+  }
+  return null;
+}
+
+// records what a negated trait removes; false when it cannot be said
+function exclusionOf(x: Node, d: Desc): boolean {
+  if (x.t === "call" && x.name === "IsOwnerUnit" && !x.args.trim()) { d.other = true; return true; }
+  if (x.t === "call" && FLAG_PREDS[x.name] && !x.args.trim()) { d.flags.add(FLAG_PREDS[x.name]); return true; }
+  if (x.t === "call" && (x.name === "IsCardID" || x.name === "IsCardID_EBT")) {
+    const ids = nums(x.args);
+    // only placeholders (barricades, decorations, dummies): no real unit is left out
+    if (ids.length && ids.every((id) => tables.npcCards.has(id))) return true;
+    d.except.push(ids.length > 6 ? `${ids.length} specific units` : listAnd(ids.map((id) => `[[unit:${id}]]`)));
+    return true;
+  }
+  const atoms = atomsOf(x);
+  if (!atoms) return false;
+  const adjs = atoms.filter((a) => a.adj).map((a) => a.adj!);
+  const nouns = atoms.filter((a) => a.noun).map((a) => a.noun!);
+  if (adjs.length) d.except.push(`${listAnd(adjs)} units`);
+  d.except.push(...nouns.map((x) => x.replace(/^allies of (\d+ class types)$/, "$1")));
+  return true;
+}
+
+function describe(n: Node): Desc | null {
+  const d: Desc = { union: null, adj: [], other: false, except: [], flags: new Set() };
+  for (const x of n.t === "and" ? n.xs : [n]) {
+    if (x.t === "not") {
+      if (!exclusionOf(x.x, d)) return null;
+      continue;
+    }
+    const atoms = atomsOf(x, d.flags);
+    if (!atoms) return null;
+    if (atoms.length === 1 && atoms[0].adj) { d.adj.push(atoms[0].adj); continue; }
+    if (d.union) return null; // two alternative lists cannot be said as one
+    d.union = atoms;
+  }
+  return d;
+}
+
+/** The recipients a group-target filter selects, phrased in place of `obj`
+ * ("all allies" / "allies in range"), or null when the filter is not a plain
+ * unit-trait filter. */
+export function recipientPhrase(expr: string | null | undefined, obj: string): string | null {
+  if (!expr || (obj !== "all allies" && obj !== "allies in range")) return null;
+  let s = expr.trim().replace(/;+\s*$/, "").trim();
+  s = balanceParens(s.replace(/;\s*(?=\)|&&|\|\|)/g, ""));
+  s = s.replace(/GetGender\(\)\s*==\s*([01])/g, "IsGender($1)");
+  const tree = parseExpr(s);
+  const d = tree && describe(tree);
+  if (!d) return null;
+  const inRange = obj === "allies in range" ? " in range" : "";
+  const adjs = sortAdj(d.adj);
+  const lead = d.other ? "other " : "";
+  let phrase: string;
+  if (!d.union) {
+    // fully understood but nothing left to say (only placeholders excluded)
+    if (!adjs.length && !d.other && !d.except.length && !d.flags.size) return obj;
+    phrase = adjs.length || d.other
+      ? `${lead}${adjs.join(" ")}${adjs.length ? " " : ""}allies${inRange}`
+      : `${inRange ? "" : "all "}allies${inRange}`;
+  } else {
+    const nouns = d.union.filter((a) => a.noun).map((a) => a.noun!);
+    const alt = d.union.filter((a) => a.adj).map((a) => a.adj!);
+    if (nouns.length && adjs.length) return null;
+    const allies = alt.length ? `${lead}${[...adjs, listOr(alt)].join(" ")} allies${inRange}` : null;
+    if (nouns.length && inRange && allies) return null;
+    // "the Prince" and "itself" first, then the allies part, then other nouns
+    const head = nouns.filter((x) => x === "the Prince" || x === "itself");
+    const rest = nouns.filter((x) => x !== "the Prince" && x !== "itself");
+    phrase = listAnd([...head, ...(allies ? [allies] : []), ...rest]);
+    if (!allies && inRange) phrase = `${phrase} in range`;
+    if (d.other && !allies) phrase = `${phrase} (other than itself)`;
+  }
+  const notes: string[] = [];
+  if (d.except.length) notes.push(`except ${listAnd(d.except)}`);
+  if (d.flags.size) notes.push(`not ${listOr([...d.flags])}`);
+  return notes.length ? `${phrase} (${notes.join("; ")})` : phrase;
 }
 
 // Readable English for one condition script, or null when it is empty.

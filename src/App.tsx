@@ -22,6 +22,7 @@ export default function App() {
       nav={
         <>
           <NavLink to="/units">Units</NavLink>
+          <NavLink to="/prince">Prince</NavLink>
           <NavLink to="/collection">Collection</NavLink>
           <NavLink to="/enemies">Enemies</NavLink>
           <NavLink to="/stages">Stages</NavLink>

@@ -10,8 +10,10 @@ attributes (effect influence ids) are shown raw, never invented.
 The `/collection` route stores unit checks in browser local storage. It has
 collapsible groups, full unit-list filters, bulk check/uncheck, and reversible
 rarity-grouped or continuous implementation-date ordering. Rarity mode splits
-Hero, Chibi, Support, Event, and Gacha/Paid collections. Prince title classes
-sharing a normalized class/icon count as one separate Prince entry. Unit names
+Hero, Chibi, Support, Event, and Gacha/Paid collections. Prince cards (the
+`prince` flag) sharing a normalized class/icon count as one separate Prince
+entry. The `/prince` route lists the Prince's title forms, their levels and
+the stat titles; Prince cards are not shown in the unit list. Unit names
 link to details; Hall-of-Fame and eligible bond-quest completion buttons are
 stored with the checklist. The Backup panel has a copy/paste AIGC3 restore
 code (compact, versioned and checksummed; AIGC2 and AIGC1 codes still restore)

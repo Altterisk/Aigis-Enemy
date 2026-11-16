@@ -1,9 +1,12 @@
 import { useState, useEffect, createContext, useContext } from "react";
+import { explanEn, familyOfCard, familyTitle, princeFamilies } from "../prince";
+import type { PossessionBuffs, PrinceData, UnitIndexEntry, WarGodBlessings } from "../types";
+import { both, evaluate, targetFacts } from "../condEval";
 import type { ReactNode } from "react";
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
-import { tagName, useUnitDetail, useUnitInfluenceLabels, useLocalisation, useTexts, usePrinceTitles, useMissiles, useAbilityConfigs, useUnitSpeech, unitImageUrl, unitAnimUrl, affectionStat, useExprNames } from "../data";
-import { UnitImage, missileText, fillLabel, HumanText, fmtFrames, ColorCodedText, routerLink, plainConditionText } from "../components";
-import { humanize } from "../humanize";
+import { tagName, useUnitDetail, useUnitInfluenceLabels, useLocalisation, useTexts, usePrinceTitles, useWarGodBlessings, usePossessionBuffs, useUnits, useMissiles, useAbilityConfigs, useUnitSpeech, unitImageUrl, unitAnimUrl, affectionStat, useExprNames } from "../data";
+import { UnitImage, UnitIconLink, missileText, fillLabel, HumanText, fmtFrames, ColorCodedText, routerLink, plainConditionText } from "../components";
+import { humanize, recipientPhrase } from "../humanize";
 import { Breadcrumbs, Lightbox, Panel, StatRows, TabPanel, UrlTabs, tabParam } from "@altterisk/game-hub";
 import type { RenderLink } from "@altterisk/game-hub";
 import { searchParamsAdapter } from "@altterisk/game-hub/filters";
@@ -1008,7 +1011,11 @@ function skillClause(
   const self = String(target ?? "self") === "self";
   const cond = EXPR_PROSE.has(inf.influence_type ?? -1) || ownerOnly ? undefined
     : realCondition(inf.expression, humanize(inf.expression));
+  // a plain unit-trait filter on a group target narrows the recipient itself
+  const skillObj = recipient("skill", target).obj;
+  const who = cond && !self && full.includes(skillObj) ? recipientPhrase(inf.expression, skillObj) : null;
   const gated = !cond ? full
+    : who ? full.replace(skillObj, who)
     : self ? `${full} if ${cond}` : `${full} (only units where ${cond})`;
   const rule = influenceSelectionRule("skill", inf.influence_type, groupChangeFunction);
   return {
@@ -1051,11 +1058,24 @@ function abilityClause(
   // like a skill expression, the command filters recipients on a group target
   const cmd = inf.influence_type === 72 || COMMAND_PROSE.has(inf.influence_type ?? -1) ? null : realCondition(inf.command, humanize(inf.command));
   const self = String(inf.target ?? "self") === "self";
+  // a filter of plain unit traits narrows the recipient itself:
+  // "raises the ATK of Flying allies" rather than "of all allies (only units where ...)"
+  const obj = recipient("ability", inf.target).obj;
+  const narrow = (raw?: string | null): boolean => {
+    const who = !self && full.includes(obj) ? recipientPhrase(raw, obj) : null;
+    if (!who) return false;
+    full = full.replace(obj, who);
+    return true;
+  };
+  const narrowed = !!cmd && narrow(inf.command);
   const core = full;
-  if (/^\s*!IsOwnerUnit\(\);?\s*$/.test(inf.command ?? "")) full += " (excluding itself)";
+  if (narrowed) { /* the filter is already in the recipient */ }
+  else if (/^\s*!IsOwnerUnit\(\);?\s*$/.test(inf.command ?? "")) full += " (excluding itself)";
   else if (cmd && !(self && /^\s*IsOwnerUnit\(\);?\s*$/.test(inf.command ?? ""))) full += self ? ` if ${cmd}` : ` (only units where ${cmd})`;
   const ncc = humanize(inf.no_change_condition) || inf.no_change_condition;
-  if (ncc && inf.no_change_condition !== inf.command) full += ` ${cmd ? "and" : "if"} ${ncc}`;
+  if (ncc && inf.no_change_condition !== inf.command && !(!narrowed && !cmd && narrow(inf.no_change_condition))) {
+    full += ` ${cmd ? "and" : "if"} ${ncc}`;
+  }
   // a tier-only activate condition becomes the sentence lead instead
   const tier = tierOnly(inf.activate_command);
   const act = tier != null ? undefined : realCondition(inf.activate_command, humanize(inf.activate_command));
@@ -1673,6 +1693,251 @@ function AbilityBlock({
   );
 }
 
+// War God Blessing rows that can reach this unit. A row's three
+// expressions are evaluated per class tier against the unit's facts; team /
+// battle conditions stay unknown (null), so a row is listed unless every tier
+// is ruled out. p4 is the stack key: rows sharing it do not stack.
+const BLESSING_GROUPS: [number | null, string][] = [
+  [10001, "Class"], [11001, "Attribute"], [12001, "Sortie"], [null, "Other"],
+];
+// a stray ";" before ")", "&&" or "||" in a few rows would break the
+// expression parser
+const cleanExpr = (x?: string | null) => (x || "").replace(/;\s*(?=\)|&&|\|\|)/g, "");
+
+interface BlessingMatch {
+  row: WarGodBlessings["rows"][number];
+  always: boolean;          // no team / battle condition left
+  tiers: number[] | null;   // cc tiers it reaches, null = every tier
+}
+
+function blessingMatches(unit: Unit, data: WarGodBlessings): BlessingMatch[] {
+  const out: BlessingMatch[] = [];
+  for (const row of data.rows) {
+    const per = unit.classes.map((cl) => {
+      const ctx = { skillActive: false, skillId: null, skillUnknown: true, classChange: cl.cc,
+        target: targetFacts(unit, cl), possession: true };
+      return both(both(evaluate(cleanExpr(row.activate_command), ctx), evaluate(cleanExpr(row.command), ctx)),
+        evaluate(cleanExpr(row.no_change_condition), ctx));
+    });
+    if (per.every((t) => t === false)) continue;
+    const reached = unit.classes.filter((_, i) => per[i] !== false).map((cl) => cl.cc);
+    out.push({
+      row,
+      always: per.some((t) => t === true),
+      tiers: reached.length === unit.classes.length ? null : [...new Set(reached)],
+    });
+  }
+  return out;
+}
+
+function BlessingPanel({
+  matches, items, labels,
+}: { matches: BlessingMatch[]; items: Record<string, string>; labels: Record<string, UnitInfluenceLabel> }) {
+  const missiles = useContext(MissilesContext);
+  const abilityConfigs = useContext(AbilityConfigsContext);
+  const names = useContext(UnitNamesContext);
+  if (!matches.length) {
+    return <Panel title="War God Blessing"><p className="muted">No War God Blessing can buff this unit.</p></Panel>;
+  }
+  return (
+    <>
+      <p className="muted small blessing-intro">
+        War God Blessing (戦神の加護) items whose buff can reach this unit. A blessing works while the item
+        is owned and its conditions hold; rows sharing a stack key (p4) do not stack, only the highest applies.
+      </p>
+      {BLESSING_GROUPS.map(([key, title]) => {
+        const inGroup = matches.filter((m) =>
+          key == null ? !BLESSING_GROUPS.some(([k]) => k != null && k === m.row.params?.[3]) : m.row.params?.[3] === key);
+        if (!inGroup.length) return null;
+        const byItem = new Map<string, BlessingMatch[]>();
+        for (const m of inGroup) byItem.set(m.row.item, [...(byItem.get(m.row.item) || []), m]);
+        return (
+          <Panel key={title} title={`${title} blessings (${byItem.size})`} actions={<InfluenceViewToggles />}>
+            <table className="grid unit-detail-table blessing-table">
+              <thead><tr><th>Blessing</th><th>Effect</th></tr></thead>
+              <tbody>
+                {[...byItem.entries()].map(([item, ms]) => {
+                  const rows = ms.map((m) => m.row);
+                  const tiers = ms.find((m) => m.tiers)?.tiers;
+                  return (
+                    <tr key={item}>
+                      <td className="unit-class-name-cell">
+                        {items[item] || item}
+                        <div className="muted small">{item.replace("battle_god_bless_", "#")}</div>
+                        {ms.every((m) => m.always) && <span className="badge sky">always</span>}
+                      </td>
+                      <td className="skill-text">
+                        {tiers && (
+                          <div className="muted small">
+                            Only at: {tiers.map((cc) => names?.tier(cc) || `tier ${cc}`).join(", ")}
+                          </div>
+                        )}
+                        <InfluenceViews count={rows.length} sentences={abilitySentences(rows, labels, missiles, abilityConfigs, names)}>
+                          <ul className="effects">
+                            {rows.map((inf, j) => (
+                              <AbilityInfluenceRow
+                                inf={inf} i={j} key={j} labelsMap={labels}
+                                label={inf.influence_type != null ? labels[String(inf.influence_type)] : undefined}
+                              />
+                            ))}
+                          </ul>
+                        </InfluenceViews>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </Panel>
+        );
+      })}
+    </>
+  );
+}
+
+// 【所持効果】 possession effects (ability invoke 7, "while in the 1st
+// barrack"): owning the carrier applies the row to every unit its conditions
+// select. Evaluated per class tier of THIS unit like the blessings above, with
+// the carrier as the row's owner (IsOwnerUnit).
+type PossessionRow = PossessionBuffs["rows"][number];
+interface PossessionMatch { row: PossessionRow; always: boolean; tiers: number[] | null }
+
+function possessionMatches(unit: Unit, data: PossessionBuffs): PossessionMatch[] {
+  const out: PossessionMatch[] = [];
+  for (const row of data.rows) {
+    const per = unit.classes.map((cl) => {
+      const ctx = { skillActive: false, skillId: null, skillUnknown: true, classChange: cl.cc,
+        target: targetFacts(unit, cl), ownerId: row.u, possession: true };
+      return both(both(evaluate(cleanExpr(row.activate_command), ctx), evaluate(cleanExpr(row.command), ctx)),
+        evaluate(cleanExpr(row.no_change_condition), ctx));
+    });
+    if (per.every((t) => t === false)) continue;
+    const reached = unit.classes.filter((_, i) => per[i] !== false).map((cl) => cl.cc);
+    out.push({
+      row,
+      always: per.some((t) => t === true),
+      tiers: reached.length === unit.classes.length ? null : [...new Set(reached)],
+    });
+  }
+  return out;
+}
+
+const POSSESSION_SLOT: Record<string, string> = { default: "Ability", awakened: "Awakened ability" };
+
+// Stat rows a possession effect can carry: ability 12/13/14 = HP/ATK/DEF %
+// (value p1), 15/21 = MR/Range flat (1st-barrack value p2). Other types
+// (UP recovery, ...) are not stats and stay out of the totals.
+const POSSESSION_STATS: { type: number; stat: string; param: number; pct: boolean }[] = [
+  { type: 12, stat: "HP", param: 0, pct: true },
+  { type: 13, stat: "ATK", param: 0, pct: true },
+  { type: 14, stat: "DEF", param: 0, pct: true },
+  { type: 15, stat: "MR", param: 1, pct: false },
+  { type: 21, stat: "Range", param: 1, pct: false },
+];
+
+// Per stat: rows sharing a stack key (influence type + p4) count once, at
+// their highest value; the stack groups then add up. `sure` uses only rows
+// with no condition left on every tier, `max` every row that can apply.
+function possessionTotals(matches: PossessionMatch[]) {
+  return POSSESSION_STATS.map((s) => {
+    const sum = (ms: PossessionMatch[]) => {
+      const best = new Map<number, number>();
+      for (const m of ms) {
+        if (m.row.influence_type !== s.type) continue;
+        const v = m.row.params?.[s.param] ?? 0;
+        const key = m.row.params?.[3] ?? 0;
+        best.set(key, Math.max(best.get(key) ?? 0, v));
+      }
+      return [...best.values()].reduce((a, b) => a + b, 0);
+    };
+    return { ...s, sure: sum(matches.filter((m) => m.always && !m.tiers)), max: sum(matches) };
+  }).filter((t) => t.max > 0);
+}
+
+function PossessionPanel({
+  matches, labels, unitsById,
+}: {
+  matches: PossessionMatch[]; labels: Record<string, UnitInfluenceLabel>;
+  unitsById: Map<number, UnitIndexEntry> | null;
+}) {
+  const missiles = useContext(MissilesContext);
+  const abilityConfigs = useContext(AbilityConfigsContext);
+  const names = useContext(UnitNamesContext);
+  if (!matches.length) {
+    return <Panel title="Possession buffs"><p className="muted">No unit's possession effect can buff this unit.</p></Panel>;
+  }
+  const bySource = new Map<number, PossessionMatch[]>();
+  for (const m of matches) bySource.set(m.row.u, [...(bySource.get(m.row.u) || []), m]);
+  const sources = [...bySource.keys()].sort((a, b) => b - a);
+  const totals = possessionTotals(matches);
+  return (
+    <Panel title={`Possession buffs (${sources.length} units)`} actions={<InfluenceViewToggles />}>
+      <p className="muted small">
+        Units whose possession effect (【所持効果】) can buff this unit: it applies while the carrier is owned
+        and kept in the 1st barrack. Rows sharing a stack key (p4) do not stack; only the highest applies.
+      </p>
+      {totals.length > 0 && (
+        <div className="possession-totals">
+          <span className="muted small">Total with every carrier owned</span>
+          {totals.map((t) => (
+            <span className="possession-total" key={t.stat}>
+              <strong>{t.stat}</strong> +{t.sure}{t.pct ? "%" : ""}
+              {t.max !== t.sure && (
+                <span className="muted small"> (up to +{t.max}{t.pct ? "%" : ""} with conditions)</span>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
+      <table className="grid unit-detail-table possession-table">
+        <thead><tr><th>Unit</th><th>Effect</th></tr></thead>
+        <tbody>
+          {sources.flatMap((id) => {
+            const src = unitsById?.get(id);
+            const slots = new Map<string, PossessionMatch[]>();
+            for (const m of bySource.get(id)!) slots.set(m.row.slot, [...(slots.get(m.row.slot) || []), m]);
+            return [...slots.entries()].map(([slot, ms], k) => {
+              const rows = ms.map((m) => m.row);
+              const tiers = ms.find((m) => m.tiers)?.tiers;
+              return (
+                <tr key={`${id}-${slot}`}>
+                  {k === 0 && (
+                    <td className="unit-class-name-cell" rowSpan={slots.size}>
+                      <UnitIconLink id={id} name={src?.name_en || src?.name} />
+                      {src?.rarity && <div className="muted small">{src.rarity}</div>}
+                    </td>
+                  )}
+                  <td className="skill-text">
+                    {(slots.size > 1 || ms.every((m) => m.always) || tiers) && (
+                      <div className="muted small possession-meta">
+                        {[
+                          slots.size > 1 ? (POSSESSION_SLOT[slot] || slot) : null,
+                          ms.every((m) => m.always) ? <span className="badge sky" key="a">always</span> : null,
+                          tiers ? `only at: ${tiers.map((cc) => names?.tier(cc) || `tier ${cc}`).join(", ")}` : null,
+                        ].filter(Boolean).map((x, i) => <span key={i}>{i > 0 && " · "}{x}</span>)}
+                      </div>
+                    )}
+                    <InfluenceViews count={rows.length} sentences={abilitySentences(rows, labels, missiles, abilityConfigs, names)}>
+                      <ul className="effects">
+                        {rows.map((inf, j) => (
+                          <AbilityInfluenceRow
+                            inf={inf} i={j} key={j} labelsMap={labels}
+                            label={inf.influence_type != null ? labels[String(inf.influence_type)] : undefined}
+                          />
+                        ))}
+                      </ul>
+                    </InfluenceViews>
+                  </td>
+                </tr>
+              );
+            });
+          })}
+        </tbody>
+      </table>
+    </Panel>
+  );
+}
+
 // Compact stats: ONE row per class tier, each stat cell showing the Lv1 -> max
 // range (rarity lives in the infobox banner, AFF bonuses below the table).
 function statRange(vals: number[]): string {
@@ -2065,6 +2330,39 @@ function BackToUnits({ children, className }: { children: ReactNode; className?:
   );
 }
 
+// Where a Prince card sits among his titles: its family's levels, linked.
+function PrinceBar({ unitId, data }: { unitId: number; data: PrinceData }) {
+  const { forms } = princeFamilies(data);
+  const fam = familyOfCard(forms, unitId);
+  if (!fam) {
+    return (
+      <div className="prince-bar">
+        <span>Base Prince, no title equipped.</span>
+        <Link to="/prince">All {forms.length} title forms →</Link>
+      </div>
+    );
+  }
+  const row = fam.rows.find((r) => r.card === unitId)!;
+  return (
+    <div className="prince-bar">
+      <span>
+        Prince title <strong>{familyTitle(fam)}</strong>
+        {fam.rows.length > 1 && <span className="muted"> · Lv{row.level} of {fam.rows.length}</span>}
+      </span>
+      {fam.rows.length > 1 && (
+        <span className="prince-bar-levels">
+          {fam.rows.map((r) => r.card === unitId ? (
+            <strong key={r.card} className="prince-level-link is-current" title={explanEn(r) || r.explan}>Lv{r.level}</strong>
+          ) : (
+            <Link key={r.card} to={`/units/${r.card}`} className="prince-level-link" title={explanEn(r) || r.explan}>Lv{r.level}</Link>
+          ))}
+        </span>
+      )}
+      <Link to="/prince">All Prince titles →</Link>
+    </div>
+  );
+}
+
 // breadcrumb links: the Units crumb goes back to the previous list view
 const crumbLink: RenderLink = ({ href, className, children }) =>
   href === "/units"
@@ -2081,6 +2379,9 @@ export default function UnitDetail() {
   const loc = useLocalisation();
   const texts = useTexts();
   const princeTitles = usePrinceTitles();
+  const blessings = useWarGodBlessings();
+  const possession = usePossessionBuffs();
+  const unitIndex = useUnits();
   const missiles = useMissiles();
   const abilityConfigs = useAbilityConfigs();
   const speech = useUnitSpeech(unitId);
@@ -2180,6 +2481,11 @@ export default function UnitDetail() {
     skill: (id) => skillName.get(id) ?? undefined,
   };
 
+  const blessingMatchList = blessings ? blessingMatches(unit, blessings) : [];
+  const possessionMatchList = possession ? possessionMatches(unit, possession) : [];
+  const possessionSources = new Set(possessionMatchList.map((m) => m.row.u)).size;
+  const blessingItems = new Set(blessingMatchList.map((m) => m.row.item)).size;
+
   // the active tab lives in ?tab= (absent = stats); tabs with nothing to
   // show are hidden, and a ?tab= naming one of them falls back to stats
   const UNIT_TABS_WITH_HIDDEN = [
@@ -2188,6 +2494,8 @@ export default function UnitDetail() {
     { id: "abilities", label: "Abilities" },
     { id: "tokens", label: "Tokens", count: allTokens.length, hidden: allTokens.length === 0 },
     { id: "gallery", label: "Gallery" },
+    { id: "possession", label: "Possession buffs", count: possessionSources, hidden: possessionSources === 0 },
+    { id: "blessing", label: "War God Blessing", count: blessingItems, hidden: blessingItems === 0 },
     { id: "quotes", label: "Quotes", hidden: !speech },
   ];
   const [activeTab, selectTab] = tabParam(searchParamsAdapter(params, setParams), UNIT_TABS_WITH_HIDDEN);
@@ -2198,7 +2506,10 @@ export default function UnitDetail() {
     <TextsContext.Provider value={textMaps}>
     <UnitNamesContext.Provider value={unitNames}>
     <div className="detail unit-page">
-      <Breadcrumbs renderLink={crumbLink} items={[{ label: "Units", href: "/units" }, { label: displayName }]} />
+      <Breadcrumbs
+        renderLink={crumbLink}
+        items={[unit.prince ? { label: "Prince", href: "/prince" } : { label: "Units", href: "/units" }, { label: displayName }]}
+      />
 
       <aside className="unit-infobox">
         <div className={`unit-infobox-banner rarity-${unit.rarity_id}`}>{displayName}</div>
@@ -2292,26 +2603,7 @@ export default function UnitDetail() {
         {unit.npc && <span className="badge"> NPC/test</span>}
       </h2>
 
-      {unit.prince && princeTitles && princeTitles.length > 1 && (
-        <details className="prince-titles">
-          <summary>
-            Prince titles ({princeTitles.length}) — titles change his skills / abilities / stats
-          </summary>
-          <ul className="stage-links">
-            {princeTitles.map((t) => (
-              <li key={t.id}>
-                {t.id === unit.id ? (
-                  <strong>{t.name_en || t.name}{t.level ? ` (Lv ${t.level})` : ""} ← current</strong>
-                ) : (
-                  <Link to={`/units/${t.id}`}>
-                    {t.name_en || t.name}{t.level ? ` (Lv ${t.level})` : ""}
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
+      {unit.prince && princeTitles && <PrinceBar unitId={unit.id} data={princeTitles} />}
 
       <UrlTabs className="unit-tabs" tabs={UNIT_TABS_WITH_HIDDEN} active={activeTab} onChange={selectTab} label="Unit sections" idBase="unit" />
 
@@ -2421,6 +2713,18 @@ export default function UnitDetail() {
         })}
       </Panel>
       </TabPanel>
+      )}
+
+      {activeTab === "possession" && possession && (
+        <TabPanel tab="possession" idBase="unit">
+          <PossessionPanel matches={possessionMatchList} labels={abilityLabels} unitsById={unitIndex.byId} />
+        </TabPanel>
+      )}
+
+      {activeTab === "blessing" && blessings && (
+        <TabPanel tab="blessing" idBase="unit">
+          <BlessingPanel matches={blessingMatchList} items={blessings.items} labels={abilityLabels} />
+        </TabPanel>
       )}
 
       {activeTab === "quotes" && speech && (

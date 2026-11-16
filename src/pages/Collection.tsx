@@ -56,7 +56,7 @@ const RARITY_GROUP_ORDER: Record<string, number> = {
 };
 
 function isCollectionPrince(unit: UnitIndexEntry): boolean {
-  return Boolean(unit.prince || unit.class === "ちび王子" || /^王子【/.test(unit.class || ""));
+  return Boolean(unit.prince);
 }
 
 const HALL_TIERS = [1, 2, 3] as const;

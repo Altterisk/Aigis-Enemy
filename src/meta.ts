@@ -31,6 +31,10 @@ export const LIST_META: Record<string, PageMeta> = {
     title: "Units",
     description: "Every Millennium War Aigis unit: rarity, class, stats, skills, abilities, awakening, quotes and art. Filter by rarity, class, race, faction and tag.",
   },
+  "/prince": {
+    title: "Prince",
+    description: "Every Millennium War Aigis Prince title: the forms each emblem turns him into, their upgrade levels, stat titles and how to unlock them.",
+  },
   "/collection": {
     title: "Collection",
     description: "Track which Millennium War Aigis units you own, import them from screenshots and back the list up as a code or file.",

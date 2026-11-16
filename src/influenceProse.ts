@@ -868,7 +868,40 @@ function joinList(xs: string[]): string {
   return xs.length < 3 ? xs.join(" and ") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`;
 }
 
+// Same recipient, different values: "raises the ATK of Flying allies by 3%" +
+// "raises the range of Flying allies by 10" -> "raises the ATK of Flying
+// allies by 3% and their range by 10"; a different verb keeps its own:
+// "... by 15% and lowers their deployment cost by 8". Only plain
+// "by <value>" endings join.
+const STAT_CLAUSE = /^(raises|lowers) the (.+?) of (.+?) (by [^()]+)$/;
+
 export function mergeClauses<T extends { text: string; verified: boolean; note?: string; tag?: string }>(clauses: T[]): T[] {
+  return mergeByRecipient(mergeSameValue(clauses));
+}
+
+function mergeByRecipient<T extends { text: string; verified: boolean; note?: string; tag?: string }>(clauses: T[]): T[] {
+  const out: T[] = [];
+  const keys: (string | null)[] = [];
+  const lastVerb: (string | null)[] = [];
+  for (const c of clauses) {
+    const m = c.text.match(STAT_CLAUSE);
+    const key = m ? `${m[3]}|${c.verified}` : null;
+    // a clause without a category chip may join one with a chip (it keeps it)
+    const at = key ? keys.findIndex((k, i) => k === key && (!c.tag || !out[i].tag || out[i].tag === c.tag)) : -1;
+    if (m && at >= 0) {
+      const verb = lastVerb[at] === m[1] ? "" : `${m[1]} `;
+      out[at] = { ...out[at], text: `${out[at].text} and ${verb}their ${m[2]} ${m[4]}`, tag: out[at].tag ?? c.tag };
+      lastVerb[at] = m[1];
+      continue;
+    }
+    out.push(c);
+    keys.push(key);
+    lastVerb.push(m ? m[1] : null);
+  }
+  return out;
+}
+
+function mergeSameValue<T extends { text: string; verified: boolean; note?: string; tag?: string }>(clauses: T[]): T[] {
   const out: T[] = [];
   const keys: (string | null)[] = [];
   const parts: string[][] = [];

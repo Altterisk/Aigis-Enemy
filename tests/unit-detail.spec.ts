@@ -63,9 +63,26 @@ for (const [id, name] of HAND_NAMED) {
   });
 }
 
-test("prince page lists his titles", async ({ page }) => {
-  await page.goto("/units/1");
-  await expect(page.locator(".prince-titles summary")).toContainText("Prince titles");
+test("prince page groups his title forms", async ({ page }) => {
+  await page.goto("/prince");
+  await expect(page.getByRole("heading", { name: "Prince", exact: true })).toBeVisible();
+  const keraunos = page.locator(".prince-form", { hasText: "Prince (Keraunos)" });
+  await expect(keraunos.locator(".prince-level-link")).toHaveText(["Lv1", "Lv2", "Lv3", "Lv4"]);
+  await expect(page.locator(".prince-stat-table")).toContainText("HP +10%");
+});
+
+test("a prince title card links its levels and the prince page", async ({ page }) => {
+  await page.goto("/units/1380");
+  const bar = page.locator(".prince-bar");
+  await expect(bar).toContainText("Lv2 of 4");
+  await expect(bar.locator(".prince-level-link.is-current")).toHaveText("Lv2");
+  await expect(bar.getByRole("link", { name: "All Prince titles →" })).toHaveAttribute("href", "/prince");
+});
+
+test("the unit list leaves prince cards out", async ({ page }) => {
+  await page.goto("/units?q=Keraunos");
+  await expect(page.locator(".prince-list-link")).toBeVisible();
+  await expect(page.locator(".unit-grid a[href='/units/552']")).toHaveCount(0);
 });
 
 test("a one-copy-only unit shows its formation restriction", async ({ page }) => {
@@ -198,4 +215,51 @@ test("readable abilities group class tiers and fold condition variants", async (
   expect(all).not.toContain("class-change stage");
   expect(all).not.toContain("unit #2937");
   expect(all).not.toContain("ドラゴン");
+});
+
+test("the War God Blessing tab lists the blessings that can reach the unit", async ({ page }) => {
+  // Safrea has the Dragon identity: the Dragon Shaman blessing reaches her
+  await page.goto("/units/2935?tab=blessing");
+  await expect(page.getByRole("heading", { name: /Class blessings/ })).toBeVisible();
+  await expect(page.locator(".blessing-table").filter({ hasText: "ドラゴンシャーマンの祈り" })).toHaveCount(1);
+  // Dark Knight is no Dragon: the same blessing is filtered out
+  await page.goto("/units/308?tab=blessing");
+  await expect(page.locator(".blessing-table").first()).toBeVisible();
+  await expect(page.locator(".blessing-table").filter({ hasText: "ドラゴンシャーマンの祈り" })).toHaveCount(0);
+});
+
+test("possession buffs list the units whose 【所持効果】 can reach the unit", async ({ page }) => {
+  // Rance #2897's possession effect is female-only
+  await page.goto("/units/2935?tab=possession");
+  await expect(page.locator(".possession-table a[href='/units/2897']")).toHaveCount(1);
+  await page.goto("/units/308?tab=possession");
+  await expect(page.locator(".possession-table").first()).toBeVisible();
+  await expect(page.locator(".possession-table a[href='/units/2897']")).toHaveCount(0);
+});
+
+test("possession buffs sum the stat buffs per stat", async ({ page }) => {
+  await page.goto("/units/2935?tab=possession");
+  const totals = page.locator(".possession-totals");
+  for (const stat of ["HP", "ATK", "DEF", "MR", "Range"]) await expect(totals).toContainText(stat);
+  // utility effects (Tram's UP recovery) are not summed
+  await expect(totals).not.toContainText("UP");
+});
+
+test("a plain trait filter becomes the recipients in readable ability text", async ({ page }) => {
+  // IsPrince() || IsIdentitiy("ドラゴン"), ATK and cost rows joined into one sentence
+  await page.goto("/units/2935?tab=abilities");
+  await expect(page.locator("main")).toContainText("raises the ATK of the Prince and Dragon allies by 15% and lowers their deployment cost by 8");
+  // IsIdentitiy("飛行")); -- the stray ")" does not leak into the text
+  await page.goto("/units/2777?tab=abilities");
+  await expect(page.locator("main")).toContainText("raises the ATK of Flying allies by 3% and their range by 10");
+  await expect(page.locator("main")).not.toContainText("Flying))");
+});
+
+test("possession buffs drop placeholder exclusions and read melee + omni", async ({ page }) => {
+  await page.goto("/units/2935?tab=possession");
+  const table = page.locator(".possession-table");
+  await expect(table).toContainText("raises the max HP of female allies by 3%");
+  await expect(table).toContainText("raises the DEF of melee and omni allies by 3%");
+  await expect(table).not.toContainText("Dummy (Battle)");
+  await expect(table).not.toContainText("one of 9 units");
 });
