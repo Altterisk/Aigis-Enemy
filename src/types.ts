@@ -572,6 +572,9 @@ export interface Unit {
   identity_tags?: string[];
   faction?: string | null;
   genus?: string | null;
+  // in-game filter position: melee/ranged from the base class, "omni" when any
+  // tier can deploy in either spot
+  position?: "melee" | "ranged" | "omni" | null;
   release_year?: number | null;
   implementation_date?: string | null; // YYYY-MM-DD
   artist?: string | null;

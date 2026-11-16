@@ -1738,6 +1738,7 @@ function hpAtkDefPct(
   return null;
 }
 // lib/unit.lua affbonus BonusType enum (stat bonuses).
+const POSITION_LABELS: Record<string, string> = { melee: "Melee", ranged: "Ranged", omni: "Omni (melee or ranged)" };
 const AFFBONUS_LABELS: Record<number, string> = { 1: "HP", 2: "ATK", 3: "DEF", 4: "Range", 6: "Speed" };
 const AFFBONUS_KIND: Record<number, "hp" | "atk" | "def"> = { 1: "hp", 2: "atk", 3: "def" };
 // special-attribute bonus types: applied at the raw value, no bloom scaling,
@@ -2239,6 +2240,12 @@ export default function UnitDetail() {
             <div>
               <dt>Gender</dt>
               <dd><Link to={`/units?gender=${encodeURIComponent(String(unit.gender))}`}>{tagName(loc, String(unit.gender))}</Link></dd>
+            </div>
+          )}
+          {unit.position && (
+            <div>
+              <dt>Position</dt>
+              <dd><Link to={`/units?position=${unit.position}`}>{POSITION_LABELS[unit.position]}</Link></dd>
             </div>
           )}
           {(unit.implementation_date || unit.release_year) && (
