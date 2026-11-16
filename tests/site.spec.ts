@@ -44,7 +44,7 @@ test("header navigation reaches every page", async ({ page }) => {
   await page.goto("/");
   const nav = [
     ["Units", "/units"], ["Prince", "/prince"], ["Collection", "/collection"], ["Enemies", "/enemies"], ["Stages", "/stages"],
-    ["Buffs", "/buffs"], ["Cost Gen", "/costgen"], ["DPS", "/dps"], ["Weather", "/weather"],
+    ["Story", "/story"], ["Buffs", "/buffs"], ["Cost Gen", "/costgen"], ["DPS", "/dps"], ["Weather", "/weather"],
   ] as const;
   for (const [name, path] of nav) {
     const link = page.getByRole("link", { name, exact: true });

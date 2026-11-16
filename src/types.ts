@@ -796,3 +796,77 @@ export interface WeatherData {
   weathers: WeatherEntry[];
   sources: WeatherSource[];
 }
+
+// /story: out-of-battle event scenes (data/story/*.json, export_story.py)
+export interface StoryGroupEntry {
+  id: string;
+  title: string;
+  category: string;
+  mission_id?: number;
+  scenes: number;
+  battle: number;
+  past: boolean;
+  shard: number;
+}
+
+export interface StoryIndex {
+  stage: [number, number];
+  groups: StoryGroupEntry[];
+}
+
+// One text row; `w` = the on-screen speaker ("u<cardId>" unit, "e<id>" event character)
+export interface StoryLine {
+  n: string;
+  t: string;
+  w?: string;
+}
+
+export interface StoryBg {
+  src: string | null;
+  x: number;
+  y: number;
+  s: number;
+}
+
+// A character on screen: `r` image ref, x/y in stage pixels, `h` height in stage
+// pixels at scale 100, `s` scale %, `a` anchor (c centre, b centre-bottom), `o` script object
+export interface StoryChara {
+  r: string;
+  x: number;
+  y: number;
+  h: number;
+  s: number;
+  a: "c" | "b";
+  o: string;
+}
+
+// The screen while line `l` shows; `k` black screen, `f` faded to black since the last page
+export interface StoryPage {
+  l: number;
+  bg: StoryBg | null;
+  c: StoryChara[];
+  k?: 1;
+  f?: 1;
+}
+
+export interface StoryScene {
+  key: string;
+  title: string;
+  card?: number;
+  lines: StoryLine[];
+  pages: StoryPage[];
+}
+
+export interface StoryQuest {
+  quest_id: number;
+  name: string;
+  stage: boolean;
+  battle: number;
+  scenes: StoryScene[];
+}
+
+export interface StoryGroup extends StoryGroupEntry {
+  intro: StoryScene[];
+  quests: StoryQuest[];
+  story_talk_quest: number | null;
+}

@@ -17,7 +17,7 @@ import { LIST_META, SITE_NAME, canonicalUrl, site, sitePath } from "./src/meta.t
 /** Cloudflare Pages' limit is 20,000; warn while there is still room. */
 const FILE_BUDGET = 19_000;
 /** public/ folders that are gitignored and untracked, so never deployed. */
-const LOCAL_ONLY = ["sprite-anim", "talk-face", "maps"];
+const LOCAL_ONLY = ["sprite-anim", "talk-face", "maps", "story-chara", "story-bg"];
 
 const a = (href, label) => `<a href="${esc(sitePath(href))}">${esc(label)}</a>`;
 const ul = (items) => (items.length ? `<ul>${items.map((x) => `<li>${x}</li>`).join("")}</ul>` : "");
@@ -39,7 +39,7 @@ function pages({ publicDir }) {
 
   const list = [
     page("/units", ul(units.map((u) => a(`/units/${u.id}`, unitLabel(u))))),
-    ...["/prince", "/stages", "/enemies", "/collection", "/buffs", "/costgen", "/dps", "/weather", "/artists"].map((p) => page(p)),
+    ...["/prince", "/stages", "/story", "/enemies", "/collection", "/buffs", "/costgen", "/dps", "/weather", "/artists"].map((p) => page(p)),
   ];
 
   // served by the SPA fallback: in the sitemap only

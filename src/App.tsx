@@ -26,6 +26,7 @@ export default function App() {
           <NavLink to="/collection">Collection</NavLink>
           <NavLink to="/enemies">Enemies</NavLink>
           <NavLink to="/stages">Stages</NavLink>
+          <NavLink to="/story">Story</NavLink>
           <NavLink to="/buffs">Buffs</NavLink>
           <NavLink to="/costgen">Cost Gen</NavLink>
           <NavLink to="/dps">DPS</NavLink>

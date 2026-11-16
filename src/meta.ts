@@ -47,6 +47,10 @@ export const LIST_META: Record<string, PageMeta> = {
     title: "Stages",
     description: "Millennium War Aigis stages by story chapter and event: enemy waves, stats, map terms, weather and dialogue.",
   },
+  "/story": {
+    title: "Story",
+    description: "Millennium War Aigis event story: the conversations shown outside battle in a scene viewer, popularity-vote and anniversary episodes, and links to each stage's battle dialogue.",
+  },
   "/buffs": {
     title: "Buffs",
     description: "Millennium War Aigis units grouped by the buffs and debuffs their skills and abilities give: ATK, DEF, MR, range, cost, healing and more.",

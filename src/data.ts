@@ -22,6 +22,8 @@ import type {
   Missile,
   AbilityInfluence,
   StoryTalk,
+  StoryIndex,
+  StoryGroup,
   UnitSpeech,
   WeatherData,
 } from "./types";
@@ -345,6 +347,47 @@ const ASSETS_CDN: string =
 function assetUrl(rel: string): string {
   if (ASSETS_CDN && !import.meta.env.DEV) return `${ASSETS_CDN}/${rel}`;
   return `${import.meta.env.BASE_URL}${rel}`;
+}
+
+// Story scene images: "u<cardId>" = the unit's art, "e<id>" = an event character.
+export function storyCharaUrl(ref: string): string | null {
+  const m = /^([ue])(\d+)$/.exec(ref);
+  if (!m) return null;
+  return m[1] === "u" ? unitImageUrl("art", Number(m[2])) : assetUrl(`story-chara/${m[2]}.webp`);
+}
+
+export function storyBgUrl(src: string): string {
+  return assetUrl(`story-bg/${src}.webp`);
+}
+
+export function useStoryIndex(): StoryIndex | null {
+  const [index, set] = useState<StoryIndex | null>(null);
+  useEffect(() => {
+    loadJSON<StoryIndex>("story/index").then(set).catch(() => set({ stage: [960, 640], groups: [] }));
+  }, []);
+  return index;
+}
+
+export function useStoryGroup(id: string | undefined) {
+  const [state, set] = useState<{ loading: boolean; group: StoryGroup | null }>({ loading: true, group: null });
+  useEffect(() => {
+    let alive = true;
+    set({ loading: true, group: null });
+    if (!id || !/^[a-z0-9]+$/.test(id)) {
+      set({ loading: false, group: null });
+      return;
+    }
+    loadJSON<StoryIndex>("story/index")
+      .then((index) => {
+        const entry = index.groups.find((g) => g.id === id);
+        if (!entry) return null;
+        return loadJSON<Record<string, StoryGroup>>(`story/s${entry.shard}`).then((shard) => shard[id] ?? null);
+      })
+      .then((group) => { if (alive) set({ loading: false, group }); })
+      .catch(() => { if (alive) set({ loading: false, group: null }); });
+    return () => { alive = false; };
+  }, [id]);
+  return state;
 }
 
 export function spriteUrl(patternId: number): string {
