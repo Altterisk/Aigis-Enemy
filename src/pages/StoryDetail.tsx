@@ -134,7 +134,7 @@ export default function StoryDetail() {
         </section>
       ))}
 
-      {scene && <StoryViewer scene={scene} onClose={() => play(null)} />}
+      {scene && <StoryViewer key={scene.key} scene={scene} onClose={() => play(null)} />}
     </div>
   );
 }

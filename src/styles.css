@@ -2366,11 +2366,12 @@ main:has(.dps-page) { max-width: 1480px; }
   font-size: clamp(12px, 2.2cqw, 24px);
   line-height: 1.5;
 }
-.sv-name {
+.sv-box .hub-scene-name {
   position: absolute;
   top: 0;
   left: 2.4cqw;
   transform: translateY(-60%);
+  margin: 0;
   padding: 0.3cqw 1.6cqw;
   background: #3a2e4a;
   border: 1px solid #5a4a72;
@@ -2379,17 +2380,11 @@ main:has(.dps-page) { max-width: 1480px; }
   font-weight: 700;
   font-size: clamp(11px, 1.9cqw, 20px);
 }
-.sv-text { white-space: pre-line; }
-/* Hidden lines stay rendered (opacity, not display/visibility) so page
-   translators that only translate what is visible still reach them. */
-.sv-box { overflow: hidden; overflow: clip; overflow-clip-margin: 3cqw; }
-.sv-box.off { opacity: 0; pointer-events: none; }
-.sv-say { position: absolute; left: 0; right: 0; top: 0; padding: inherit; opacity: 0; pointer-events: none; }
-.sv-say.on { position: static; padding: 0; opacity: 1; pointer-events: auto; }
 .sv-more {
   position: absolute;
-  right: 1.6cqw;
-  bottom: 1cqw;
+  right: 4.6%;
+  bottom: 4%;
+  pointer-events: none;
   font-size: clamp(9px, 1.4cqw, 14px);
   color: #d6bcff;
   animation: sv-bob 1s ease-in-out infinite;
@@ -2436,6 +2431,6 @@ main:has(.dps-page) { max-width: 1480px; }
   color: #f0e4ff;
   cursor: pointer;
 }
-.sv-controls button.on { background: #5a4a72; }
+.sv-controls button[aria-pressed="true"] { background: #5a4a72; color: #f0e4ff; }
 .sv-controls button:disabled { opacity: 0.4; cursor: default; }
-.sv-progress { color: #aaa; font-size: 12px; font-variant-numeric: tabular-nums; }
+.sv-controls .hub-scene-controls__count { color: #aaa; }

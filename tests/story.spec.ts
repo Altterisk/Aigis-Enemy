@@ -32,17 +32,17 @@ test("the scene viewer shows lines, advances, logs and closes", async ({ page })
   await page.locator(".story-quest", { hasText: "スライム化する海" }).getByRole("button", { name: "▶ Play" }).click();
   await expect(page).toHaveURL(/play=ev008970/);
   const viewer = page.getByRole("dialog");
-  await expect(viewer.locator(".sv-say.on .sv-name")).toHaveText("ヴィディア");
-  await expect(viewer.locator(".sv-progress")).toHaveText("1 / 16");
+  await expect(viewer.locator(".hub-scene-say.is-on .hub-scene-name")).toHaveText("ヴィディア");
+  await expect(viewer.locator(".hub-scene-controls__count")).toHaveText("1 / 16");
   await page.keyboard.press("ArrowRight");
-  await expect(viewer.locator(".sv-progress")).toHaveText("2 / 16");
-  await expect(viewer.locator(".sv-say.on .sv-name")).toHaveText("太上老君");
+  await expect(viewer.locator(".hub-scene-controls__count")).toHaveText("2 / 16");
+  await expect(viewer.locator(".hub-scene-say.is-on .hub-scene-name")).toHaveText("太上老君");
   // every line is in the page up front for page translators; only one shows
-  await expect(viewer.locator(".sv-say")).toHaveCount(16);
-  await expect(viewer.locator(".sv-say.on")).toHaveCount(1);
+  await expect(viewer.locator(".hub-scene-say")).toHaveCount(16);
+  await expect(viewer.locator(".hub-scene-say.is-on")).toHaveCount(1);
   await viewer.getByRole("button", { name: "Text: all lines" }).click();
-  await expect(viewer.locator(".sv-say")).toHaveCount(1);
-  await expect(viewer.locator(".sv-say.on .sv-name")).toHaveText("太上老君");
+  await expect(viewer.locator(".hub-scene-say")).toHaveCount(1);
+  await expect(viewer.locator(".hub-scene-say.is-on .hub-scene-name")).toHaveText("太上老君");
   await viewer.getByRole("button", { name: "Text: per line" }).click();
   await viewer.getByRole("button", { name: "Log" }).click();
   await expect(viewer.locator(".sv-log-line")).toHaveCount(2);
