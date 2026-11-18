@@ -30,6 +30,7 @@ export default function App() {
           <NavLink to="/buffs">Buffs</NavLink>
           <NavLink to="/costgen">Cost Gen</NavLink>
           <NavLink to="/dps">DPS</NavLink>
+          <NavLink to="/team">Team</NavLink>
           <NavLink to="/weather">Weather</NavLink>
         </>
       }

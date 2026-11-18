@@ -15,6 +15,7 @@ import Buffs from "./pages/Buffs";
 import CostGen from "./pages/CostGen";
 import Weather from "./pages/Weather";
 import Dps from "./pages/Dps";
+import Team from "./pages/Team";
 import Collection from "./pages/Collection";
 import NotFound from "./pages/NotFound";
 import Home from "./pages/Home";
@@ -49,6 +50,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="costgen" element={<CostGen />} />
           <Route path="weather" element={<Weather />} />
           <Route path="dps" element={<Dps />} />
+          <Route path="team" element={<Team />} />
           <Route path="collection" element={<Collection />} />
           <Route path="*" element={<NotFound />} />
         </Route>

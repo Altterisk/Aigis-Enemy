@@ -764,6 +764,8 @@ export interface UnitIndexEntry {
   // (skill stages, linked/default/awakened abilities, class attributes).
   s_inf?: number[];
   a_inf?: number[];
+  aw_ab?: boolean;      // has an awakened ability (it replaces the default one)
+  formation_exclusion?: FormationExclusion;
 }
 
 // ---------------------------------------------------------------- weather

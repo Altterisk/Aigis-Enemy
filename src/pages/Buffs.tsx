@@ -6,6 +6,7 @@ import { CheckboxGroup, FilterChip, FilterRow, GroupCard } from "@altterisk/game
 import { HumanText, UnitIconLink, fmtFrames } from "../components";
 import type { BuffRow, InfluenceSelectionRule, UnitInfluenceLabel } from "../types";
 import { influenceSelectionRule } from "../influenceLabels";
+import { groupName } from "../buffGroups";
 
 // ally stat buffs, then enemy-facing stat effects (the picker's first two rows)
 const STATS = [
@@ -252,43 +253,6 @@ export default function Buffs() {
     });
     return by;
   }, [rows, targetScope, targetFaction, targetRace, targetAttr, targetSeason, targetClass]);
-  // display names for rows carrying a `grp` override.
-  const GRP_NAME: Record<string, string> = {
-    sortie_atk: "Sortie ATK Buff", deploy_atk: "Deployment ATK Buff",
-    sortie_def: "Sortie DEF Buff", deploy_def: "Deployment DEF Buff",
-    war_god_blessing_atk: "War God Blessing ATK Buff",
-    war_god_blessing_def: "War God Blessing DEF Buff",
-    bard_hp_stack_1: "Bard HP Buff (stack 1)",
-    bard_atk_stack_1: "Bard ATK Buff (stack 1)",
-    bard_def_stack_1: "Bard DEF Buff (stack 1)",
-    bard_mr_stack_1: "Bard MR Buff (stack 1)",
-    bard_hp_stack_2: "Bard-like Token HP Buff (stack 2)",
-    bard_atk_stack_2: "Bard-like Token ATK Buff (stack 2)",
-    bard_def_stack_2: "Bard-like Token DEF Buff (stack 2)",
-    bard_mr_stack_2: "Bard-like Token MR Buff (stack 2)",
-    makai_reduction: "Makai Effect Reduction (ability 73/74/75)",
-    makai_immunity: "Makai Adaptation (ability 112/113)",
-    tenkai_reduction: "Tenkai Effect Reduction (ability 181/182/183)",
-    tenkai_immunity: "Tenkai Immunity (ability 184/185/186)",
-    special_stealth: "Stealth (special property 16)",
-    special_limit: "Doesn't count against deployment limit (special property 13)",
-    missile_timestop: "100% slow missile (time stop on hit)",
-    field_hpcut: "Max-HP damage field",
-  };
-  const groupName = (
-    grp: string,
-    nsK: BuffRow["ns"],
-    t: number,
-  ): string => {
-    const known = GRP_NAME[grp];
-    if (known) return known;
-    const stack = /^ability_(\d+)_stack_(\d+)$/.exec(grp);
-    if (stack) {
-      const name = labelOf(nsK, t)?.name || `ability ${t}`;
-      return `${name} (stack ${stack[2]})`;
-    }
-    return grp;
-  };
   const groupKey = (r: BuffRow) => r.grp ?? `${r.ns}:${r.t}`;
 
   // every group for the selected stat, each ranked by cap value, one row
@@ -429,7 +393,7 @@ export default function Buffs() {
             <GroupCard
               key={g.k}
               className="buff-group"
-              title={g.grp ? groupName(g.grp, g.nsK, g.t) : lab?.name || `type ${g.t}`}
+              title={g.grp ? groupName(g.grp, (t) => labelOf(g.nsK, t)?.name, g.t) : lab?.name || `type ${g.t}`}
               count={`${g.ranked.length} units`}
               meta={<>
                 {g.grp ? g.nsK : `${g.nsK} ${g.t}`}

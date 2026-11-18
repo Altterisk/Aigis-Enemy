@@ -63,6 +63,10 @@ export const LIST_META: Record<string, PageMeta> = {
     title: "DPS Calculator",
     description: "Millennium War Aigis damage calculator: a unit's DPS against an enemy's HP, defense and magic resistance, with buffs and skills.",
   },
+  "/team": {
+    title: "Team Builder",
+    description: "Millennium War Aigis team builder: pick a unit, build a formation of up to 15 within a stage's deploy limit, and see which units add the most buffs to her.",
+  },
   "/weather": {
     title: "Weather",
     description: "Millennium War Aigis weather effects on allies and enemies, and the skills that create each weather.",
