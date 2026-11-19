@@ -828,6 +828,9 @@ export const ABILITY_PROSE: Record<number, ProseTpl> = {
   345: "raises the ATK of overhealed allies by {p1}%",
   346: "raises the DEF of overhealed allies by {p1}%",
   351: "each enemy defeated by it or an ally raises the damage it nullifies by {p1} (up to {p2})",
+  355: "its placement-time bonuses grow with the time spent before placement, for up to {secs:p1}",
+  356: "raises {of:ATK} by up to {p1}% according to the time elapsed before placement",
+  357: "raises {of:DEF} by up to {p1}% according to the time elapsed before placement",
 };
 
 // Buff family shown as a tag next to a clause, read from the influence label name.

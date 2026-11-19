@@ -2184,6 +2184,29 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "note": "user-confirmed: on-hit MR debuff. p1 is the percent MR reduction, p2 is the duration in frames -- same shape as 89 (ATK) and 90 (DEF), and 288 is the War God Blessing version. Carried by the 魔法剣士 class line (20/30/40% for 120f) and the 錬金術士 line (50/60/70% for 840-880f); 遺宝狩りカーヴィヤ (units/2870) carries [90, 300] against ability text 攻撃した敵の魔法耐性を一定時間90％減少.",
       "tpl": "-{p1}% for {p2f}"
     },
+    "353": {
+      "name": "Avatar unit (designated-tile deployment)",
+      "verified": false,
+      "note": "no params. Exe 11-19: CSallyOperator builds each sortie unit's property record (0x4b4730) and stores Has(ability 353) into its AvatarUnit flag (+0x33, serialized by 0x5380a0 beside TokenUnit/GuestUnit/HoldUnit = abilities 316/317/318). CSimulatorPlaceManager (0x5216f0) posts two events (0x10, 0xf) to every unit with 353. Carried by exactly the four abilities whose text says 指定地点に配置可能 (#2940, #2941)."
+    },
+    "355": {
+      "name": "Placement time ramp window",
+      "verified": false,
+      "note": "#2939 [1800]. Exe 11-19: p1 is the cap of a per-card elapsed-frame counter (registered at 0x4b6140/0x4b6430 as {0, p1}, +1 per tick up to p1 by 0x4eeef0). 1800 ticks = 30s at 60/s, the text's 最大30秒.",
+      "tpl": "{p1f}"
+    },
+    "356": {
+      "name": "Placement-time ATK buff (max)",
+      "verified": false,
+      "note": "#2939 [400,0,0,1]. Exe 11-19: ability 356 <-> internal key 0x116, read by the ATK calculator 0x5760f0 as ATK += ATK*S/100. S (0x557e80) = floor(floor(elapsed*100/cap)*value/100): linear ramp over ability 355's cap, so 400 = +400% (x5) at 30s. p4=1 most likely the stack group; the row's slot in the entry vector was not traced.",
+      "tpl": "up to {p1}%"
+    },
+    "357": {
+      "name": "Placement-time DEF buff (max)",
+      "verified": false,
+      "note": "#2939 [400,0,0,1]. Exe 11-19: ability 357 <-> internal key 0x117, read by the DEF calculator 0x576ec0; same linear ramp as 356.",
+      "tpl": "up to {p1}%"
+    },
     "351": {
       "name": "Nullify threshold gain per kill",
       "verified": true,
