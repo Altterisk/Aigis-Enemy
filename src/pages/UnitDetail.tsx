@@ -1100,6 +1100,25 @@ function durationLead(s: SkillStage): string | undefined {
     : `For ${s.duration}s`;
 }
 
+// Skill influence 277 is a timed event script: every row is one event fired at
+// frame `add` (spawn an effect / deal rectangle damage). One skill can carry
+// ~1000 of them, so they are shown as a single summary instead of row by row.
+const TIMELINE_TYPE = 277;
+const isTimelineRow = (inf: SkillInfluence) => inf.influence_type === TIMELINE_TYPE;
+
+function timelineSummary(rows: SkillInfluence[]): string {
+  const kinds = new Map<string, number>();
+  let last = 0;
+  for (const r of rows) {
+    const k = String((r.extend as Record<string, unknown> | undefined)?.["種別"] ?? "?");
+    kinds.set(k, (kinds.get(k) ?? 0) + 1);
+    last = Math.max(last, r.add ?? 0);
+  }
+  const KIND: Record<string, string> = { "エフェクト生成": "effect spawns", "矩形ダメージ": "rectangle hits" };
+  const parts = [...kinds].map(([k, n]) => `${n} ${KIND[k] ?? k}`).join(", ");
+  return `scripted timeline: ${rows.length} events (${parts}) over ${last}f (${(last / 60).toFixed(1)}s)`;
+}
+
 function skillStageSentences(
   s: SkillStage, labels: Record<string, UnitInfluenceLabel>, abilityLabels: Record<string, UnitInfluenceLabel>,
   missiles?: Record<string, Missile> | null, skillNames?: Map<number, string>,
@@ -1110,7 +1129,10 @@ function skillStageSentences(
   const abilityClauses = (list: AbilityInfluence[]) => list
     .map((inf) => abilityClause(inf, inf.influence_type != null ? abilityLabels[String(inf.influence_type)] : undefined, missiles))
     .filter((c): c is ProseClause => !!c);
+  const timeline = rows.filter(isTimelineRow);
+  if (timeline.length) groups.set("", [{ text: timelineSummary(timeline), verified: false }]);
   for (const inf of rows) {
+    if (isTimelineRow(inf)) continue;
     const key = humanize(inf.activate_if) || inf.activate_if || "";
     // skill 122 grants an ability config: its rows read under this row's own condition
     if (inf.influence_type === 122 && inf.add && abilityConfigs) {
@@ -1511,7 +1533,7 @@ function SkillStageRow({
         <InfluenceViews count={nInf} sentences={skillStageSentences(s, labels, abilityLabels, missiles, skillNames, abilityConfigs)}>
           {s.influences && s.influences.length > 0 && (
             <ul className="effects">
-              {s.influences.map((inf, j) => (
+              {s.influences.map((inf, j) => isTimelineRow(inf) ? null : (
                 <SkillInfluenceRow
                   inf={inf} i={j} key={j}
                   label={inf.influence_type != null ? labels[String(inf.influence_type)] : undefined}
@@ -1519,6 +1541,17 @@ function SkillStageRow({
                   groupChangeFunction={s.group_change_function}
                 />
               ))}
+              {s.influences.some(isTimelineRow) && (
+                <li>
+                  <details>
+                    <summary>{timelineSummary(s.influences.filter(isTimelineRow))}</summary>
+                    <pre className="small">{s.influences.filter(isTimelineRow).map((r) => {
+                      const { 種別: kind, ...rest } = (r.extend ?? {}) as Record<string, unknown>;
+                      return `${r.add ?? 0}f ${String(kind ?? "?")} ${JSON.stringify(rest)}`;
+                    }).join("\n")}</pre>
+                  </details>
+                </li>
+              )}
             </ul>
           )}
           {s.linked_ability_influences && s.linked_ability_influences.length > 0 && (
