@@ -97,3 +97,12 @@ test("gender codes 100 and 4 show as Support and Genderless", async ({ page }) =
   await page.goto("/units?q=Platinum%20Armor&npc=1");
   await expect(page.locator(".unit-grid .unit-tile .unit-tile-tags").first()).toContainText("Genderless");
 });
+
+test("avatar units (ability 353) form their own Anywhere position", async ({ page }) => {
+  await page.goto("/units?position=anywhere");
+  await expect(page.locator(".unit-grid .unit-tile")).toHaveCount(2);
+  await page.goto("/units/2940");
+  await expect(page.locator("main")).toContainText("Anywhere (designated tile)");
+  await page.goto("/units/2939");
+  await expect(page.locator("main")).not.toContainText("Anywhere (designated tile)");
+});

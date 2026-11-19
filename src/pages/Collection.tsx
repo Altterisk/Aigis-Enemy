@@ -134,6 +134,7 @@ const positionOptions = (L: Pick) => [
   { value: "melee", label: L("Melee", "近接") },
   { value: "ranged", label: L("Ranged", "遠距離") },
   { value: "omni", label: L("Omni", "両用") },
+  { value: "anywhere", label: L("Anywhere", "指定地点") },
 ];
 const genderOptions = (L: Pick) => [
   { value: "Female", label: L("Female", "女性") },
@@ -454,9 +455,9 @@ export default function Collection() {
     unit.implementation_date || `${unit.release_year || 0}-01-01`;
   const compareUnits = (a: UnitIndexEntry, b: UnitIndexEntry) => {
     if (sortBy === "class") {
-      const positionOrder = { melee: 0, ranged: 1, omni: 2 };
-      const position = (a.position ? positionOrder[a.position] : 3)
-        - (b.position ? positionOrder[b.position] : 3);
+      const positionOrder = { melee: 0, ranged: 1, omni: 2, anywhere: 3 };
+      const position = (a.position ? positionOrder[a.position] : 4)
+        - (b.position ? positionOrder[b.position] : 4);
       if (position) return position;
       const order = (a.base_class_id ?? Number.MAX_SAFE_INTEGER)
         - (b.base_class_id ?? Number.MAX_SAFE_INTEGER) || a.id - b.id;

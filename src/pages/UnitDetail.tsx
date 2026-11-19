@@ -2043,7 +2043,7 @@ function hpAtkDefPct(
   return null;
 }
 // lib/unit.lua affbonus BonusType enum (stat bonuses).
-const positionLabels = (L: Pick): Record<string, string> => ({ melee: L("Melee", "近接"), ranged: L("Ranged", "遠距離"), omni: L("Omni (melee or ranged)", "両用 (近接・遠距離)") });
+const positionLabels = (L: Pick): Record<string, string> => ({ melee: L("Melee", "近接"), ranged: L("Ranged", "遠距離"), omni: L("Omni (melee or ranged)", "両用 (近接・遠距離)"), anywhere: L("Anywhere (designated tile)", "指定地点 (任意のマスに配置可)") });
 const AFFBONUS_LABELS: Record<number, string> = { 1: "HP", 2: "ATK", 3: "DEF", 4: "Range", 6: "Speed" };
 const AFFBONUS_KIND: Record<number, "hp" | "atk" | "def"> = { 1: "hp", 2: "atk", 3: "def" };
 // special-attribute bonus types: applied at the raw value, no bloom scaling,

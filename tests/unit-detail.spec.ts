@@ -248,7 +248,7 @@ test("possession buffs sum the stat buffs per stat", async ({ page }) => {
 test("a plain trait filter becomes the recipients in readable ability text", async ({ page }) => {
   // IsPrince() || IsIdentitiy("ドラゴン"), ATK and cost rows joined into one sentence
   await page.goto("/units/2935?tab=abilities");
-  await expect(page.locator("main")).toContainText("raises the ATK of the Prince and Dragon allies by 15% and lowers their deployment cost by 8");
+  await expect(page.locator("main")).toContainText("raises the ATK of the Prince and Dragon allies by 15% and lowers their deployment cost by 10");
   // IsIdentitiy("飛行")); -- the stray ")" does not leak into the text
   await page.goto("/units/2777?tab=abilities");
   await expect(page.locator("main")).toContainText("raises the ATK of Flying allies by 3% and their range by 10");

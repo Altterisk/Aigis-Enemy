@@ -600,8 +600,8 @@ export interface Unit {
   faction?: string | null;
   genus?: string | null;
   // in-game filter position: melee/ranged from the base class, "omni" when any
-  // tier can deploy in either spot
-  position?: "melee" | "ranged" | "omni" | null;
+  // tier can deploy in either spot, "anywhere" for avatar units (ability 353)
+  position?: "melee" | "ranged" | "omni" | "anywhere" | null;
   release_year?: number | null;
   implementation_date?: string | null; // YYYY-MM-DD
   artist?: string | null;
@@ -740,7 +740,7 @@ export interface UnitIndexEntry {
   identity_ids?: number[];
   genus?: string | null;
   genus_id?: number | null;
-  position?: "melee" | "ranged" | "omni" | null;
+  position?: "melee" | "ranged" | "omni" | "anywhere" | null;
   release_year?: number | null;
   implementation_date?: string | null;
   artist?: string | null;

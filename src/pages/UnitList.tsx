@@ -108,6 +108,7 @@ const positionOpts = (L: Pick) => [
   { value: "melee", label: L("Melee", "近接") },
   { value: "ranged", label: L("Ranged", "遠距離") },
   { value: "omni", label: L("Omni (deployable either spot)", "両用 (どちらの配置場所にも出撃可)") },
+  { value: "anywhere", label: L("Anywhere (designated tile)", "指定地点 (任意のマスに配置可)") },
 ];
 const genderOpts = (L: Pick) => [
   { value: "Female", label: L("Female", "女性") },
