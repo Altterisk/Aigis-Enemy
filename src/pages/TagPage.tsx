@@ -5,11 +5,12 @@ import { ColorCodedText, UnitIconLink, UnitImage } from "../components";
 import { tagMeta } from "../meta";
 import { usePageMeta } from "../usePageMeta";
 import type { Localisation, TagMention, TagMentions, Texts } from "../types";
+import { altName, gameName, rarityName, useL } from "../i18n";
 
 const SOURCE_TYPES = [
-  { kind: "skill", label: "Skills" },
-  { kind: "ability", label: "Abilities" },
-  { kind: "class", label: "Classes" },
+  { kind: "skill", label: "Skills", ja: "スキル" },
+  { kind: "ability", label: "Abilities", ja: "アビリティ" },
+  { kind: "class", label: "Classes", ja: "クラス" },
 ] as const;
 
 function MentionTable({ rows, kind, loc, texts }: {
@@ -18,8 +19,10 @@ function MentionTable({ rows, kind, loc, texts }: {
   loc: Localisation | null;
   texts: Texts;
 }) {
+  const L = useL();
   const translatedName = (row: TagMention) => {
-    if (row.source_name_en) return row.source_name_en;
+    if (row.source_name_en && altName(row.source_name_en, row.source_name)) return row.source_name_en;
+    if (row.source_name_en && !row.source_name) return row.source_name_en;
     if (!row.source_name) return row.slot;
     if (kind === "skill") return loc?.skills[row.source_name] || row.source_name;
     if (kind === "ability") return loc?.abilities[row.source_name] || row.source_name;
@@ -33,7 +36,7 @@ function MentionTable({ rows, kind, loc, texts }: {
   };
   return (
     <table className="grid tag-effect-table">
-      <thead><tr><th>Name</th><th>Effect</th><th>Owner unit</th></tr></thead>
+      <thead><tr><th>{L("Name", "名前")}</th><th>{L("Effect", "効果")}</th><th>{L("Owner unit", "所持ユニット")}</th></tr></thead>
       <tbody>
         {rows.map((row, index) => {
           const sourceName = translatedName(row);
@@ -51,7 +54,7 @@ function MentionTable({ rows, kind, loc, texts }: {
               <td className="tag-effect-text">
                 {row.effect ? (
                   <>
-                    {effectEn && <div title="machine translated">{effectEn}</div>}
+                    {effectEn && <div title="machine translated / 機械翻訳">{effectEn}</div>}
                     <div className={effectEn ? "muted small" : undefined}>
                       <ColorCodedText text={row.effect} />
                     </div>
@@ -76,6 +79,7 @@ export default function TagPage() {
   const loc = useLocalisation();
   const texts = useTexts();
   const [mentions, setMentions] = useState<TagMentions | null>(null);
+  const L = useL();
 
   useEffect(() => {
     loadJSONFile<TagMentions>("tag_mentions").then(setMentions).catch(() => setMentions({}));
@@ -83,7 +87,7 @@ export default function TagPage() {
 
   const tagEn = loc?.tags[tag] || loc?.races[tag] || tag;
   usePageMeta(tagMeta(tag, tagEn));
-  if (loading) return <p className="loading">Loading units…</p>;
+  if (loading) return <p className="loading">{L("Loading units…", "ユニットを読み込み中…")}</p>;
 
   const carriers = (units || []).filter(
     (u) => (u.tags || []).includes(tag) && !(u.prince && u.id !== 1)
@@ -91,7 +95,7 @@ export default function TagPage() {
 
   return (
     <div>
-      <Link className="back" to="/units">← units</Link>
+      <Link className="back" to="/units">{L("← units", "← ユニット一覧")}</Link>
       <h2>
         {tagEn}
         {tagEn !== tag && <span className="muted" style={{ fontSize: 14 }}> {tag}</span>}
@@ -103,17 +107,17 @@ export default function TagPage() {
         return (
           <details className="tag-mentions" key={bucket} open>
             <summary>
-              {list.length} effects{" "}
+              {L("{n} effects", "効果 {n} 件", { n: list.length })}{" "}
               {bucket === "unit"
-                ? `condition on ally/unit tag ${tagEn}`
-                : `target ENEMIES tagged ${tagEn} (enemy race/element namespace)`}
+                ? L("condition on ally/unit tag {t}", "味方ユニットのタグ{t}が条件", { t: tagEn })
+                : L("target ENEMIES tagged {t} (enemy race/element namespace)", "タグ{t}の敵が対象 (敵の種族・属性)", { t: tagEn })}
             </summary>
-            {SOURCE_TYPES.map(({ kind, label }) => {
+            {SOURCE_TYPES.map(({ kind, label, ja }) => {
               const rows = list.filter((mention) => mention.kind === kind);
               if (!rows.length) return null;
               return (
                 <details className="tag-effect-section" key={kind}>
-                  <summary>{label} <span className="muted small">({rows.length})</span></summary>
+                  <summary>{L(label, ja)} <span className="muted small">({rows.length})</span></summary>
                   <MentionTable rows={rows} kind={kind} loc={loc} texts={texts} />
                 </details>
               );
@@ -122,20 +126,20 @@ export default function TagPage() {
         );
       })}
 
-      <p className="muted small">{carriers.length.toLocaleString()} units with this tag</p>
+      <p className="muted small">{L("{n} units with this tag", "このタグを持つユニット {n} 体", { n: carriers.length.toLocaleString() })}</p>
       <div className="unit-grid">
         {carriers.map((u) => (
           <Link to={`/units/${u.id}`} className="enemy-tile unit-tile" key={u.id}>
             <UnitImage kind="icon" id={u.id} className="unit-icon-thumb" alt={String(u.id)} />
             <div className="enemy-tile-body unit-tile-body">
               <div className="unit-tile-name">
-                {u.name_en || u.name || "(unnamed)"}
+                {gameName(u.name_en, u.name) || L("(unnamed)", "(名前なし)")}
               </div>
               <div className="muted small unit-tile-sub">
-                #{u.id}{u.name_en && u.name ? ` · ${u.name}` : ""}
+                #{u.id}{altName(u.name_en, u.name) ? ` · ${u.name}` : ""}
               </div>
               <div className="enemy-tile-attr">
-                {u.rarity} · {(u.class && loc?.classes[u.class]) || u.class || "?"} {u.ranged ? "(ranged)" : ""}
+                {rarityName(u.rarity)} · {(u.class && loc?.classes[u.class]) || u.class || "?"} {u.ranged ? L("(ranged)", "(遠距離)") : ""}
               </div>
               {u.tags && u.tags.length > 0 && (
                 <div className="muted small unit-tile-tags">

@@ -4,6 +4,7 @@ import { useEnemies, useStages, useEnemyStages, useSpecialtyConfig, useExprNames
 import { Sprite, DamageBadge, Stat, Tags, Effects, ColorCodedText } from "../components";
 import { LIST_META, NOT_FOUND_META, enemyMeta } from "../meta";
 import { usePageMeta } from "../usePageMeta";
+import { useL } from "../i18n";
 
 export default function EnemyDetail() {
   useExprNames();
@@ -13,6 +14,7 @@ export default function EnemyDetail() {
   const { byQuest } = useStages();         // slim index keyed by quest_id
   const enemyStages = useEnemyStages();    // global_id -> [quest_id]
   const spcfg = useSpecialtyConfig();
+  const L = useL();
 
   // Stage appearances from the precise reverse index (global_id -> quest_ids),
   // resolved against the stage index for names.
@@ -27,23 +29,23 @@ export default function EnemyDetail() {
 
   const e = byId?.get(enemyId);
   usePageMeta(loading ? LIST_META["/enemies"] : e ? enemyMeta(e) : NOT_FOUND_META);
-  if (loading) return <p className="loading">Loading…</p>;
-  if (!e) return <p>Enemy not found. <Link to="/enemies">Back</Link></p>;
+  if (loading) return <p className="loading">{L("Loading…", "読み込み中…")}</p>;
+  if (!e) return <p>{L("Enemy not found.", "敵が見つかりません。")} <Link to="/enemies">{L("Back", "戻る")}</Link></p>;
 
   const effects =
     (e.special_effect_id && spcfg?.[String(e.special_effect_id)]) || [];
 
   return (
     <div className="detail">
-      <Link to="/enemies" className="back">← enemies</Link>
+      <Link to="/enemies" className="back">{L("← enemies", "← 敵一覧")}</Link>
       <div className="enemy-hero">
         <span className="sprite-box sprite-box--lg">
           <Sprite patternId={e.pattern_id} size={112} fit alt={String(e.id)} />
         </span>
         <div>
-          <h2>Enemy #{e.id}</h2>
+          <h2>{L("Enemy #{id}", "敵 #{id}", { id: e.id })}</h2>
           <div className="meta">
-            <span>type {e.type}</span>
+            <span>{L("type", "タイプ")} {e.type}</span>
             <DamageBadge type={e.damage_type} />
             {e.boss && <span className="badge boss">BOSS</span>}
             {e.sky && <span className="badge sky">SKY</span>}
@@ -54,27 +56,26 @@ export default function EnemyDetail() {
 
       <section className="stats-grid">
         <Stat label="HP" value={(e.hp ?? 0).toLocaleString()} />
-        <Stat label="Attack" value={(e.attack ?? 0).toLocaleString()} />
-        <Stat label="Armor DEF" value={e.armor_defense ?? 0} />
-        <Stat label="Magic RES" value={e.magic_defense ?? 0} />
-        <Stat label="Range" value={e.attack_range ?? 0} />
-        <Stat label="Atk interval" value={e.attack_speed ?? 0} />
-        <Stat label="Move speed" value={e.move_speed ?? 0} />
-        <Stat label="Weather" value={e.weather ?? "NONE"} />
+        <Stat label={L("Attack", "攻撃力")} value={(e.attack ?? 0).toLocaleString()} />
+        <Stat label={L("Armor DEF", "物理防御")} value={e.armor_defense ?? 0} />
+        <Stat label={L("Magic RES", "魔法耐性")} value={e.magic_defense ?? 0} />
+        <Stat label={L("Range", "射程")} value={e.attack_range ?? 0} />
+        <Stat label={L("Atk interval", "攻撃間隔")} value={e.attack_speed ?? 0} />
+        <Stat label={L("Move speed", "移動速度")} value={e.move_speed ?? 0} />
+        <Stat label={L("Weather", "天候")} value={e.weather ?? "NONE"} />
       </section>
 
       {effects.length > 0 && (
         <section>
-          <h3>Abilities</h3>
+          <h3>{L("Abilities", "特性")}</h3>
           <Effects effects={effects} />
         </section>
       )}
 
       <section>
-        <h3>Raw damage fields</h3>
+        <h3>{L("Raw damage fields", "攻撃種別の生データ")}</h3>
         <p className="muted small">
-          Shown unexplained: damage type is derived from these. TypeAttack=300 →
-          true; MagicAttack=1 → magical.
+          {L("Shown unexplained: damage type is derived from these. TypeAttack=300 → true; MagicAttack=1 → magical.", "そのまま表示: 攻撃種別はこれらから判定します。TypeAttack=300 → 貫通、MagicAttack=1 → 魔法。")}
         </p>
         <ul className="effects">
           <li><code>MagicAttack</code> = {e.raw?.MagicAttack ?? 0}</li>
@@ -87,23 +88,22 @@ export default function EnemyDetail() {
 
       {e.change_to && (
         <section>
-          <h3>Form change</h3>
+          <h3>{L("Form change", "形態変化")}</h3>
           <p>
-            Changes into{" "}
-            <Link to={`/enemies/${e.change_to}`}>enemy #{e.change_to}</Link>{" "}
+            {L("Changes into", "変化先:")}{" "}
+            <Link to={`/enemies/${e.change_to}`}>{L("enemy #{id}", "敵 #{id}", { id: e.change_to })}</Link>{" "}
             <span className="muted">
-              (condition {e.change_condition} — trigger type, raw)
+              {L("(condition {c} — trigger type, raw)", "(条件 {c} — 発動タイプ、生データ)", { c: e.change_condition ?? "" })}
             </span>
           </p>
         </section>
       )}
 
       <section>
-        <h3>Appears in {appearsIn.length} stage(s)</h3>
+        <h3>{L("Appears in {n} stage(s)", "出現ステージ {n} 件", { n: appearsIn.length })}</h3>
         {appearsIn.length === 0 ? (
           <p className="muted">
-            No stage references this global enemy id (it may appear only as a
-            map-local enemy, or in maps not in this data version).
+            {L("No stage references this global enemy id (it may appear only as a map-local enemy, or in maps not in this data version).", "この敵IDを参照するステージはありません (マップ固有の敵としてのみ出現するか、このデータにないマップの可能性があります)。")}
           </p>
         ) : (
           <ul className="stage-links">

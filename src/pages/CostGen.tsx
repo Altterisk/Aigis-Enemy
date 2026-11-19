@@ -20,11 +20,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { saveBlob } from "@altterisk/game-hub/persist";
-import { loadJSONFile, unitImageUrl, useExprNames } from "../data";
+import { loadJSONFile, unitImageUrl, useExprNames, useUnits } from "../data";
 import { useUiStore, type CostGenSel } from "../store";
 import { RACE_LABELS, TAG_LABELS } from "../tagLabels";
 import { plainConditionText } from "../components";
 import { humanize } from "../humanize";
+import { gameName, useL } from "../i18n";
 
 // ---------------------------------------------------------------- data types
 
@@ -540,6 +541,7 @@ function Chart({ series, seconds }: { series: Series[]; seconds: number }) {
   const [hover, setHover] = useState<number | null>(null); // sample index
   const [exporting, setExporting] = useState(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const L = useL();
   const W = 920;
   const H = 430;
   // r leaves room for the right-edge direct labels: icon + name.
@@ -665,7 +667,7 @@ function Chart({ series, seconds }: { series: Series[]; seconds: number }) {
     <div className="cg-chart">
       <div className="cg-chart-bar">
         <button type="button" onClick={exportPng} disabled={exporting}>
-          {exporting ? "exporting…" : "Export PNG"}
+          {exporting ? L("exporting…", "書き出し中…") : L("Export PNG", "PNGで保存")}
         </button>
       </div>
       <svg
@@ -674,7 +676,7 @@ function Chart({ series, seconds }: { series: Series[]; seconds: number }) {
         onMouseMove={onMove}
         onMouseLeave={() => setHover(null)}
         role="img"
-        aria-label="Cumulative UP generated over time"
+        aria-label={L("Cumulative UP generated over time", "時間ごとのコスト回復の累計")}
       >
         {yTicks.map((v) => (
           <g key={`y${v}`}>
@@ -749,6 +751,10 @@ function Chart({ series, seconds }: { series: Series[]; seconds: number }) {
 export default function CostGen() {
   useExprNames();
   const [data, setData] = useState<{ units: CGUnit[] } | null>(null);
+  const L = useL();
+  const { byId: unitIndex } = useUnits();
+  // the unit's name in the current language (costgen.json carries the English one)
+  const nameOf = (u: CGUnit) => gameName(u.name, unitIndex?.get(u.id)?.name);
   // selection + sim settings persist in the UI store so navigating away and
   // back (or reloading) keeps the comparison setup
   const sels = useUiStore((s) => s.costgenSels);
@@ -804,19 +810,19 @@ export default function CostGen() {
       if (!u) continue;
       const p = prepare(u, sel, cdr, ignoreCosts, ignoreInitial);
       if (!p) continue;
-      out.push({ id: u.id, name: u.name, color: PALETTE[sel.color % PALETTE.length], samples: simulate(p, sel, seconds) });
+      out.push({ id: u.id, name: nameOf(u), color: PALETTE[sel.color % PALETTE.length], samples: simulate(p, sel, seconds) });
     }
     return out;
-  }, [sels, byId, cdr, seconds, ignoreCosts, ignoreInitial]);
+  }, [sels, byId, cdr, seconds, ignoreCosts, ignoreInitial, unitIndex, L]);
 
-  if (!data) return <div className="loading">loading…</div>;
+  if (!data) return <div className="loading">{L("loading…", "読み込み中…")}</div>;
 
   return (
     <div>
       <div className="toolbar">
         <div className="cg-search">
           <input
-            placeholder="add unit (name / id)…"
+            placeholder={L("add unit (name / id)…", "ユニットを追加 (名前・ID)…")}
             value={query}
             onFocus={() => setDropOpen(true)}
             onBlur={() => setTimeout(() => setDropOpen(false), 150)}
@@ -831,9 +837,9 @@ export default function CostGen() {
                 <button key={u.id} onMouseDown={(e) => e.preventDefault()} onClick={() => addUnit(u)}>
                   <img src={unitImageUrl("icon", u.id)} alt="" loading="lazy" />
                   <span>
-                    {u.name} <span className="muted">#{u.id}</span>
+                    {nameOf(u)} <span className="muted">#{u.id}</span>
                   </span>
-                  <span className={`cg-rar cg-rar-${u.rarity}`}>{u.rarity === "black" ? "Black" : "Plat"}{u.hero ? " Hero" : ""}</span>
+                  <span className={`cg-rar cg-rar-${u.rarity}`}>{u.rarity === "black" ? L("Black", "黒") : L("Plat", "白金")}{u.hero ? L(" Hero", " 英傑") : ""}</span>
                 </button>
               ))}
             </div>
@@ -841,7 +847,7 @@ export default function CostGen() {
         </div>
         <div className="cg-ctl-group">
           <label className="cg-ctl">
-            CDR
+            {L("CDR", "再使用短縮")}
             <select value={cdr} onChange={(e) => setCdr(Number(e.target.value))}>
               {Array.from({ length: 15 }, (_, i) => i * 5).map((v) => (
                 <option key={v} value={v}>
@@ -851,7 +857,7 @@ export default function CostGen() {
             </select>
           </label>
           <label className="cg-ctl">
-            Window
+            {L("Window", "期間")}
             <select value={seconds} onChange={(e) => setSeconds(Number(e.target.value))}>
               {[30, 60, 90, 120, 180, 300, 600].map((v) => (
                 <option key={v} value={v}>
@@ -862,34 +868,33 @@ export default function CostGen() {
           </label>
           <label className={`cg-pill${ignoreCosts ? " on" : ""}`}>
             <input type="checkbox" checked={ignoreCosts} onChange={(e) => setIgnoreCosts(e.target.checked)} />
-            Ignore Costs
+            {L("Ignore Costs", "出撃コストを無視")}
           </label>
           <label className={`cg-pill${ignoreInitial ? " on" : ""}`}>
             <input type="checkbox" checked={ignoreInitial} onChange={(e) => setIgnoreInitial(e.target.checked)} />
-            Ignore Initial
+            {L("Ignore Initial", "初回待ち時間を無視")}
           </label>
         </div>
         <span className="count">
-          {sels.length}/{MAX_SEL} selected · {data.units.length} UP-gen units above Gold
+          {L("{s}/{m} selected · {n} UP-gen units above Gold", "{s}/{m} 選択中 · コスト回復ユニット {n} 体 (金より上)", { s: sels.length, m: MAX_SEL, n: data.units.length })}
         </span>
       </div>
 
       <details className="cg-notes">
-        <summary>Model assumptions</summary>
+        <summary>{L("Model assumptions", "計算の前提")}</summary>
         <ul>
-          <li>Skills at max level (duration_max), units at max level (cost_min), affection maxed.</li>
-          <li>Initial skill timer: Platinum = base CD ÷ 2; Black = 1s on a normal skill, 5s on the AW skill (heroes follow their color). Only the affection CD bonus shrinks it; the CDR selector affects cooldowns only.</li>
-          <li>Of all in-battle CDR sources (selector, own ability) only the highest single one applies.</li>
-          <li>Skills re-activate the instant they are ready; swap chains follow their in-game order; permanent skills (∞ duration) stay on. Skills with no official duration still occupy 2s of skill animation.</li>
-          <li>Deploy cost is subtracted at t=0 (floored at 0); percent cost mods apply before flat ones. Use the override field if the rounding disagrees with in-game.</li>
-          <li>Team-wide starting UP (merchant +2) is shown as a badge but not added to the curve.</li>
+          <li>{L("Skills at max level (duration_max), units at max level (cost_min), affection maxed.", "スキルは最大レベル (duration_max)、ユニットは最大レベル (cost_min)、好感度は最大。")}</li>
+          <li>{L("Initial skill timer: Platinum = base CD ÷ 2; Black = 1s on a normal skill, 5s on the AW skill (heroes follow their color). Only the affection CD bonus shrinks it; the CDR selector affects cooldowns only.", "スキルの初回待ち時間: 白金 = 基本再使用時間 ÷ 2、黒 = 通常スキル1秒・覚醒スキル5秒 (英傑は色に準じる)。短縮するのは好感度の再使用短縮だけで、再使用短縮の選択は再使用時間にのみ効きます。")}</li>
+          <li>{L("Of all in-battle CDR sources (selector, own ability) only the highest single one applies.", "戦闘中の再使用短縮 (選択値・自身のアビリティ) は最も高いもの1つだけが適用されます。")}</li>
+          <li>{L("Skills re-activate the instant they are ready; swap chains follow their in-game order; permanent skills (∞ duration) stay on. Skills with no official duration still occupy 2s of skill animation.", "スキルは使用可能になった瞬間に再発動し、切り替えスキルはゲーム内の順に進み、永続スキル (∞) は続きます。効果時間のないスキルも演出で2秒かかります。")}</li>
+          <li>{L("Deploy cost is subtracted at t=0 (floored at 0); percent cost mods apply before flat ones. Use the override field if the rounding disagrees with in-game.", "出撃コストは0秒時点で差し引きます (下限0)。割合のコスト補正は固定値より先に適用します。端数がゲームと違う場合は上書き欄を使ってください。")}</li>
+          <li>{L("Team-wide starting UP (merchant +2) is shown as a badge but not added to the curve.", "編成全体の初期コスト (商人 +2) はバッジで表示し、グラフには加えません。")}</li>
         </ul>
       </details>
 
       {sels.length === 0 && (
         <p className="muted">
-          Search above to add units — every Platinum/Black unit with a UP/cost-generation
-          skill or ability is available. Lines start at −deploy cost.
+          {L("Search above to add units — every Platinum/Black unit with a UP/cost-generation skill or ability is available. Lines start at −deploy cost.", "上の検索でユニットを追加してください — コスト回復のスキル・アビリティを持つ白金・黒のユニットが対象です。グラフは −出撃コスト から始まります。")}
         </p>
       )}
 
@@ -905,12 +910,12 @@ export default function CostGen() {
               <div className="cg-card-head">
                 <img src={unitImageUrl("icon", u.id)} alt="" />
                 <div>
-                  <Link to={`/units/${u.id}`}>{u.name}</Link>
+                  <Link to={`/units/${u.id}`}>{nameOf(u)}</Link>
                   <div className="muted small">
-                    #{u.id} · {u.rarity === "black" ? "Black" : "Platinum"}
-                    {u.hero ? " Hero" : ""}
-                    {u.aff_cd ? ` · aff CD −${u.aff_cd}%` : ""}
-                    {u.aff_dur ? ` · aff duration +${u.aff_dur}%` : ""}
+                    #{u.id} · {u.rarity === "black" ? L("Black", "黒") : L("Platinum", "白金")}
+                    {u.hero ? L(" Hero", " 英傑") : ""}
+                    {u.aff_cd ? L(" · aff CD −{n}%", " · 好感度 再使用 −{n}%", { n: u.aff_cd }) : ""}
+                    {u.aff_dur ? L(" · aff duration +{n}%", " · 好感度 効果時間 +{n}%", { n: u.aff_dur }) : ""}
                   </div>
                 </div>
                 <button className="cg-x" onClick={() => setSels(sels.filter((s) => s.id !== sel.id))}>
@@ -919,20 +924,20 @@ export default function CostGen() {
               </div>
               <div className="cg-row">
                 <label>
-                  Class
+                  {L("Class", "クラス")}
                   <select
                     value={sel.tier}
                     onChange={(e) => patch(sel.id, (s) => ({ ...s, tier: Number(e.target.value) }))}
                   >
                     {u.tiers.map((t, i) => (
                       <option key={i} value={i}>
-                        {CC_LABEL[t.cc] ?? `cc${t.cc}`} · {t.name} (cost {t.cost})
+                        {CC_LABEL[t.cc] ?? `cc${t.cc}`} · {t.name} ({L("cost", "コスト")} {t.cost})
                       </option>
                     ))}
                   </select>
                 </label>
                 <label>
-                  Skill
+                  {L("Skill", "スキル")}
                   <select
                     value={sel.slot}
                     onChange={(e) => patch(sel.id, (s) => ({ ...s, slot: e.target.value as SlotKey }))}
@@ -975,18 +980,18 @@ export default function CostGen() {
               ))}
               {p && (
                 <div className="cg-facts small">
-                  <span>cost <b>{p.cost.toFixed(p.cost % 1 ? 1 : 0)}</b></span>
-                  <span>initial <b>{p.initialSec.toFixed(1)}s</b></span>
+                  <span>{L("cost", "コスト")} <b>{p.cost.toFixed(p.cost % 1 ? 1 : 0)}</b></span>
+                  <span>{L("initial", "初回")} <b>{p.initialSec.toFixed(1)}s</b></span>
                   {p.stages.map((st) => (
                     <span key={st.id}>
                       {st.name ?? st.id}:{" "}
                       {st.permanent
                         ? "∞"
                         : st.duration === 0
-                          ? "2s (anim)"
+                          ? L("2s (anim)", "2秒 (演出)")
                           : `${(st.duration * (1 + (u.aff_dur ?? 0) / 100) * ((tier.dur_pct ?? 100) / 100)).toFixed(0)}s`}
                       {" / "}
-                      {(st.cooldown * (1 - (u.aff_cd ?? 0) / 100) * (1 - p.cdrPct / 100)).toFixed(0)}s cd
+                      {(st.cooldown * (1 - (u.aff_cd ?? 0) / 100) * (1 - p.cdrPct / 100)).toFixed(0)}s {L("cd", "再使用")}
                       {st.flat ? ` · +${st.flat} UP` : ""}
                       {(() => {
                         const ctxS: Ctx = {
@@ -1000,8 +1005,8 @@ export default function CostGen() {
                       {st.consume ? ` · −${st.consume} UP` : ""}
                     </span>
                   ))}
-                  {p.cdrPct > cdr && <span>own CDR {p.cdrPct}% (highest source)</span>}
-                  {tier.starting_up ? <span>+{tier.starting_up} team starting UP (not charted)</span> : null}
+                  {p.cdrPct > cdr && <span>{L("own CDR {n}% (highest source)", "自身の再使用短縮 {n}% (最大の効果)", { n: p.cdrPct })}</span>}
+                  {tier.starting_up ? <span>{L("+{n} team starting UP (not charted)", "編成の初期コスト +{n} (グラフ外)", { n: tier.starting_up })}</span> : null}
                 </div>
               )}
             </div>

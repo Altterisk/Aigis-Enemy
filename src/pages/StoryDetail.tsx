@@ -7,6 +7,7 @@ import { bannerUrl, storyCharaUrl, talkFaceUrl, useStoryGroup } from "../data";
 import { ColorCodedText, routerLink } from "../components";
 import { StoryViewer } from "../storyViewer";
 import type { StoryGroup, StoryLine, StoryScene } from "../types";
+import { useL } from "../i18n";
 
 // The speaker's portrait: a unit's icon, or the top of an event character's art.
 function Avatar({ w, name }: { w?: string; name: string }) {
@@ -33,18 +34,19 @@ function toView(l: StoryLine): StoryLineView {
 
 function SceneRow({ scene, onPlay }: { scene: StoryScene; onPlay: (key: string) => void }) {
   const [open, setOpen] = useState(false);
+  const L = useL();
   return (
     <div className="story-scene">
       <div className="story-scene-head">
         <span className="story-scene-title">
-          Scene <span className="muted small">· {scene.lines.length} lines</span>
-          {scene.card != null && <> · <Link to={`/units/${scene.card}`}>unit page</Link></>}
+          {L("Scene", "シーン")} <span className="muted small">{L("· {n} lines", "· {n} 行", { n: scene.lines.length })}</span>
+          {scene.card != null && <> · <Link to={`/units/${scene.card}`}>{L("unit page", "ユニットページ")}</Link></>}
         </span>
         <button type="button" className="story-btn primary" onClick={() => onPlay(scene.key)} disabled={!scene.pages.length}>
-          ▶ Play
+          ▶ {L("Play", "再生")}
         </button>
         <button type="button" className="story-btn" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-          {open ? "Hide text" : "Read"}
+          {open ? L("Hide text", "テキストを隠す") : L("Read", "読む")}
         </button>
       </div>
       {open && <StoryLines className="story-read" lines={scene.lines.map(toView)} renderLink={routerLink} />}
@@ -62,12 +64,13 @@ export default function StoryDetail() {
   const [params, setParams] = useSearchParams();
   const [bannerFailed, setBannerFailed] = useState(false);
   const playing = params.get("play");
+  const L = useL();
   usePageMeta(loading ? LIST_META["/story"] : group ? {
     title: `${plainText(group.title)} story`,
     description: `Event story of ${plainText(group.title)} (Millennium War Aigis): ${group.scenes} out-of-battle scenes with a scene viewer, and links to its battle dialogue.`,
   } : NOT_FOUND_META);
-  if (loading) return <p className="loading">Loading…</p>;
-  if (!group) return <p>Story not found. <Link to="/story">Back</Link></p>;
+  if (loading) return <p className="loading">{L("Loading…", "読み込み中…")}</p>;
+  if (!group) return <p>{L("Story not found.", "ストーリーが見つかりません。")} <Link to="/story">{L("Back", "戻る")}</Link></p>;
 
   const play = (key: string | null) => {
     const next = new URLSearchParams(params);
@@ -79,7 +82,7 @@ export default function StoryDetail() {
   return (
     <div className="detail story-detail">
       <Breadcrumbs renderLink={routerLink} items={[
-        { label: "Story", href: "/story" },
+        { label: L("Story", "ストーリー"), href: "/story" },
         { label: <ColorCodedText text={group.title} /> },
       ]} />
       <PageHeader
@@ -92,24 +95,24 @@ export default function StoryDetail() {
         subtitle={<span className="event-line"><span className="cat-badge">{group.category}</span></span>}
         meta={(
           <MetaChips>
-            <MetaChip label="Scenes" value={group.scenes} />
-            <MetaChip label="Stages with battle dialogue" value={group.battle} />
-            {group.mission_id != null && <MetaChip label="Mission" value={group.mission_id} />}
-            {group.past && <MetaChip className="past-chip" value="past content" />}
+            <MetaChip label={L("Scenes", "シーン")} value={group.scenes} />
+            <MetaChip label={L("Stages with battle dialogue", "戦闘会話のあるステージ")} value={group.battle} />
+            {group.mission_id != null && <MetaChip label={L("Mission", "ミッション")} value={group.mission_id} />}
+            {group.past && <MetaChip className="past-chip" value={L("past content", "終了したコンテンツ")} />}
           </MetaChips>
         )}
       />
 
       {group.story_talk_quest != null && (
         <p className="story-note">
-          Part of this event&apos;s story is shown on the battle screen:{" "}
-          <Link to={`/stages/${group.story_talk_quest}?tab=dialogue`}>read it on the stage&apos;s Dialogue tab</Link>.
+          {L("Part of this event's story is shown on the battle screen:", "このイベントのストーリーの一部は戦闘画面で表示されます:")}{" "}
+          <Link to={`/stages/${group.story_talk_quest}?tab=dialogue`}>{L("read it on the stage's Dialogue tab", "ステージの会話タブで読む")}</Link>.
         </p>
       )}
 
       {group.intro.length > 0 && (
         <section className="story-quest">
-          <h3>{group.quests.length ? "Event scenes" : "Scenes"}</h3>
+          <h3>{group.quests.length ? L("Event scenes", "イベントのシーン") : L("Scenes", "シーン")}</h3>
           {group.intro.map((s) => (
             <div key={s.key}>
               {s.title !== s.key && <div className="story-scene-name"><ColorCodedText text={s.title} /></div>}
@@ -127,8 +130,8 @@ export default function StoryDetail() {
           {q.scenes.map((s) => <SceneRow key={s.key} scene={s} onPlay={play} />)}
           {q.battle > 0 && (
             <div className="story-battle">
-              <span>Battle dialogue <span className="muted small">· {q.battle} scene{q.battle === 1 ? "" : "s"}</span></span>
-              <Link className="story-btn" to={`/stages/${q.quest_id}?tab=dialogue`}>Open</Link>
+              <span>{L("Battle dialogue", "戦闘会話")} <span className="muted small">{L("· {n} scene(s)", "· {n} シーン", { n: q.battle })}</span></span>
+              <Link className="story-btn" to={`/stages/${q.quest_id}?tab=dialogue`}>{L("Open", "開く")}</Link>
             </div>
           )}
         </section>

@@ -8,32 +8,45 @@ import { FallbackImage, SearchBox } from "@altterisk/game-hub";
 import { useWeather } from "../data";
 import { UnitIconLink } from "../components";
 import type { WeatherEntry, WeatherRow, WeatherSource } from "../types";
+import { gameName, getLang, altName, useL } from "../i18n";
 
 interface EffectMeta {
   label: string;
   note: string;
 }
 
-const EFFECTS: Record<number, EffectMeta> = {
-  1: { label: "Movement speed", note: "How fast the affected side moves. Higher is faster." },
-  2: { label: "Range", note: "Attack range of the affected side." },
-  3: {
-    label: "UP recovery interval",
-    note: "Time between UP ticks. A lower number means UP comes in faster.",
+const EFFECTS: Record<number, { en: EffectMeta; ja: EffectMeta }> = {
+  1: {
+    en: { label: "Movement speed", note: "How fast the affected side moves. Higher is faster." },
+    ja: { label: "移動速度", note: "影響を受ける側の移動の速さ。大きいほど速い。" },
   },
-  4: { label: "ATK", note: "Attack power of the affected side." },
-  5: { label: "Movement speed", note: "How fast the affected side moves. Higher is faster." },
+  2: {
+    en: { label: "Range", note: "Attack range of the affected side." },
+    ja: { label: "射程", note: "影響を受ける側の攻撃射程。" },
+  },
+  3: {
+    en: { label: "UP recovery interval", note: "Time between UP ticks. A lower number means UP comes in faster." },
+    ja: { label: "コスト回復間隔", note: "コストが回復する間隔。小さいほど早く回復する。" },
+  },
+  4: {
+    en: { label: "ATK", note: "Attack power of the affected side." },
+    ja: { label: "攻撃力", note: "影響を受ける側の攻撃力。" },
+  },
+  5: {
+    en: { label: "Movement speed", note: "How fast the affected side moves. Higher is faster." },
+    ja: { label: "移動速度", note: "影響を受ける側の移動の速さ。大きいほど速い。" },
+  },
 };
 
 // The category a weather belongs to, for the units that carry a weather resist.
-const FAMILIES: Record<number, string> = {
-  1: "Blizzard",
-  2: "Storm / rain / heat",
-  3: "Mist / wind / torrent",
+const FAMILIES: Record<number, { en: string; ja: string }> = {
+  1: { en: "Blizzard", ja: "吹雪" },
+  2: { en: "Storm / rain / heat", ja: "嵐・雨・暑さ" },
+  3: { en: "Mist / wind / torrent", ja: "霧・風・激流" },
 };
 
 function effectMeta(id: number): EffectMeta {
-  return EFFECTS[id] || { label: `effect ${id}`, note: "" };
+  return EFFECTS[id]?.[getLang()] || { label: `effect ${id}`, note: "" };
 }
 
 function rowLabel(r: WeatherRow): string {
@@ -75,6 +88,7 @@ function Chips({ rows }: { rows: WeatherRow[] }) {
 }
 
 export default function Weather() {
+  const L = useL();
   const data = useWeather();
   const [q, setQ] = useState("");
   const [effect, setEffect] = useState("all");
@@ -105,42 +119,40 @@ export default function Weather() {
     return map;
   }, [data]);
 
-  if (!data) return <p className="loading">Loading weather…</p>;
+  if (!data) return <p className="loading">{L("Loading weather…", "天候を読み込み中…")}</p>;
 
   const sideRows = (w: WeatherEntry, target: number) =>
     w.rows.filter((r) => r.target === target && !isNoOp(r));
 
   return (
     <div className="weather-page">
-      <h2>Weather</h2>
+      <h2>{L("Weather", "天候")}</h2>
       <p className="muted">
-        Weather (天候) covers the whole battlefield and hits both sides at once —
-        the enemies as well as your own units. Every banner below reads 悪天候,
-        bad weather, except <b>IceLightning</b>: the only one the game calls
-        plain 天候, and the only one that leaves your units alone.
+        {L("Weather (天候) covers the whole battlefield and hits both sides at once — the enemies as well as your own units. Every banner below reads 悪天候, bad weather, except", "天候は戦場全体を覆い、敵と味方の両方に影響します。下のバナーはすべて「悪天候」ですが、")}{" "}
+        <b>IceLightning</b>{L(": the only one the game calls plain 天候, and the only one that leaves your units alone.", " だけは「天候」と表示され、味方には影響しません。")}
       </p>
 
       <div className="toolbar">
-        <SearchBox placeholder="Search id / name" value={q} onChange={setQ} />
+        <SearchBox placeholder={L("Search id / name", "ID・名前で検索")} value={q} onChange={setQ} />
         <select value={effect} onChange={(e) => setEffect(e.target.value)}>
-          <option value="all">any effect</option>
+          <option value="all">{L("any effect", "すべての効果")}</option>
           {[1, 2, 3, 4].map((id) => (
             <option key={id} value={String(id)}>
               {effectMeta(id).label}
             </option>
           ))}
         </select>
-        <span className="count">{weathers.length} weathers</span>
+        <span className="count">{L("{n} weathers", "{n} 種", { n: weathers.length })}</span>
       </div>
 
       <table className="grid wx-table">
         <thead>
           <tr>
             <th className="wx-col-id">id</th>
-            <th>Weather</th>
-            <th>Resist family</th>
-            <th>Enemies</th>
-            <th>Your units</th>
+            <th>{L("Weather", "天候")}</th>
+            <th>{L("Resist family", "耐性の系統")}</th>
+            <th>{L("Enemies", "敵")}</th>
+            <th>{L("Your units", "味方")}</th>
           </tr>
         </thead>
         <tbody>
@@ -152,12 +164,12 @@ export default function Weather() {
                 <div className="wx-name">
                   <b>{w.name}</b>
                   {(sourcesByWeather.get(w.name || "") || []).length > 0 && (
-                    <span className="badge sky wx-badge">skill</span>
+                    <span className="badge sky wx-badge">{L("skill", "スキル")}</span>
                   )}
                 </div>
               </td>
               <td className="muted">
-                {w.specialty.map((s) => FAMILIES[s] || `family ${s}`).join(", ") || "—"}
+                {w.specialty.map((s) => FAMILIES[s]?.[getLang()] || `family ${s}`).join(", ") || "—"}
               </td>
               <td><Chips rows={sideRows(w, 1)} /></td>
               <td><Chips rows={sideRows(w, 2)} /></td>
@@ -168,22 +180,21 @@ export default function Weather() {
 
       {data.sources.length > 0 && (
         <section className="wx-panel">
-          <h3>Weather from a unit skill</h3>
+          <h3>{L("Weather from a unit skill", "ユニットのスキルによる天候")}</h3>
           <p className="muted small">
-            The skill overwrites whatever weather the stage was running, and that
-            weather does not come back when the skill ends.
+            {L("The skill overwrites whatever weather the stage was running, and that weather does not come back when the skill ends.", "スキルはステージの天候を上書きし、スキル終了後も元の天候には戻りません。")}
           </p>
           <table className="grid wx-source-table">
             <thead>
-              <tr><th>Unit</th><th>Skill</th><th>Weather</th></tr>
+              <tr><th>{L("Unit", "ユニット")}</th><th>{L("Skill", "スキル")}</th><th>{L("Weather", "天候")}</th></tr>
             </thead>
             <tbody>
               {data.sources.map((s, i) => (
                 <tr key={i}>
-                  <td><UnitIconLink id={s.unit} name={s.unit_name_en || s.unit_name} /></td>
+                  <td><UnitIconLink id={s.unit} name={gameName(s.unit_name_en, s.unit_name)} /></td>
                   <td>
-                    {s.skill_en || s.skill}
-                    {s.skill_en && s.skill && (
+                    {gameName(s.skill_en, s.skill)}
+                    {altName(s.skill_en, s.skill) && (
                       <div className="muted small">{s.skill}</div>
                     )}
                   </td>

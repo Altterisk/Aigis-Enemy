@@ -3,6 +3,7 @@ import { copyText } from "@altterisk/game-hub";
 import { saveBlob } from "@altterisk/game-hub/persist";
 import { mapImageUrl } from "./data";
 import type { MapEvent, MapSpot, StageMapInfo } from "./types";
+import { useL } from "./i18n";
 
 const COLORS: Record<MapSpot["k"], { fill: string; text: string }> = {
   m: { fill: "#e5484d", text: "#ffffff" },
@@ -440,13 +441,14 @@ export function StageMap({ map, questId, name }: { map: StageMapInfo; questId: n
     return next;
   });
   const missingFx = effects ? [...effects.entries()].filter(([, e]) => !e).map(([n]) => n) : [];
+  const L = useL();
   const ready = !!img && !!effects;
 
   return (
     <div className="stage-map">
       {phases.length > 1 && (
-        <div className="stage-map-phases" role="group" aria-label="Map phase">
-          <span className="muted small">The map changes during this battle:</span>
+        <div className="stage-map-phases" role="group" aria-label={L("Map phase", "マップの段階")}>
+          <span className="muted small">{L("The map changes during this battle:", "この戦闘中にマップが変化します:")}</span>
           {phases.map((p, i) => (
             <button key={i} type="button" aria-pressed={phase === i}
               className={`hub-btn hub-btn--sm${phase === i ? " stage-map-phase--active" : ""}`}
@@ -462,53 +464,53 @@ export function StageMap({ map, questId, name }: { map: StageMapInfo; questId: n
           <label key={k} className="stage-map-toggle">
             <input type="checkbox" checked={show.has(k)} onChange={() => toggle(k)} />
             <span className={`stage-map-key stage-map-key--${k}`}>{k === "b" ? "B" : k.toUpperCase()}</span>
-            {k === "m" ? "Melee" : k === "r" ? "Ranged" : "Base"} ({counts[k]})
+            {k === "m" ? L("Melee", "近接") : k === "r" ? L("Ranged", "遠距離") : L("Base", "拠点")} ({counts[k]})
           </label>
         ))}
         {damageSpots.length > 0 && (
-          <span className="stage-map-toggle" title="Fixed damage to the unit placed on the spot">
+          <span className="stage-map-toggle" title={L("Fixed damage to the unit placed on the spot", "配置したユニットへの固定ダメージ")}>
             <span className="stage-map-key stage-map-key--dmg">{damageText(damageSpots[0].dmg!)}</span>
-            Damage tile ({damageSpots.length})
+            {L("Damage tile", "ダメージ床")} ({damageSpots.length})
           </span>
         )}
         {triggers.length > 0 && (
-          <label className="stage-map-toggle" title="Spot changes caused by enemies or stage conditions">
+          <label className="stage-map-toggle" title={L("Spot changes caused by enemies or stage conditions", "敵やステージの条件による配置場所の変化")}>
             <input type="checkbox" checked={showTriggers} onChange={() => setShowTriggers((v) => !v)} />
             <span className="stage-map-key stage-map-key--trigger">1</span>
-            Triggered changes ({triggers.length})
+            {L("Triggered changes", "条件による変化")} ({triggers.length})
           </label>
         )}
         <span className="stage-map-actions">
           <button type="button" className="hub-btn hub-btn--sm" disabled={!ready}
             onClick={async () => saveBlob(await png(), `aigis-stage-${questId}-map${phase ? `-phase${phase}` : ""}.png`)}>
-            Download PNG
+            {L("Download PNG", "PNGで保存")}
           </button>
           {canCopyImage && (
             <button type="button" className="hub-btn hub-btn--sm" disabled={!ready}
               onClick={() => navigator.clipboard.write([new ClipboardItem({ "image/png": png() })])
-                .then(() => flash("Image copied"), () => flash("Copy failed"))}>
-              Copy image
+                .then(() => flash(L("Image copied", "画像をコピーしました")), () => flash(L("Copy failed", "コピーできませんでした")))}>
+              {L("Copy image", "画像をコピー")}
             </button>
           )}
           <button type="button" className="hub-btn hub-btn--sm"
-            onClick={() => copyText(link).then((ok) => flash(ok ? "Link copied" : "Copy failed"))}>
-            Copy link
+            onClick={() => copyText(link).then((ok) => flash(ok ? L("Link copied", "リンクをコピーしました") : L("Copy failed", "コピーできませんでした")))}>
+            {L("Copy link", "リンクをコピー")}
           </button>
           {note && <span className="muted small" role="status">{note}</span>}
         </span>
       </div>
-      {failed ? <p className="muted">Map image unavailable.</p> : !ready && <p className="loading">Loading map…</p>}
+      {failed ? <p className="muted">{L("Map image unavailable.", "マップ画像がありません。")}</p> : !ready && <p className="loading">{L("Loading map…", "マップを読み込み中…")}</p>}
       <canvas ref={canvasRef} className="stage-map-canvas" hidden={!ready}
-        aria-label={`Map of ${name}${phaseText}: ${counts.m} melee and ${counts.r} ranged deployment spots`} />
+        aria-label={L("Map of {name}: {m} melee and {r} ranged deployment spots", "{name}のマップ: 近接 {m}・遠距離 {r} の配置場所", { name: `${name}${phaseText}`, m: counts.m, r: counts.r })} />
       {showTriggers && triggers.length > 0 && (
-        <ol className="stage-map-triggers" aria-label="Triggered spot changes">
+        <ol className="stage-map-triggers" aria-label={L("Triggered spot changes", "条件による配置場所の変化")}>
           {triggers.map((t) => (
             <li key={t.n}><span className="stage-map-key stage-map-key--trigger">{t.n}</span> {t.text}</li>
           ))}
         </ol>
       )}
       {missingFx.length > 0 && (
-        <p className="muted small">Some map changes have no extracted artwork ({missingFx.join(", ")}); their spots are still shown.</p>
+        <p className="muted small">{L("Some map changes have no extracted artwork ({fx}); their spots are still shown.", "一部のマップ変化は画像がありません ({fx})。配置場所は表示しています。", { fx: missingFx.join(", ") })}</p>
       )}
     </div>
   );

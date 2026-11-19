@@ -5,6 +5,7 @@ import { UnitImage } from "../components";
 import { CheckboxGroup, EmptyState, FilterChip, FilterPanel, ListToolbar, Pager, SearchBox } from "@altterisk/game-hub";
 import { useUiStore } from "../store";
 import type { UnitIndexEntry, UnitInfluenceLabel, TagMentions } from "../types";
+import { altName, gameName, rarityName, useHubLabels, useL, type Pick } from "../i18n";
 
 const PAGE = 60;
 
@@ -19,13 +20,14 @@ function baseRarity(r: string): string {
 // option list live, for dropdowns too large to scan by scrolling (class
 // names, skill/ability influence ids). value="" means "no filter".
 function SearchableSelect({
-  value, options, placeholder, onChange, wide,
+  value, options, placeholder, onChange, wide, emptyText,
 }: {
   value: string;
   options: { value: string; label: string }[];
   placeholder: string;
   onChange: (v: string) => void;
   wide?: boolean;
+  emptyText: string;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -66,7 +68,7 @@ function SearchableSelect({
           type="button"
           className="searchable-select-clear"
           onClick={() => { onChange(""); close(); }}
-          title={`clear ${placeholder}`}
+          title={`× ${placeholder}`}
         >
           ×
         </button>
@@ -86,7 +88,7 @@ function SearchableSelect({
               {o.label}
             </div>
           ))}
-          {filtered.length === 0 && <div className="searchable-select-empty">no matches</div>}
+          {filtered.length === 0 && <div className="searchable-select-empty">{emptyText}</div>}
         </div>
       )}
     </div>
@@ -102,20 +104,22 @@ function influenceOption(
   return lab?.name ? `${id} — ${lab.name}` : `influence ${id}`;
 }
 
-const POSITION_OPTS = [
-  { value: "melee", label: "Melee" },
-  { value: "ranged", label: "Ranged" },
-  { value: "omni", label: "Omni (deployable either spot)" },
+const positionOpts = (L: Pick) => [
+  { value: "melee", label: L("Melee", "近接") },
+  { value: "ranged", label: L("Ranged", "遠距離") },
+  { value: "omni", label: L("Omni (deployable either spot)", "両用 (どちらの配置場所にも出撃可)") },
 ];
-const GENDER_OPTS = [
-  { value: "Female", label: "Female" },
-  { value: "Male", label: "Male" },
+const genderOpts = (L: Pick) => [
+  { value: "Female", label: L("Female", "女性") },
+  { value: "Male", label: L("Male", "男性") },
 ];
 
 export default function UnitList() {
   const { loading, units } = useUnits();
   const influenceLabels = useUnitInfluenceLabels();
   const loc = useLocalisation();
+  const L = useL();
+  const hub = useHubLabels();
   // ALL filter/search/page state lives in the URL: a plain useState resets
   // on remount, so browser back/forward would otherwise drop the previous
   // view; a URL param survives since it's part of the history entry.
@@ -241,7 +245,7 @@ export default function UnitList() {
     const toOpts = (s: Set<string>, tr?: Record<string, string>) =>
       [...s].sort(byId).map((v) => ({ value: v, label: tr?.[v] || v }));
     return {
-      rarityOpts: [...rarity].sort(byId).map((v) => ({ value: v, label: v })),
+      rarityOpts: [...rarity].sort(byId).map((v) => ({ value: v, label: rarityName(v) })),
       factionOpts: toOpts(faction, loc?.races),
       raceOpts: toOpts(race, loc?.races),
       attrOpts: toOpts(attr, loc?.tags),
@@ -291,7 +295,7 @@ export default function UnitList() {
   const activeParams = [...new Set(params.keys())].filter((k) => k !== "page" && params.get(k)).length;
   const resetAll = () => setParams(new URLSearchParams(), { replace: true });
 
-  if (loading) return <p className="loading">Loading units…</p>;
+  if (loading) return <p className="loading">{L("Loading units…", "ユニットを読み込み中…")}</p>;
 
   const pages = Math.ceil(filtered.length / PAGE);
   const shown = filtered.slice(page * PAGE, page * PAGE + PAGE);
@@ -300,49 +304,53 @@ export default function UnitList() {
     <div>
       <div className="toolbar unit-toolbar">
         <ListToolbar
-          search={<SearchBox value={q} onChange={(v) => setParam("q", v || null)} placeholder="Search id / name / class" />}
-          count={`${filtered.length.toLocaleString()} units`}
+          search={<SearchBox value={q} onChange={(v) => setParam("q", v || null)} placeholder={L("Search id / name / class", "ID・名前・クラスで検索")} clearLabel={hub.clearSearch} />}
+          count={L("{n} units", "{n} ユニット", { n: filtered.length.toLocaleString() })}
           activeFilters={activeParams}
           onClearFilters={resetAll}
+          labels={hub.toolbar}
           actions={(
             <FilterChip active={showNpc} onClick={() => setParam("npc", showNpc ? null : "1")}>
-              NPC / test / fodder
+              {L("NPC / test / fodder", "NPC・テスト・素材")}
             </FilterChip>
           )}
         />
         <div className="unit-toolbar-row">
           <SearchableSelect
             value={cls}
-            placeholder="all classes"
+            placeholder={L("all classes", "すべてのクラス")}
+            emptyText={L("no matches", "該当なし")}
             options={classOpts.map((c) => ({ value: c, label: loc?.classes[c] || c }))}
             onChange={(v) => setParam("cls", v || null)}
           />
           <SearchableSelect
             wide
             value={sInf}
-            placeholder="all skill influences"
+            placeholder={L("all skill influences", "すべてのスキル効果")}
+            emptyText={L("no matches", "該当なし")}
             options={sInfOpts.map((i) => ({ value: String(i), label: influenceOption(i, influenceLabels?.skill) }))}
             onChange={(v) => setParam("sInf", v || null)}
           />
           <SearchableSelect
             wide
             value={aInf}
-            placeholder="all ability influences"
+            placeholder={L("all ability influences", "すべてのアビリティ効果")}
+            emptyText={L("no matches", "該当なし")}
             options={aInfOpts.map((i) => ({ value: String(i), label: influenceOption(i, influenceLabels?.ability) }))}
             onChange={(v) => setParam("aInf", v || null)}
           />
         </div>
       </div>
 
-      <FilterPanel open={showFilters} onToggle={() => setShowFilters(!showFilters)} activeCount={activeCount} phoneOnly={false}>
-        <CheckboxGroup title="Rarity" options={rarityOpts} selected={rarityF} onToggle={(v) => toggleCsv("rarity", rarityF, v)} />
-        <CheckboxGroup title="Position" options={POSITION_OPTS} selected={positionF} onToggle={(v) => toggleCsv("position", positionF, v)} />
-        <CheckboxGroup title="Gender" options={GENDER_OPTS} selected={genderF} onToggle={(v) => toggleCsv("gender", genderF, v)} />
-        <CheckboxGroup title="Affiliation" options={factionOpts} selected={factionF} onToggle={(v) => toggleCsv("faction", factionF, v)} />
-        <CheckboxGroup title="Race" options={raceOpts} selected={raceF} onToggle={(v) => toggleCsv("race", raceF, v)} />
-        <CheckboxGroup title="Attribute" options={attrOpts} selected={attrF} onToggle={(v) => toggleCsv("attr", attrF, v)} />
-        <CheckboxGroup title="Season" options={seasonOpts} selected={seasonF} onToggle={(v) => toggleCsv("season", seasonF, v)} />
-        <CheckboxGroup title="Release Year" options={yearOpts} selected={yearF} onToggle={(v) => toggleCsv("year", yearF, v)} />
+      <FilterPanel open={showFilters} onToggle={() => setShowFilters(!showFilters)} activeCount={activeCount} phoneOnly={false} labels={hub.filters}>
+        <CheckboxGroup title={L("Rarity", "レア度")} options={rarityOpts} selected={rarityF} onToggle={(v) => toggleCsv("rarity", rarityF, v)} />
+        <CheckboxGroup title={L("Position", "配置")} options={positionOpts(L)} selected={positionF} onToggle={(v) => toggleCsv("position", positionF, v)} />
+        <CheckboxGroup title={L("Gender", "性別")} options={genderOpts(L)} selected={genderF} onToggle={(v) => toggleCsv("gender", genderF, v)} />
+        <CheckboxGroup title={L("Affiliation", "所属")} options={factionOpts} selected={factionF} onToggle={(v) => toggleCsv("faction", factionF, v)} />
+        <CheckboxGroup title={L("Race", "種族")} options={raceOpts} selected={raceF} onToggle={(v) => toggleCsv("race", raceF, v)} />
+        <CheckboxGroup title={L("Attribute", "属性")} options={attrOpts} selected={attrF} onToggle={(v) => toggleCsv("attr", attrF, v)} />
+        <CheckboxGroup title={L("Season", "季節")} options={seasonOpts} selected={seasonF} onToggle={(v) => toggleCsv("season", seasonF, v)} />
+        <CheckboxGroup title={L("Release Year", "実装年")} options={yearOpts} selected={yearF} onToggle={(v) => toggleCsv("year", yearF, v)} />
         {activeCount > 0 && (
           <button
             className="filter-clear-btn"
@@ -353,7 +361,7 @@ export default function UnitList() {
               setParams(next, { replace: true });
             }}
           >
-            clear all filters
+            {L("clear all filters", "絞り込みをすべて解除")}
           </button>
         )}
       </FilterPanel>
@@ -362,13 +370,13 @@ export default function UnitList() {
         <div className="active-filters">
           {classFilter && (
             <span className="filter-chip">
-              class: {loc?.classes[classFilter] || classFilter}
+              {L("class", "クラス")}: {loc?.classes[classFilter] || classFilter}
               <button onClick={() => setParam("class", null)}>×</button>
             </span>
           )}
           {tagFilter && (
             <span className="filter-chip">
-              tag: {loc?.tags[tagFilter] || loc?.races[tagFilter] || tagFilter}
+              {L("tag", "タグ")}: {loc?.tags[tagFilter] || loc?.races[tagFilter] || tagFilter}
               <button onClick={() => setParam("tag", null)}>×</button>
             </span>
           )}
@@ -382,10 +390,10 @@ export default function UnitList() {
         return (
           <details className="tag-mentions" key={bucket}>
             <summary>
-              {list.length} skills / abilities{" "}
+              {L("{n} skills / abilities", "スキル・アビリティ {n}件", { n: list.length })}{" "}
               {bucket === "unit"
-                ? `condition on ally/unit tag ${tagEn}`
-                : `target ENEMIES tagged ${tagEn} (enemy race/element namespace)`}
+                ? L("condition on ally/unit tag {t}", "味方ユニットのタグ{t}が条件", { t: tagEn })
+                : L("target ENEMIES tagged {t} (enemy race/element namespace)", "タグ{t}の敵が対象 (敵の種族・属性)", { t: tagEn })}
             </summary>
             <ul className="admin-examples">
               {list.map((m, i) => (
@@ -399,16 +407,16 @@ export default function UnitList() {
         );
       })}
 
-      <Pager page={page + 1} pages={pages} onPage={(p) => setParam("page", p > 1 ? String(p - 1) : null)} />
+      <Pager page={page + 1} pages={pages} onPage={(p) => setParam("page", p > 1 ? String(p - 1) : null)} labels={hub.pager} />
 
-      {shown.length === 0 && <EmptyState title="No units match these filters." hint="Change the search or clear the filters." />}
+      {shown.length === 0 && <EmptyState title={L("No units match these filters.", "条件に合うユニットがありません。")} hint={L("Change the search or clear the filters.", "検索条件を変えるか、絞り込みを解除してください。")} />}
 
       {princeCount > 0 && (
         <Link to="/prince" className="prince-list-link">
           <UnitImage kind="icon" id={1} className="unit-icon-mini" alt="" />
           <span>
-            <strong>Prince</strong>
-            <span className="muted"> — the Prince and his {princeCount - 1} title cards are on their own page</span>
+            <strong>{L("Prince", "王子")}</strong>
+            <span className="muted">{L(" — the Prince and his {n} title cards are on their own page", " — 王子と称号カード{n}枚は専用ページにあります", { n: princeCount - 1 })}</span>
           </span>
           <span aria-hidden="true" className="prince-list-arrow">→</span>
         </Link>
@@ -420,13 +428,13 @@ export default function UnitList() {
             <UnitImage kind="icon" id={u.id} className="unit-icon-thumb" alt={String(u.id)} />
             <div className="enemy-tile-body unit-tile-body">
               <div className="unit-tile-name">
-                {u.name_en || u.name || "(unnamed)"}
+                {gameName(u.name_en, u.name) || L("(unnamed)", "(名前なし)")}
               </div>
               <div className="muted small unit-tile-sub">
-                #{u.id}{u.name_en && u.name ? ` · ${u.name}` : ""}
+                #{u.id}{altName(u.name_en, u.name) ? ` · ${u.name}` : ""}
               </div>
               <div className="enemy-tile-attr">
-                {u.rarity} · {(u.class && loc?.classes[u.class]) || u.class || "?"} {u.ranged ? "(ranged)" : ""}
+                {rarityName(u.rarity)} · {(u.class && loc?.classes[u.class]) || u.class || "?"} {u.ranged ? L("(ranged)", "(遠距離)") : ""}
               </div>
               {u.tags && u.tags.length > 0 && (
                 <div className="muted small unit-tile-tags">
@@ -438,7 +446,7 @@ export default function UnitList() {
         ))}
       </div>
 
-      <Pager page={page + 1} pages={pages} onPage={(p) => setParam("page", p > 1 ? String(p - 1) : null)} />
+      <Pager page={page + 1} pages={pages} onPage={(p) => setParam("page", p > 1 ? String(p - 1) : null)} labels={hub.pager} />
     </div>
   );
 }

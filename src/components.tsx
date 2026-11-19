@@ -10,6 +10,7 @@ import type {
   Effect, DamageType, UnitImageKind, Missile, MissileOnHit,
   Localisation as LocalisationT,
 } from "./types";
+import { getLang } from "./i18n";
 
 // Router-aware link for shared game-hub parts that take renderLink.
 export const routerLink: RenderLink = ({ href, ...rest }) => <Link to={href} {...rest} />;
@@ -488,7 +489,7 @@ export function auraRadius(e: Effect): string | null {
 // Long lists fold behind a toggle (raw rows are reference material).
 export function Effects({ effects, foldAt = 5 }: { effects?: Effect[]; foldAt?: number }) {
   const labels = useInfluenceLabels();
-  if (!effects || effects.length === 0) return <span className="muted">none</span>;
+  if (!effects || effects.length === 0) return <span className="muted">{getLang() === "ja" ? "なし" : "none"}</span>;
   const list = (
     <ul className="effects">
       {effects.map((e, i) => {

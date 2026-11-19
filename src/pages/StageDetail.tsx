@@ -19,6 +19,7 @@ import type {
   DialogueSection,
   DialogueLine,
 } from "../types";
+import { useL } from "../i18n";
 
 // safe number formatter: the exported data omits zero/empty fields (compacted),
 // so a missing numeric value means 0.
@@ -136,15 +137,16 @@ function StatRow({
   spcfg: SpecialtyConfig | null;
 }) {
   const effects = (d.special_effect_id && spcfg?.[String(d.special_effect_id)]) || [];
+  const L = useL();
   return (
     <tr className={variant ? "variant-row" : ""}>
       <td className="c-attack">
-        {variant && <span className="block-label">alt. attack</span>}
+        {variant && <span className="block-label">{L("alt. attack", "別の攻撃")}</span>}
         <DamageBadge type={d.damage_type} />
         <div className="muted small">
           {(d.attack_range ?? 0) > 0
-            ? `ranged (${displayRange(d.attack_range, d.dot_rate)})`
-            : "melee"}
+            ? `${L("ranged", "遠距離")} (${displayRange(d.attack_range, d.dot_rate)})`
+            : L("melee", "近接")}
         </div>
         {d.missile?.splash && (
           <div className="muted small" title="area-of-effect splash radius">
@@ -186,29 +188,29 @@ function StatRow({
       <td className="num">{d.armor_defense ?? 0}</td>
       <td className="num">{d.magic_defense ?? 0}</td>
       <td className="c-speed">
-        <div className="muted small" title="movement speed">move {d.move_speed ?? 0}</div>
+        <div className="muted small" title={L("movement speed", "移動速度")}>{L("move", "移動")} {d.move_speed ?? 0}</div>
         {d.attack_interval ? (
           <div
             className="muted small"
             title={`attack interval: ${d.attack_interval} engine frames (60fps) = ${(d.attack_interval / 60).toFixed(2)}s, decoded from the attack animation`}
           >
-            interval {d.attack_interval}f ({(d.attack_interval / 60).toFixed(1)}s)
+            {L("interval", "攻撃間隔")} {d.attack_interval}f ({(d.attack_interval / 60).toFixed(1)}s)
           </div>
         ) : (
           <div className="muted small" title="attack animation not available for this enemy">
-            interval n/a
+            {L("interval n/a", "攻撃間隔 不明")}
           </div>
         )}
       </td>
       <td className="c-support muted small">
-        <div title="cost/UP the player gains when this enemy is killed">
-          kill reward {d.gain_cost ?? 0}
+        <div title={L("cost/UP the player gains when this enemy is killed", "撃破時に得られるコスト")}>
+          {L("kill reward", "撃破コスト")} {d.gain_cost ?? 0}
         </div>
-        <div title="resistance to instant-death / assassination (0x = immune)">
-          assassinate {(d.assassin_resist ?? 0) / 100}x
+        <div title={L("resistance to instant-death / assassination (0x = immune)", "即死・暗殺への耐性 (0x = 無効)")}>
+          {L("assassinate", "暗殺")} {(d.assassin_resist ?? 0) / 100}x
         </div>
-        <div title="resistance to being transformed by the player (0x = immune)">
-          transform {(d.transform_resist ?? 0) / 100}x
+        <div title={L("resistance to being transformed by the player (0x = immune)", "変身させられることへの耐性 (0x = 無効)")}>
+          {L("transform", "変身")} {(d.transform_resist ?? 0) / 100}x
         </div>
       </td>
       <td className="c-effect">
@@ -282,6 +284,7 @@ function EnemyCard({
   spcfg: SpecialtyConfig | null;
 }) {
   const race = e.race_id != null ? races?.[String(e.race_id)] : null;
+  const L = useL();
   const blocks: { d: StageEnemyForm; variant?: boolean }[] = [
     { d: e },
     ...(e.variants || []).map((v) => ({ d: v, variant: true })),
@@ -295,12 +298,12 @@ function EnemyCard({
         </div>
         <div className="enemy-main">
           <div className="enemy-name">
-            Enemy #{e.enemy_id}
+            {L("Enemy #{id}", "敵 #{id}", { id: e.enemy_id })}
             {e.global_id != null && (
               <Link
                 to={`/enemies/${e.global_id}`}
                 className="global-link"
-                title="open this enemy's global page (stable Enemy.atb id)"
+                title={L("open this enemy's global page (stable Enemy.atb id)", "この敵の共通ページを開く (Enemy.atb ID)")}
               >
                 {" "}#{e.global_id}
               </Link>
@@ -308,13 +311,13 @@ function EnemyCard({
             {e.uncounted && (
               <span
                 className="badge marker"
-                title="置物 / 分身: the game leaves it out of the enemy count — a marker, not a kill target"
+                title={L("置物 / 分身: the game leaves it out of the enemy count — a marker, not a kill target", "置物 / 分身: 敵の数に含まれません")}
               >
-                marker
+                {L("marker", "置物")}
               </span>
             )}
             {(e.form_count ?? 1) > 1 && (
-              <span className="muted small"> · form {(e.form_index ?? 0) + 1}/{e.form_count}</span>
+              <span className="muted small">{L(" · form {a}/{b}", " · 形態 {a}/{b}", { a: (e.form_index ?? 0) + 1, b: e.form_count ?? 1 })}</span>
             )}
             {holdText(e.route_behaviour?.hold) && (
               <span className="trigger-badge" title="route waypoint wait of -1: parked on its route">
@@ -345,7 +348,7 @@ function EnemyCard({
             {(e.level ?? 0) > 0 && <span className="muted small"> Lv{e.level}</span>}
             {(e.spawn_sec ?? 0) > 0 && (
               <span className="muted small" title="approximate first-appearance time">
-                {" "}· spawns ~{Math.floor((e.spawn_sec ?? 0) / 60)}:
+                {" "}· {L("spawns", "出現")} ~{Math.floor((e.spawn_sec ?? 0) / 60)}:
                 {String((e.spawn_sec ?? 0) % 60).padStart(2, "0")}
               </span>
             )}
@@ -354,9 +357,9 @@ function EnemyCard({
           <table className="enemy-stat-table">
             <thead>
               <tr>
-                <th>attack</th><th>HP</th><th>ATK</th><th>DEF</th>
-                <th>MR</th><th className="col-speed">speed</th>
-                <th className="col-support">support</th><th>effect</th>
+                <th>{L("attack", "攻撃")}</th><th>HP</th><th>{L("ATK", "攻撃力")}</th><th>{L("DEF", "防御力")}</th>
+                <th>{L("MR", "魔法耐性")}</th><th className="col-speed">{L("speed", "速度")}</th>
+                <th className="col-support">{L("support", "その他")}</th><th>{L("effect", "特性")}</th>
               </tr>
             </thead>
             <tbody>
@@ -439,6 +442,7 @@ const faceUnitId = (face?: string | null): number | null => {
 };
 
 function DialogueSectionBlock({ s }: { s: DialogueSection }) {
+  const L = useL();
   return (
     <div className="dlg-section">
       <div className="dlg-trigger">{dialogueTriggerText(s)}</div>
@@ -448,7 +452,7 @@ function DialogueSectionBlock({ s }: { s: DialogueSection }) {
         return (
           <div className="dlg-line" key={i}>
             {uid != null ? (
-              <Link to={`/units/${uid}`} className="dlg-face-link" title="open this unit's page">
+              <Link to={`/units/${uid}`} className="dlg-face-link" title={L("open this unit's page", "ユニットのページを開く")}>
                 <TalkFace line={l} />
               </Link>
             ) : (
@@ -480,9 +484,10 @@ export default function StageDetail() {
   const { available: hasStoryTalk, talk: storyTalk } =
     useStoryTalk(stage?.mission_id);
   const [bannerFailed, setBannerFailed] = useState(false);
+  const L = useL();
   usePageMeta(loading ? LIST_META["/stages"] : stage ? stageMeta(stage) : NOT_FOUND_META);
-  if (loading) return <p className="loading">Loading…</p>;
-  if (!stage) return <p>Stage not found. <Link to="/stages">Back</Link></p>;
+  if (loading) return <p className="loading">{L("Loading…", "読み込み中…")}</p>;
+  if (!stage) return <p>{L("Stage not found.", "ステージが見つかりません。")} <Link to="/stages">{L("Back", "戻る")}</Link></p>;
 
   const enemies = stage.enemies ?? [];
   const dialogue = stage.dialogue ?? [];
@@ -491,9 +496,9 @@ export default function StageDetail() {
   const hasDialogue = dialogueCount > 0 || hasStoryTalk;
   const hasMap = !!stage.map;
   const TABS = [
-    { id: "enemies", label: "Enemies", count: enemies.length },
-    { id: "map", label: "Map", hidden: !hasMap },
-    { id: "dialogue", label: "Dialogue", count: dialogueCount, hidden: !hasDialogue },
+    { id: "enemies", label: L("Enemies", "敵"), count: enemies.length },
+    { id: "map", label: L("Map", "マップ"), hidden: !hasMap },
+    { id: "dialogue", label: L("Dialogue", "会話"), count: dialogueCount, hidden: !hasDialogue },
   ];
   const [activeTab, setTab] = tabParam(searchParamsAdapter(params, setParams), TABS);
 
@@ -502,7 +507,7 @@ export default function StageDetail() {
       <Breadcrumbs
         renderLink={routerLink}
         items={[
-          { label: "Stages", href: "/stages" },
+          { label: L("Stages", "ステージ"), href: "/stages" },
           ...(stage.event ? [{ label: stage.event, href: "/stages" }] : []),
           { label: <ColorCodedText text={stage.name} /> },
         ]}
@@ -527,12 +532,12 @@ export default function StageDetail() {
         ) : undefined}
         meta={(
           <MetaChips>
-            <MetaChip label="Quest" value={stage.quest_id} />
-            <MetaChip label="Map / Entry" value={<>{stage.map_no} / {stage.entry_no}</>} />
-            <MetaChip value={`×${stage.multiplier ?? 1} mult`} title="stat multiplier on HP and melee ATK" />
-            <MetaChip label="Charisma" value={stage.charisma ?? 0} />
-            <MetaChip label="Capacity" value={stage.capacity ?? 0} />
-            {stage.active === false && <MetaChip className="past-chip" value="past content" />}
+            <MetaChip label={L("Quest", "クエスト")} value={stage.quest_id} />
+            <MetaChip label={L("Map / Entry", "マップ / エントリー")} value={<>{stage.map_no} / {stage.entry_no}</>} />
+            <MetaChip value={L("×{n} mult", "倍率 ×{n}", { n: stage.multiplier ?? 1 })} title={L("stat multiplier on HP and melee ATK", "HPと近接攻撃力の倍率")} />
+            <MetaChip label={L("Charisma", "カリスマ")} value={stage.charisma ?? 0} />
+            <MetaChip label={L("Capacity", "出撃上限")} value={stage.capacity ?? 0} />
+            {stage.active === false && <MetaChip className="past-chip" value={L("past content", "終了したコンテンツ")} />}
           </MetaChips>
         )}
       />
@@ -542,7 +547,7 @@ export default function StageDetail() {
       )}
 
       {stage.modifiers && stage.modifiers.length > 0 && (
-        <Panel title="Stage modifiers">
+        <Panel title={L("Stage modifiers", "ステージ効果")}>
           <Effects effects={stage.modifiers} />
         </Panel>
       )}
@@ -552,29 +557,29 @@ export default function StageDetail() {
           className="hard-box"
           title={(
             <>
-              <span className="cat-badge">4★ / hard</span> alternative
-              <span className="muted small"> · same map, ×{stage.hard.multiplier ?? 1} mult</span>
+              <span className="cat-badge">{L("4★ / hard", "★4 / 高難度")}</span> {L("alternative", "別バージョン")}
+              <span className="muted small">{L(" · same map, ×{n} mult", " · 同じマップ、倍率 ×{n}", { n: stage.hard.multiplier ?? 1 })}</span>
             </>
           )}
         >
           {(stage.hard.modifiers?.length ?? 0) > 0 && (
             <>
-              <div className="muted small">extra modifiers:</div>
+              <div className="muted small">{L("extra modifiers:", "追加の効果:")}</div>
               <Effects effects={stage.hard.modifiers} />
             </>
           )}
           <div className="muted small">
-            Enemy HP/ATK are rescaled to ×{stage.hard.multiplier ?? 1} (same enemies as below).
+            {L("Enemy HP/ATK are rescaled to ×{n} (same enemies as below).", "敵のHP・攻撃力は ×{n} に再計算されます (敵は下と同じ)。", { n: stage.hard.multiplier ?? 1 })}
           </div>
         </Panel>
       )}
 
-      {(hasDialogue || hasMap) && <UrlTabs tabs={TABS} active={activeTab} onChange={setTab} label="Stage sections" idBase="stage" />}
+      {(hasDialogue || hasMap) && <UrlTabs tabs={TABS} active={activeTab} onChange={setTab} label={L("Stage sections", "ステージの項目")} idBase="stage" />}
 
       {activeTab === "enemies" && (
         <TabPanel tab="enemies" idBase="stage">
           {stage.popups && stage.popups.length > 0 && (
-            <Panel title={`Ability popups (${stage.popups.length})`} note="In-game explanation popups shown in this stage.">
+            <Panel title={L("Ability popups ({n})", "特性の説明 ({n})", { n: stage.popups.length })} note={L("In-game explanation popups shown in this stage.", "このステージでゲーム内に表示される説明。")}>
               <div className="popups">
                 {stage.popups.map((p, i) => (
                   <div className="popup" key={i}>{p}</div>
@@ -583,7 +588,7 @@ export default function StageDetail() {
             </Panel>
           )}
           <section>
-            {!hasDialogue && !hasMap && <h3>Enemies ({enemies.length})</h3>}
+            {!hasDialogue && !hasMap && <h3>{L("Enemies ({n})", "敵 ({n})", { n: enemies.length })}</h3>}
             <div className="enemy-cards">
               {enemies.map((e, i) => (
                 <EnemyCard key={`${e.enemy_id}-${i}`} e={e} labels={labels} races={races} spcfg={spcfg} />
@@ -603,28 +608,24 @@ export default function StageDetail() {
         <TabPanel tab="dialogue" idBase="stage" className="dlg">
           {dialogue.length > 0 && (
             <>
-              <h3>In-stage dialogue</h3>
+              <h3>{L("In-stage dialogue", "ステージ内の会話")}</h3>
               <div className="muted small">
-                Scenes triggered inside this stage, in trigger order. Conditional
-                scenes (e.g. a specific enemy dying) are listed too.
+                {L("Scenes triggered inside this stage, in trigger order. Conditional scenes (e.g. a specific enemy dying) are listed too.", "このステージ内で発生する会話 (発生順)。条件付きの会話 (特定の敵の撃破など) も含みます。")}
               </div>
               {dialogue.map((s, i) => <DialogueSectionBlock key={i} s={s} />)}
             </>
           )}
           {storySections.length > 0 && (
             <>
-              <h3>Event story</h3>
+              <h3>{L("Event story", "イベントストーリー")}</h3>
               <div className="muted small">
-                Story scenes of this event shown outside battle (on entering or
-                after clearing its stages). The exact stage each scene belongs
-                to is not recorded in the map data, so all of the event's
-                scenes are listed in order.
+                {L("Story scenes of this event shown outside battle (on entering or after clearing its stages). The exact stage each scene belongs to is not recorded in the map data, so all of the event's scenes are listed in order.", "戦闘外で表示されるイベントのストーリー (ステージ開始時・クリア後)。各シーンがどのステージのものかはマップデータにないため、イベントの全シーンを順に表示します。")}
               </div>
               {storySections.map((s, i) => <DialogueSectionBlock key={i} s={s} />)}
             </>
           )}
           {dialogue.length === 0 && storySections.length === 0 && (
-            <p className="muted">No dialogue found for this stage.</p>
+            <p className="muted">{L("No dialogue found for this stage.", "このステージの会話はありません。")}</p>
           )}
         </TabPanel>
       )}

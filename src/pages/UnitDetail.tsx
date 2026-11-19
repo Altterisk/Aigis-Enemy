@@ -15,6 +15,7 @@ import { ABILITY_EXTEND_PROSE, COMMAND_PROSE, EXPR_PROSE, EXTEND_PROSE, TICK_PRO
 import { useUiStore } from "../store";
 import { LIST_META, NOT_FOUND_META, unitMeta } from "../meta";
 import { usePageMeta } from "../usePageMeta";
+import { altName, gameName, rarityName, useL, type Pick } from "../i18n";
 import type {
   Unit,
   UnitClass,
@@ -1290,10 +1291,11 @@ function InfluenceViewToggles() {
   const readable = useUiStore((st) => st.influenceReadable);
   const details = useUiStore((st) => st.influenceDetails);
   const toggle = useUiStore((st) => st.toggleInfluenceView);
+  const L = useL();
   return (
-    <div className="inf-view-toggles" role="group" aria-label="Effect views">
-      <button type="button" aria-pressed={readable} onClick={() => toggle("influenceReadable")}>Readable</button>
-      <button type="button" aria-pressed={details} onClick={() => toggle("influenceDetails")}>Game details</button>
+    <div className="inf-view-toggles" role="group" aria-label={L("Effect views", "効果の表示")}>
+      <button type="button" aria-pressed={readable} onClick={() => toggle("influenceReadable")}>{L("Readable", "わかりやすく")}</button>
+      <button type="button" aria-pressed={details} onClick={() => toggle("influenceDetails")}>{L("Game details", "ゲームデータ")}</button>
     </div>
   );
 }
@@ -1448,7 +1450,7 @@ function SkillText({ s }: { s: SkillStage }) {
   if (!en) return <TokenText text={jp} s={s} jp={jp} />;
   return (
     <>
-      <span title="machine translated"><TokenText text={en} s={s} jp={jp} /></span>
+      <span title="machine translated / 機械翻訳"><TokenText text={en} s={s} jp={jp} /></span>
       <div className="muted small"><TokenText text={jp} s={s} jp={jp} /></div>
     </>
   );
@@ -1457,14 +1459,15 @@ function SkillText({ s }: { s: SkillStage }) {
 // A stage's badge: how it is reached. Charge steps get a step counter so a
 // staged charge skill reads as a progression, swaps as "next use".
 function StageBadge({ s, chargePos }: { s: SkillStage; chargePos?: [number, number] }) {
+  const L = useL();
   if (s.via === "charge") {
     return (
       <span className="via-badge via-badge--charge">
-        charge{chargePos ? ` ${chargePos[0]}/${chargePos[1]}` : "d"}
+        {chargePos ? L("charge {a}/{b}", "チャージ {a}/{b}", { a: chargePos[0], b: chargePos[1] }) : L("charged", "チャージ")}
       </span>
     );
   }
-  if (s.via === "swap") return <span className="via-badge">next use</span>;
+  if (s.via === "swap") return <span className="via-badge">{L("next use", "次回使用")}</span>;
   return null;
 }
 
@@ -1486,23 +1489,24 @@ function SkillStageRow({
   const nInf = (s.influences?.length || 0) + (s.linked_ability_influences?.length || 0);
   const missiles = useContext(MissilesContext);
   const abilityConfigs = useContext(AbilityConfigsContext);
+  const L = useL();
   return (
     <tr key={s.id}>
       <td className="unit-class-name-cell">
-        {s.name_en || s.name}
-        {s.name_en && s.name && <div className="muted small">{s.name}</div>}
+        {gameName(s.name_en, s.name)}
+        {altName(s.name_en, s.name) && <div className="muted small">{s.name}</div>}
         <span className="muted small"> #{s.id}</span>
         {i > 0 && <StageBadge s={s} chargePos={chargePos} />}
         {externalSwaps.length > 0 && (
           <div className="muted small">
-            → swaps to skill {externalSwaps.map((id) => `#${id}`).join(", ")}
+            {L("→ swaps to skill {ids}", "→ スキル {ids} に切り替え", { ids: externalSwaps.map((id) => `#${id}`).join(", ") })}
           </div>
         )}
       </td>
       <td className="skill-text">
         <SkillText s={s} />
         {unresolved.length > 0 && (
-          <div className="muted small">unresolved placeholders: {unresolved.join(" ")}</div>
+          <div className="muted small">{L("unresolved placeholders:", "未解決のプレースホルダー:")} {unresolved.join(" ")}</div>
         )}
         <InfluenceViews count={nInf} sentences={skillStageSentences(s, labels, abilityLabels, missiles, skillNames, abilityConfigs)}>
           {s.influences && s.influences.length > 0 && (
@@ -1520,7 +1524,7 @@ function SkillStageRow({
           {s.linked_ability_influences && s.linked_ability_influences.length > 0 && (
             <>
               <div className="muted small linked-ability-head">
-                linked ability effects (granted by the type-122 row):
+                {L("linked ability effects (granted by the type-122 row):", "連動アビリティの効果 (タイプ122の行で付与):")}
               </div>
               <ul className="effects effects--granted">
                 {s.linked_ability_influences.map((inf, j) => (
@@ -1584,17 +1588,18 @@ function SkillBlock({
   labels: Record<string, UnitInfluenceLabel>; abilityLabels: Record<string, UnitInfluenceLabel>;
 }) {
   const [expandGaps, setExpandGaps] = useState(false);
+  const L = useL();
   if (!skill) return null;
   const plan = planStages(skill.stages);
   const inlined = new Set(skill.stages.map((s) => s.id));
-  const skillNames = new Map(skill.stages.map((s) => [s.id, s.name_en || s.name || `skill #${s.id}`]));
+  const skillNames = new Map(skill.stages.map((s) => [s.id, gameName(s.name_en, s.name) || `skill #${s.id}`]));
   return (
     <Panel
       actions={<InfluenceViewToggles />}
       title={(
         <>
-          {label}: {skill.name_en || skill.name}
-          {skill.name_en && skill.name && <span className="muted small"> {skill.name}</span>}
+          {label}: {gameName(skill.name_en, skill.name)}
+          {altName(skill.name_en, skill.name) && <span className="muted small"> {skill.name}</span>}
           {" "}<span className="muted small">#{skill.id}</span>
         </>
       )}
@@ -1602,8 +1607,8 @@ function SkillBlock({
       <table className="grid unit-detail-table">
         <thead>
           <tr>
-            <th>Name</th><th>Effect</th>
-            <th>Duration</th><th>Cooldown</th><th>Max Level</th>
+            <th>{L("Name", "名前")}</th><th>{L("Effect", "効果")}</th>
+            <th>{L("Duration", "効果時間")}</th><th>{L("Cooldown", "再使用時間")}</th><th>{L("Max Level", "最大レベル")}</th>
           </tr>
         </thead>
         <tbody>
@@ -1632,7 +1637,7 @@ function SkillBlock({
               <tr key={`gap${k}`} className="stage-gap-row">
                 <td colSpan={5}>
                   <button className="stage-gap-btn" onClick={() => setExpandGaps(true)}>
-                    … {item.stages.length} intermediate charge steps (show all)
+                    {L("… {n} intermediate charge steps (show all)", "… 途中のチャージ段階 {n} 件 (すべて表示)", { n: item.stages.length })}
                   </button>
                 </td>
               </tr>
@@ -1651,19 +1656,20 @@ function AbilityBlock({
   const missiles = useContext(MissilesContext);
   const abilityConfigs = useContext(AbilityConfigsContext);
   const names = useContext(UnitNamesContext);
+  const L = useL();
   if (!ability) return null;
   const abilityEn = ability.text ? texts.ability[ability.text] : undefined;
   return (
     <Panel title={label} actions={<InfluenceViewToggles />}>
       <table className="grid unit-detail-table">
         <thead>
-          <tr><th>Ability Name</th><th>Effect</th></tr>
+          <tr><th>{L("Ability Name", "アビリティ名")}</th><th>{L("Effect", "効果")}</th></tr>
         </thead>
         <tbody>
           <tr>
             <td className="unit-class-name-cell">
-              {ability.name_en || ability.name}
-              {ability.name_en && ability.name && <div className="muted small">{ability.name}</div>}
+              {gameName(ability.name_en, ability.name)}
+              {altName(ability.name_en, ability.name) && <div className="muted small">{ability.name}</div>}
               <span className="muted small"> #{ability.id}</span>
             </td>
             <td className="skill-text">
@@ -1697,8 +1703,8 @@ function AbilityBlock({
 // expressions are evaluated per class tier against the unit's facts; team /
 // battle conditions stay unknown (null), so a row is listed unless every tier
 // is ruled out. p4 is the stack key: rows sharing it do not stack.
-const BLESSING_GROUPS: [number | null, string][] = [
-  [10001, "Class"], [11001, "Attribute"], [12001, "Sortie"], [null, "Other"],
+const BLESSING_GROUPS: [number | null, string, string][] = [
+  [10001, "Class", "クラス"], [11001, "Attribute", "属性"], [12001, "Sortie", "出撃"], [null, "Other", "その他"],
 ];
 // a stray ";" before ")", "&&" or "||" in a few rows would break the
 // expression parser
@@ -1736,25 +1742,26 @@ function BlessingPanel({
   const missiles = useContext(MissilesContext);
   const abilityConfigs = useContext(AbilityConfigsContext);
   const names = useContext(UnitNamesContext);
+  const L = useL();
   if (!matches.length) {
-    return <Panel title="War God Blessing"><p className="muted">No War God Blessing can buff this unit.</p></Panel>;
+    return <Panel title={L("War God Blessing", "戦神の加護")}><p className="muted">{L("No War God Blessing can buff this unit.", "このユニットを強化できる戦神の加護はありません。")}</p></Panel>;
   }
   return (
     <>
       <p className="muted small blessing-intro">
-        War God Blessing (戦神の加護) items whose buff can reach this unit. A blessing works while the item
-        is owned and its conditions hold; rows sharing a stack key (p4) do not stack, only the highest applies.
+        {L("War God Blessing (戦神の加護) items whose buff can reach this unit. A blessing works while the item is owned and its conditions hold; rows sharing a stack key (p4) do not stack, only the highest applies.", "このユニットに効果が届く戦神の加護。アイテムを所持し条件を満たす間に有効です。スタックキー (p4) が同じ行は重複せず、最も高いものだけが適用されます。")}
       </p>
-      {BLESSING_GROUPS.map(([key, title]) => {
+      {BLESSING_GROUPS.map(([key, titleEn, titleJa]) => {
+        const title = L(titleEn, titleJa);
         const inGroup = matches.filter((m) =>
           key == null ? !BLESSING_GROUPS.some(([k]) => k != null && k === m.row.params?.[3]) : m.row.params?.[3] === key);
         if (!inGroup.length) return null;
         const byItem = new Map<string, BlessingMatch[]>();
         for (const m of inGroup) byItem.set(m.row.item, [...(byItem.get(m.row.item) || []), m]);
         return (
-          <Panel key={title} title={`${title} blessings (${byItem.size})`} actions={<InfluenceViewToggles />}>
+          <Panel key={title} title={L("{t} blessings ({n})", "{t}の加護 ({n})", { t: title, n: byItem.size })} actions={<InfluenceViewToggles />}>
             <table className="grid unit-detail-table blessing-table">
-              <thead><tr><th>Blessing</th><th>Effect</th></tr></thead>
+              <thead><tr><th>{L("Blessing", "加護")}</th><th>{L("Effect", "効果")}</th></tr></thead>
               <tbody>
                 {[...byItem.entries()].map(([item, ms]) => {
                   const rows = ms.map((m) => m.row);
@@ -1764,12 +1771,12 @@ function BlessingPanel({
                       <td className="unit-class-name-cell">
                         {items[item] || item}
                         <div className="muted small">{item.replace("battle_god_bless_", "#")}</div>
-                        {ms.every((m) => m.always) && <span className="badge sky">always</span>}
+                        {ms.every((m) => m.always) && <span className="badge sky">{L("always", "常時")}</span>}
                       </td>
                       <td className="skill-text">
                         {tiers && (
                           <div className="muted small">
-                            Only at: {tiers.map((cc) => names?.tier(cc) || `tier ${cc}`).join(", ")}
+                            {L("Only at:", "対象:")} {tiers.map((cc) => names?.tier(cc) || `tier ${cc}`).join(", ")}
                           </div>
                         )}
                         <InfluenceViews count={rows.length} sentences={abilitySentences(rows, labels, missiles, abilityConfigs, names)}>
@@ -1822,7 +1829,7 @@ function possessionMatches(unit: Unit, data: PossessionBuffs): PossessionMatch[]
   return out;
 }
 
-const POSSESSION_SLOT: Record<string, string> = { default: "Ability", awakened: "Awakened ability" };
+const possessionSlot = (L: Pick): Record<string, string> => ({ default: L("Ability", "アビリティ"), awakened: L("Awakened ability", "覚醒アビリティ") });
 
 // Stat rows a possession effect can carry: ability 12/13/14 = HP/ATK/DEF %
 // (value p1), 15/21 = MR/Range flat (1st-barrack value p2). Other types
@@ -1863,34 +1870,34 @@ function PossessionPanel({
   const missiles = useContext(MissilesContext);
   const abilityConfigs = useContext(AbilityConfigsContext);
   const names = useContext(UnitNamesContext);
+  const L = useL();
   if (!matches.length) {
-    return <Panel title="Possession buffs"><p className="muted">No unit's possession effect can buff this unit.</p></Panel>;
+    return <Panel title={L("Possession buffs", "所持効果")}><p className="muted">{L("No unit's possession effect can buff this unit.", "このユニットを強化できる所持効果はありません。")}</p></Panel>;
   }
   const bySource = new Map<number, PossessionMatch[]>();
   for (const m of matches) bySource.set(m.row.u, [...(bySource.get(m.row.u) || []), m]);
   const sources = [...bySource.keys()].sort((a, b) => b - a);
   const totals = possessionTotals(matches);
   return (
-    <Panel title={`Possession buffs (${sources.length} units)`} actions={<InfluenceViewToggles />}>
+    <Panel title={L("Possession buffs ({n} units)", "所持効果 ({n}ユニット)", { n: sources.length })} actions={<InfluenceViewToggles />}>
       <p className="muted small">
-        Units whose possession effect (【所持効果】) can buff this unit: it applies while the carrier is owned
-        and kept in the 1st barrack. Rows sharing a stack key (p4) do not stack; only the highest applies.
+        {L("Units whose possession effect (【所持効果】) can buff this unit: it applies while the carrier is owned and kept in the 1st barrack. Rows sharing a stack key (p4) do not stack; only the highest applies.", "このユニットを強化できる【所持効果】を持つユニット。所持して第1兵舎に置いている間に有効です。スタックキー (p4) が同じ行は重複せず、最も高いものだけが適用されます。")}
       </p>
       {totals.length > 0 && (
         <div className="possession-totals">
-          <span className="muted small">Total with every carrier owned</span>
+          <span className="muted small">{L("Total with every carrier owned", "すべて所持した場合の合計")}</span>
           {totals.map((t) => (
             <span className="possession-total" key={t.stat}>
               <strong>{t.stat}</strong> +{t.sure}{t.pct ? "%" : ""}
               {t.max !== t.sure && (
-                <span className="muted small"> (up to +{t.max}{t.pct ? "%" : ""} with conditions)</span>
+                <span className="muted small">{L(" (up to +{v} with conditions)", " (条件込みで最大 +{v})", { v: `${t.max}${t.pct ? "%" : ""}` })}</span>
               )}
             </span>
           ))}
         </div>
       )}
       <table className="grid unit-detail-table possession-table">
-        <thead><tr><th>Unit</th><th>Effect</th></tr></thead>
+        <thead><tr><th>{L("Unit", "ユニット")}</th><th>{L("Effect", "効果")}</th></tr></thead>
         <tbody>
           {sources.flatMap((id) => {
             const src = unitsById?.get(id);
@@ -1903,17 +1910,17 @@ function PossessionPanel({
                 <tr key={`${id}-${slot}`}>
                   {k === 0 && (
                     <td className="unit-class-name-cell" rowSpan={slots.size}>
-                      <UnitIconLink id={id} name={src?.name_en || src?.name} />
-                      {src?.rarity && <div className="muted small">{src.rarity}</div>}
+                      <UnitIconLink id={id} name={gameName(src?.name_en, src?.name)} />
+                      {src?.rarity && <div className="muted small">{rarityName(src.rarity)}</div>}
                     </td>
                   )}
                   <td className="skill-text">
                     {(slots.size > 1 || ms.every((m) => m.always) || tiers) && (
                       <div className="muted small possession-meta">
                         {[
-                          slots.size > 1 ? (POSSESSION_SLOT[slot] || slot) : null,
-                          ms.every((m) => m.always) ? <span className="badge sky" key="a">always</span> : null,
-                          tiers ? `only at: ${tiers.map((cc) => names?.tier(cc) || `tier ${cc}`).join(", ")}` : null,
+                          slots.size > 1 ? (possessionSlot(L)[slot] || slot) : null,
+                          ms.every((m) => m.always) ? <span className="badge sky" key="a">{L("always", "常時")}</span> : null,
+                          tiers ? `${L("only at:", "対象:")} ${tiers.map((cc) => names?.tier(cc) || `tier ${cc}`).join(", ")}` : null,
                         ].filter(Boolean).map((x, i) => <span key={i}>{i > 0 && " · "}{x}</span>)}
                       </div>
                     )}
@@ -2003,7 +2010,7 @@ function hpAtkDefPct(
   return null;
 }
 // lib/unit.lua affbonus BonusType enum (stat bonuses).
-const POSITION_LABELS: Record<string, string> = { melee: "Melee", ranged: "Ranged", omni: "Omni (melee or ranged)" };
+const positionLabels = (L: Pick): Record<string, string> => ({ melee: L("Melee", "近接"), ranged: L("Ranged", "遠距離"), omni: L("Omni (melee or ranged)", "両用 (近接・遠距離)") });
 const AFFBONUS_LABELS: Record<number, string> = { 1: "HP", 2: "ATK", 3: "DEF", 4: "Range", 6: "Speed" };
 const AFFBONUS_KIND: Record<number, "hp" | "atk" | "def"> = { 1: "hp", 2: "atk", 3: "def" };
 // special-attribute bonus types: applied at the raw value, no bloom scaling,
@@ -2051,6 +2058,7 @@ function applyPct(vals: number[], pct: number | null): number[] {
 
 function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, string> }) {
   const classes = unit.classes;
+  const L = useL();
   if (classes.length === 0) return null;
   // AFF bonus splits into a base-form group (cc0/cc1) and an awakened-form
   // group (cc>=2, when the unit has one) -- each uses its own full/half-bloom
@@ -2080,10 +2088,10 @@ function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, 
       <table className="grid unit-stat-table">
         <thead>
           <tr>
-            <th>Icon</th><th>Class</th><th>Lv</th>
-            <th>HP</th><th>ATK</th><th>DEF</th><th>MR</th>
-            <th>Range/Block</th><th>Targets</th><th>Atk attr</th><th>Atk speed</th>
-            <th>Cost</th><th>AFF bonus</th>
+            <th>{L("Icon", "アイコン")}</th><th>{L("Class", "クラス")}</th><th>Lv</th>
+            <th>HP</th><th>{L("ATK", "攻撃力")}</th><th>{L("DEF", "防御力")}</th><th>{L("MR", "魔法耐性")}</th>
+            <th>{L("Range/Block", "射程/ブロック")}</th><th>{L("Targets", "対象数")}</th><th>{L("Atk attr", "攻撃属性")}</th><th>{L("Atk speed", "攻撃間隔")}</th>
+            <th>{L("Cost", "コスト")}</th><th>{L("AFF bonus", "好感度ボーナス")}</th>
           </tr>
         </thead>
         <tbody>
@@ -2106,7 +2114,7 @@ function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, 
                       {classMap?.[cl.name] || cl.name}
                     </Link>
                   ) : "?"}{" "}
-                  <span className="muted small">(tier {cl.cc})</span>
+                  <span className="muted small">{L("(tier {n})", "(段階 {n})", { n: cl.cc })}</span>
                 </td>
                 <td className="num">
                   {first && last ? (first.level === last.level ? first.level : `${first.level}–${last.level}`) : "-"}
@@ -2118,10 +2126,10 @@ function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, 
                 <td>
                   {cl.ranged
                     ? cl.range != null ? cl.range + (clFlatMod("range") ?? 0) : "?"
-                    : `${cl.range != null ? cl.range + (clFlatMod("range") ?? 0) : "melee"} (block ${cl.block ?? "-"})`}
+                    : `${cl.range != null ? cl.range + (clFlatMod("range") ?? 0) : L("melee", "近接")} (${L("block", "ブロック")} ${cl.block ?? "-"})`}
                   {!cl.ranged && range188 != null && (
                     <span className="meaning" title="attacks at range: ability 188 (Gain ranged atk, inherent · self)">
-                      {" "}· range {range188}
+                      {" "}· {L("range", "射程")} {range188}
                     </span>
                   )}
                   {cl.missile && missileText(cl.missile) && (
@@ -2131,7 +2139,7 @@ function StatsTable({ unit, classMap }: { unit: Unit; classMap?: Record<string, 
                   )}
                   {cl.deploy_slot === "melee or ranged" && (
                     <div className="muted small" title="ClassData.PlaceAttribute: deployable in either spot">
-                      deployable: melee or ranged
+                      {L("deployable: melee or ranged", "配置: 近接・遠距離どちらも可")}
                     </div>
                   )}
                 </td>
@@ -2177,12 +2185,13 @@ function ClassAttributes({
   const withContent = classes.filter(
     (cl) => cl.description || (cl.class_ability_influences && cl.class_ability_influences.length > 0)
   );
+  const L = useL();
   if (withContent.length === 0) return null;
   return (
-    <Panel title="Class Attributes" actions={<InfluenceViewToggles />}>
+    <Panel title={L("Class Attributes", "クラス特性")} actions={<InfluenceViewToggles />}>
       <table className="grid unit-detail-table">
         <thead>
-          <tr><th>Class Name</th><th>Description</th></tr>
+          <tr><th>{L("Class Name", "クラス名")}</th><th>{L("Description", "説明")}</th></tr>
         </thead>
         <tbody>
           {withContent.map((cl) => (
@@ -2263,19 +2272,20 @@ function SpeechText({ jp, en, className }: { jp: string; en?: string; className:
 }
 
 function SpeechSceneBlock({ s }: { s: SpeechScene }) {
+  const L = useL();
   return (
     <details className="dlg-section speech-scene">
       <summary>
-        {s.scene != null ? `Scene ${s.scene}` : "Extra scene"}
-        {s.at != null && <span className="dlg-trigger speech-scene-at">at {s.at}% affection</span>}
-        {s.quest && <span className="dlg-trigger speech-scene-at">from its harlem quest</span>}
+        {s.scene != null ? L("Scene {n}", "シーン {n}", { n: s.scene }) : L("Extra scene", "追加シーン")}
+        {s.at != null && <span className="dlg-trigger speech-scene-at">{L("at {n}% affection", "好感度 {n}%", { n: s.at })}</span>}
+        {s.quest && <span className="dlg-trigger speech-scene-at">{L("from its harlem quest", "交流クエストから")}</span>}
       </summary>
       {s.lines.map((l, i) =>
         l.name ? (
           <div className="dlg-line" key={i}>
             <div className="dlg-body">
-              <div className="dlg-name" title={l.name_en ? l.name : undefined}>
-                {l.name_en || l.name}
+              <div className="dlg-name" title={altName(l.name_en, l.name) || undefined}>
+                {gameName(l.name_en, l.name)}
               </div>
               <SpeechText jp={l.text} en={l.text_en} className="dlg-text" />
             </div>
@@ -2290,19 +2300,20 @@ function SpeechSceneBlock({ s }: { s: SpeechScene }) {
 }
 
 function SpeechSection({ speech }: { speech: UnitSpeech }) {
+  const L = useL();
   return (
-    <Panel title="Quotes & scenes">
+    <Panel title={L("Quotes & scenes", "台詞・シーン")}>
       {speech.quotes && speech.quotes.length > 0 && (
         <div className="quote-list">
           {speech.quotes.map((q, i) => (
             <div className="quote-row" key={i}>
-              <span className="quote-at">{q.adjutant ? "adjutant" : `${q.at}%`}</span>
+              <span className="quote-at">{q.adjutant ? L("adjutant", "副官") : `${q.at}%`}</span>
               <SpeechText jp={q.text} en={q.text_en} className="quote-text" />
             </div>
           ))}
           {(speech.quotes2 ?? []).map((t, i) => (
             <div className="quote-row" key={`f2-${i}`}>
-              <span className="quote-at" title="second quote block (Flavor2) — when it shows is unverified">extra {i + 1}?</span>
+              <span className="quote-at" title={L("second quote block (Flavor2) — when it shows is unverified", "2つ目の台詞ブロック (Flavor2) — 表示条件は未確認")}>{L("extra {n}?", "追加 {n}?", { n: i + 1 })}</span>
               <SpeechText jp={t} en={speech.quotes2_en?.[i]} className="quote-text" />
             </div>
           ))}
@@ -2334,11 +2345,12 @@ function BackToUnits({ children, className }: { children: ReactNode; className?:
 function PrinceBar({ unitId, data }: { unitId: number; data: PrinceData }) {
   const { forms } = princeFamilies(data);
   const fam = familyOfCard(forms, unitId);
+  const L = useL();
   if (!fam) {
     return (
       <div className="prince-bar">
-        <span>Base Prince, no title equipped.</span>
-        <Link to="/prince">All {forms.length} title forms →</Link>
+        <span>{L("Base Prince, no title equipped.", "称号なしの王子")}</span>
+        <Link to="/prince">{L("All {n} title forms →", "称号 {n} 種すべて →", { n: forms.length })}</Link>
       </div>
     );
   }
@@ -2346,8 +2358,8 @@ function PrinceBar({ unitId, data }: { unitId: number; data: PrinceData }) {
   return (
     <div className="prince-bar">
       <span>
-        Prince title <strong>{familyTitle(fam)}</strong>
-        {fam.rows.length > 1 && <span className="muted"> · Lv{row.level} of {fam.rows.length}</span>}
+        {L("Prince title", "王子の称号")} <strong>{familyTitle(fam)}</strong>
+        {fam.rows.length > 1 && <span className="muted">{L(" · Lv{a} of {b}", " · Lv{a} / {b}", { a: row.level, b: fam.rows.length })}</span>}
       </span>
       {fam.rows.length > 1 && (
         <span className="prince-bar-levels">
@@ -2358,7 +2370,7 @@ function PrinceBar({ unitId, data }: { unitId: number; data: PrinceData }) {
           ))}
         </span>
       )}
-      <Link to="/prince">All Prince titles →</Link>
+      <Link to="/prince">{L("All Prince titles →", "王子の称号一覧 →")}</Link>
     </div>
   );
 }
@@ -2389,16 +2401,17 @@ export default function UnitDetail() {
   const baseClass = unit?.classes[0]?.name;
   usePageMeta(loading ? LIST_META["/units"] : unit ? unitMeta(unit, baseClass && (loc?.classes[baseClass] || baseClass)) : NOT_FOUND_META);
   const [galleryAt, setGalleryAt] = useState<number | null>(null);
+  const L = useL();
 
-  if (loading) return <p className="loading">Loading…</p>;
+  if (loading) return <p className="loading">{L("Loading…", "読み込み中…")}</p>;
   if (!unit) {
     return (
       <p>
-        Unit #{unitId} not found (data file failed to load).{" "}
+        {L("Unit #{id} not found (data file failed to load).", "ユニット #{id} が見つかりません (データの読み込みに失敗)。", { id: unitId })}{" "}
         <button className="stage-gap-btn" style={{ width: "auto" }} onClick={() => location.reload()}>
-          retry
+          {L("retry", "再試行")}
         </button>{" "}
-        <BackToUnits>Back to units</BackToUnits>
+        <BackToUnits>{L("Back to units", "ユニット一覧へ戻る")}</BackToUnits>
       </p>
     );
   }
@@ -2412,7 +2425,7 @@ export default function UnitDetail() {
   const artTiers = unit.art_tiers ?? [0, ...[1, 2, 3].filter((t) => t + 1 <= maxCc)];
 
   const allTokens = unit.classes.flatMap((c) => c.tokens);
-  const displayName = unit.name_en || unit.name || "(unnamed)";
+  const displayName = gameName(unit.name_en, unit.name) || L("(unnamed)", "(名前なし)");
 
   // gallery, grouped one section per art tier: that tier's splash art, face
   // icon and battle-sprite animations. Sprite pose names vary per unit
@@ -2443,15 +2456,15 @@ export default function UnitDetail() {
         (POSE_ORDER.indexOf(x.base) + 1 || 99) - (POSE_ORDER.indexOf(y.base) + 1 || 99) ||
         x.base.localeCompare(y.base))
       .map((x) => ({
-        label: `Sprite — ${x.base}`,
+        label: `${L("Sprite", "ドット")} — ${x.base}`,
         src: unitAnimUrl(unit.dot_id, x.name),
         kind: "anim" as const,
       }));
   const gallerySections: { title: string; items: GalleryItem[] }[] = artTiers.map((t, idx) => ({
     title: tierTitle(t),
     items: [
-      { label: "Art", src: unitImageUrl("art", unit.dot_id, t), kind: "art" as const },
-      { label: "Icon", src: unitImageUrl("icon", unit.dot_id, t), kind: "icon" as const },
+      { label: L("Art", "イラスト"), src: unitImageUrl("art", unit.dot_id, t), kind: "art" as const },
+      { label: L("Icon", "アイコン"), src: unitImageUrl("icon", unit.dot_id, t), kind: "icon" as const },
       ...animsFor(idx),
     ],
   }));
@@ -2459,7 +2472,7 @@ export default function UnitDetail() {
     // sprite sets beyond the known art tiers (rare) still get a section
     for (let s = artTiers.length; s <= 3; s++) {
       const extra = animsFor(s);
-      if (extra.length) gallerySections.push({ title: `Set ${s + 1}`, items: extra });
+      if (extra.length) gallerySections.push({ title: L("Set {n}", "セット {n}", { n: s + 1 }), items: extra });
     }
   }
   const galleryItems = gallerySections.flatMap((s) =>
@@ -2474,7 +2487,7 @@ export default function UnitDetail() {
   const tierClass = new Map(unit.classes.map((c) => [c.cc, (c.name && loc?.classes?.[c.name]) || c.name]));
   const tokenName = new Map(unit.classes.flatMap((c) => c.tokens).map((t) => [t.unit, t.unit_name]));
   const skillName = new Map(Object.values(unit.skills ?? {}).flatMap((sk) => sk?.stages ?? [])
-    .map((st) => [st.id, st.name_en || st.name]));
+    .map((st) => [st.id, gameName(st.name_en, st.name)]));
   const unitNames: UnitNames = {
     tier: (cc) => tierClass.get(cc) ?? undefined,
     unit: (id) => tokenName.get(id) ?? undefined,
@@ -2489,14 +2502,14 @@ export default function UnitDetail() {
   // the active tab lives in ?tab= (absent = stats); tabs with nothing to
   // show are hidden, and a ?tab= naming one of them falls back to stats
   const UNIT_TABS_WITH_HIDDEN = [
-    { id: "stats", label: "Stats" },
-    { id: "skills", label: "Skills" },
-    { id: "abilities", label: "Abilities" },
-    { id: "tokens", label: "Tokens", count: allTokens.length, hidden: allTokens.length === 0 },
-    { id: "gallery", label: "Gallery" },
-    { id: "possession", label: "Possession buffs", count: possessionSources, hidden: possessionSources === 0 },
-    { id: "blessing", label: "War God Blessing", count: blessingItems, hidden: blessingItems === 0 },
-    { id: "quotes", label: "Quotes", hidden: !speech },
+    { id: "stats", label: L("Stats", "ステータス") },
+    { id: "skills", label: L("Skills", "スキル") },
+    { id: "abilities", label: L("Abilities", "アビリティ") },
+    { id: "tokens", label: L("Tokens", "トークン"), count: allTokens.length, hidden: allTokens.length === 0 },
+    { id: "gallery", label: L("Gallery", "ギャラリー") },
+    { id: "possession", label: L("Possession buffs", "所持効果"), count: possessionSources, hidden: possessionSources === 0 },
+    { id: "blessing", label: L("War God Blessing", "戦神の加護"), count: blessingItems, hidden: blessingItems === 0 },
+    { id: "quotes", label: L("Quotes", "台詞"), hidden: !speech },
   ];
   const [activeTab, selectTab] = tabParam(searchParamsAdapter(params, setParams), UNIT_TABS_WITH_HIDDEN);
 
@@ -2508,7 +2521,7 @@ export default function UnitDetail() {
     <div className="detail unit-page">
       <Breadcrumbs
         renderLink={crumbLink}
-        items={[unit.prince ? { label: "Prince", href: "/prince" } : { label: "Units", href: "/units" }, { label: displayName }]}
+        items={[unit.prince ? { label: L("Prince", "王子"), href: "/prince" } : { label: L("Units", "ユニット"), href: "/units" }, { label: displayName }]}
       />
 
       <aside className="unit-infobox">
@@ -2518,7 +2531,7 @@ export default function UnitDetail() {
           onClick={() => setGalleryAt(gallerySections
             .slice(0, Math.max(0, artTiers.indexOf(tier)))
             .reduce((n, s) => n + s.items.length, 0))}
-          title="View full art"
+          title={L("View full art", "イラストを拡大")}
         >
           <UnitImage kind="art" id={unit.id} tier={tier} fallbackKind="icon" className="unit-art-img" alt={displayName} />
         </button>
@@ -2544,26 +2557,26 @@ export default function UnitDetail() {
         <dl className="unit-infobox-rows">
           <div><dt>ID</dt><dd>#{unit.id}</dd></div>
           <div>
-            <dt>Rarity</dt>
-            <dd><Link to={`/units?rarity=${encodeURIComponent(unit.rarity.replace(/ Hero$/, ""))}`}>{unit.rarity}</Link></dd>
+            <dt>{L("Rarity", "レア度")}</dt>
+            <dd><Link to={`/units?rarity=${encodeURIComponent(unit.rarity.replace(/ Hero$/, ""))}`}>{rarityName(unit.rarity)}</Link></dd>
           </div>
           {unit.gender && (
             <div>
-              <dt>Gender</dt>
+              <dt>{L("Gender", "性別")}</dt>
               <dd><Link to={`/units?gender=${encodeURIComponent(String(unit.gender))}`}>{tagName(loc, String(unit.gender))}</Link></dd>
             </div>
           )}
           {unit.position && (
             <div>
-              <dt>Position</dt>
-              <dd><Link to={`/units?position=${unit.position}`}>{POSITION_LABELS[unit.position]}</Link></dd>
+              <dt>{L("Position", "配置")}</dt>
+              <dd><Link to={`/units?position=${unit.position}`}>{positionLabels(L)[unit.position]}</Link></dd>
             </div>
           )}
           {(unit.implementation_date || unit.release_year) && (
-            <div><dt>Released</dt><dd>{unit.implementation_date || unit.release_year}</dd></div>
+            <div><dt>{L("Released", "実装日")}</dt><dd>{unit.implementation_date || unit.release_year}</dd></div>
           )}
           {unit.artist && (
-            <div><dt>Artist</dt><dd><Link to={`/artists?artist=${encodeURIComponent(unit.artist)}`}>{unit.artist}</Link></dd></div>
+            <div><dt>{L("Artist", "イラスト")}</dt><dd><Link to={`/artists?artist=${encodeURIComponent(unit.artist)}`}>{unit.artist}</Link></dd></div>
           )}
         </dl>
         <div className="unit-infobox-meta">
@@ -2597,37 +2610,37 @@ export default function UnitDetail() {
 
       <h2>
         #{unit.id} {displayName}
-        {unit.name_en && unit.name && (
+        {altName(unit.name_en, unit.name) && (
           <span className="muted" style={{ fontSize: 14 }}> {unit.name}</span>
         )}
-        {unit.npc && <span className="badge"> NPC/test</span>}
+        {unit.npc && <span className="badge"> {L("NPC/test", "NPC・テスト")}</span>}
       </h2>
 
       {unit.prince && princeTitles && <PrinceBar unitId={unit.id} data={princeTitles} />}
 
-      <UrlTabs className="unit-tabs" tabs={UNIT_TABS_WITH_HIDDEN} active={activeTab} onChange={selectTab} label="Unit sections" idBase="unit" />
+      <UrlTabs className="unit-tabs" tabs={UNIT_TABS_WITH_HIDDEN} active={activeTab} onChange={selectTab} label={L("Unit sections", "ユニットの項目")} idBase="unit" />
 
       {activeTab === "stats" && (
       <TabPanel tab="stats" idBase="unit">
       {/* CfgProhibitConfig.atb -- a team-editor rule, not an influence: the
           restricted unit carries nothing in its ability/class-ability rows. */}
       {unit.formation_exclusion && (
-        <Panel title="Formation restriction">
+        <Panel title={L("Formation restriction", "編成制限")}>
           <StatRows
             columns={1}
             rows={[
               ...(unit.formation_exclusion.one_per_team
-                ? [{ id: "one", label: "Team limit", value: "Only one may be in a team." }]
+                ? [{ id: "one", label: L("Team limit", "編成上限"), value: L("Only one may be in a team.", "編成には1体まで。") }]
                 : []),
               ...(unit.formation_exclusion.cards.length > 0
                 ? [{
                     id: "cards",
-                    label: "Cannot be in the same team as",
+                    label: L("Cannot be in the same team as", "同じ編成にできないユニット"),
                     value: unit.formation_exclusion.cards.map((c, i) => (
                       <span key={c.id}>
                         {i > 0 && ", "}
                         <Link to={`/units/${c.id}`} title={c.name || undefined}>
-                          {c.name_en || c.name || `#${c.id}`}
+                          {gameName(c.name_en, c.name) || `#${c.id}`}
                         </Link>
                       </span>
                     )),
@@ -2639,7 +2652,7 @@ export default function UnitDetail() {
       )}
 
       {unit.specials && unit.specials.length > 0 && (
-        <Panel title="Special properties">
+        <Panel title={L("Special properties", "特殊な性質")}>
           <StatRows
             columns={1}
             rows={unit.specials.map((s, i) => ({
@@ -2662,9 +2675,9 @@ export default function UnitDetail() {
         </Panel>
       )}
 
-      <Panel title="Stats">
+      <Panel title={L("Stats", "ステータス")}>
         <StatsTable unit={unit} classMap={loc?.classes} />
-        <p className="muted small">stat values exclude affection bonuses</p>
+        <p className="muted small">{L("stat values exclude affection bonuses", "ステータスは好感度ボーナスを含みません")}</p>
       </Panel>
 
       <ClassAttributes classes={unit.classes} labels={abilityLabels} classMap={loc?.classes} />
@@ -2673,21 +2686,21 @@ export default function UnitDetail() {
 
       {activeTab === "skills" && (
       <TabPanel tab="skills" idBase="unit">
-      <SkillBlock label="Base skill" skill={unit.skills.base} labels={skillLabels} abilityLabels={abilityLabels} />
-      <SkillBlock label="Class-evolved skill" skill={unit.skills.class_evolved} labels={skillLabels} abilityLabels={abilityLabels} />
-      <SkillBlock label="Awakened skill" skill={unit.skills.awakened} labels={skillLabels} abilityLabels={abilityLabels} />
+      <SkillBlock label={L("Base skill", "スキル")} skill={unit.skills.base} labels={skillLabels} abilityLabels={abilityLabels} />
+      <SkillBlock label={L("Class-evolved skill", "クラスチェンジ後スキル")} skill={unit.skills.class_evolved} labels={skillLabels} abilityLabels={abilityLabels} />
+      <SkillBlock label={L("Awakened skill", "スキル覚醒")} skill={unit.skills.awakened} labels={skillLabels} abilityLabels={abilityLabels} />
       </TabPanel>
       )}
 
       {activeTab === "abilities" && (
       <TabPanel tab="abilities" idBase="unit">
-      <AbilityBlock label="Ability" ability={unit.abilities.default} labels={abilityLabels} />
+      <AbilityBlock label={L("Ability", "アビリティ")} ability={unit.abilities.default} labels={abilityLabels} />
       {/* heroes/AW-start units carry the SAME ability in both slots -- show once */}
       {unit.abilities.awakened?.id !== unit.abilities.default?.id && (
         <AbilityBlock
           label={unit.abilities.awaken_ability_level
-            ? `Level ${unit.abilities.awaken_ability_level} ability`
-            : "Awakened ability"}
+            ? L("Level {n} ability", "Lv{n} アビリティ", { n: unit.abilities.awaken_ability_level })
+            : L("Awakened ability", "覚醒アビリティ")}
           ability={unit.abilities.awakened}
           labels={abilityLabels}
         />
@@ -2697,7 +2710,7 @@ export default function UnitDetail() {
 
       {activeTab === "gallery" && (
       <TabPanel tab="gallery" idBase="unit">
-      <Panel title="Gallery">
+      <Panel title={L("Gallery", "ギャラリー")}>
         {gallerySections.map((sec, si) => {
           const offset = gallerySections.slice(0, si).reduce((n, s) => n + s.items.length, 0);
           return (
@@ -2735,7 +2748,7 @@ export default function UnitDetail() {
 
       {activeTab === "tokens" && (
         <TabPanel tab="tokens" idBase="unit">
-        <Panel title="Tokens">
+        <Panel title={L("Tokens", "トークン")}>
           {allTokens.map((t, i) => (
             <div key={i} className="unit-token-card">
               <div className="meta token-head">
@@ -2750,18 +2763,18 @@ export default function UnitDetail() {
                     {loc?.classes[t.class_name] || t.class_name}
                   </span>
                 )}
-                <span>cost {t.cost}</span>
-                <span>count {t.count}</span>
-                <span>max deployed {t.deploy_max}</span>
-                {t.total_max != null && <span>total max {t.total_max}</span>}
-                <span>recast {t.recast}</span>
+                <span>{L("cost", "コスト")} {t.cost}</span>
+                <span>{L("count", "数")} {t.count}</span>
+                <span>{L("max deployed", "最大出撃数")} {t.deploy_max}</span>
+                {t.total_max != null && <span>{L("total max", "合計上限")} {t.total_max}</span>}
+                <span>{L("recast", "再出撃時間")} {t.recast}</span>
               </div>
               {t.stats && t.stats.length > 0 && (
                 <table className="grid unit-token-stat-table">
                   <thead>
                     <tr>
-                      <th>Lv</th><th>HP</th><th>ATK</th><th>DEF</th><th>MR</th>
-                      <th>Range/Block</th><th>Targets</th><th>Atk attr</th>
+                      <th>Lv</th><th>HP</th><th>{L("ATK", "攻撃力")}</th><th>{L("DEF", "防御力")}</th><th>{L("MR", "魔法耐性")}</th>
+                      <th>{L("Range/Block", "射程/ブロック")}</th><th>{L("Targets", "対象数")}</th><th>{L("Atk attr", "攻撃属性")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2777,7 +2790,7 @@ export default function UnitDetail() {
                             <td rowSpan={t.stats!.length}>
                               {t.ranged
                                 ? t.range ?? "?"
-                                : `${t.range ?? "melee"} (block ${t.block ?? "-"})`}
+                                : `${t.range ?? L("melee", "近接")} (${L("block", "ブロック")} ${t.block ?? "-"})`}
                             </td>
                             <td className="num" rowSpan={t.stats!.length}>{t.max_target ?? "-"}</td>
                             <td rowSpan={t.stats!.length}>{t.attack_attribute ?? "-"}</td>
@@ -2789,7 +2802,7 @@ export default function UnitDetail() {
                 </table>
               )}
               {t.missile && (
-                <div className="muted small">missile: {missileText(t.missile)}</div>
+                <div className="muted small">{L("missile:", "ミサイル:")} {missileText(t.missile)}</div>
               )}
               {t.description && (
                 <div className="skill-text">
@@ -2816,22 +2829,22 @@ export default function UnitDetail() {
                 </InfluenceViews>
               )}
               {t.skills?.base && (
-                <SkillBlock label="Token skill" skill={t.skills.base}
+                <SkillBlock label={L("Token skill", "トークンのスキル")} skill={t.skills.base}
                   labels={skillLabels} abilityLabels={abilityLabels} />
               )}
               {t.skills?.class_evolved && (
-                <SkillBlock label="Token skill (evolved)" skill={t.skills.class_evolved}
+                <SkillBlock label={L("Token skill (evolved)", "トークンのスキル (クラスチェンジ後)")} skill={t.skills.class_evolved}
                   labels={skillLabels} abilityLabels={abilityLabels} />
               )}
               {t.skills?.awakened && (
-                <SkillBlock label="Token skill (awakened)" skill={t.skills.awakened}
+                <SkillBlock label={L("Token skill (awakened)", "トークンのスキル (覚醒)")} skill={t.skills.awakened}
                   labels={skillLabels} abilityLabels={abilityLabels} />
               )}
               {t.abilities?.default && (
-                <AbilityBlock label="Token ability" ability={t.abilities.default} labels={abilityLabels} />
+                <AbilityBlock label={L("Token ability", "トークンのアビリティ")} ability={t.abilities.default} labels={abilityLabels} />
               )}
               {t.abilities?.awakened && (
-                <AbilityBlock label="Token ability (awakened)" ability={t.abilities.awakened} labels={abilityLabels} />
+                <AbilityBlock label={L("Token ability (awakened)", "トークンのアビリティ (覚醒)")} ability={t.abilities.awakened} labels={abilityLabels} />
               )}
             </div>
           ))}

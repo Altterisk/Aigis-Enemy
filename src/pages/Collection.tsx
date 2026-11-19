@@ -9,6 +9,7 @@ import {
 } from "@altterisk/game-hub/codec";
 import { exportFile, readFile } from "@altterisk/game-hub/persist";
 import { BackupPanel, CheckboxGroup, ProgressBar, SearchBox } from "@altterisk/game-hub";
+import { gameName, getLang, rarityName, useL, type Pick } from "../i18n";
 import type { UnitIndexEntry } from "../types";
 import ScreenshotImport from "./CollectionScan";
 
@@ -25,6 +26,7 @@ const PRINCE_NAME_OVERRIDES: Record<number, string> = {
 };
 
 function collectionName(unit: UnitIndexEntry): string {
+  if (getLang() === "ja") return gameName(null, unit.name) || `(#${unit.id})`;
   return unit.name_en || PRINCE_NAME_OVERRIDES[unit.id] || unit.name || `(unit #${unit.id})`;
 }
 
@@ -128,15 +130,24 @@ function toggleNumber(values: number[], value: number): number[] {
   return values.includes(value) ? values.filter((n) => n !== value) : [...values, value];
 }
 
-const POSITION_OPTIONS = [
-  { value: "melee", label: "Melee" },
-  { value: "ranged", label: "Ranged" },
-  { value: "omni", label: "Omni" },
+const positionOptions = (L: Pick) => [
+  { value: "melee", label: L("Melee", "近接") },
+  { value: "ranged", label: L("Ranged", "遠距離") },
+  { value: "omni", label: L("Omni", "両用") },
 ];
-const GENDER_OPTIONS = [
-  { value: "Female", label: "Female" },
-  { value: "Male", label: "Male" },
+const genderOptions = (L: Pick) => [
+  { value: "Female", label: L("Female", "女性") },
+  { value: "Male", label: L("Male", "男性") },
 ];
+
+/** A group heading ("Black — Gacha / Paid", "Chibi", a year) in the current language. */
+function sectionTitle(key: string, L: Pick): string {
+  const m = /^(.+) — (Gacha \/ Paid|Event)$/.exec(key);
+  if (m) return `${rarityName(m[1])} — ${m[2] === "Event" ? L("Event", "イベント") : L("Gacha / Paid", "召喚")}`;
+  if (key === "Chibi") return L("Chibi", "ちび");
+  if (key === "Unknown") return L("Unknown", "不明");
+  return rarityName(key);
+}
 
 function ProgressMeter({ value, total, label }: { value: number; total: number; label: string }) {
   const percent = total > 0 ? Math.min(100, (value / total) * 100) : 0;
@@ -155,11 +166,12 @@ function ProgressMeter({ value, total, label }: { value: number; total: number; 
 }
 
 function ProgressRow({ label, value, total }: { label: string; value: number; total: number }) {
+  const L = useL();
   return (
     <div className="collection-progress-row">
       <span>{label}</span>
       <strong>{value.toLocaleString()} / {total.toLocaleString()}</strong>
-      <ProgressMeter value={value} total={total} label={`${label}: ${value} of ${total}`} />
+      <ProgressMeter value={value} total={total} label={L("{l}: {v} of {t}", "{l}: {v} / {t}", { l: label, v: value, t: total })} />
     </div>
   );
 }
@@ -167,14 +179,15 @@ function ProgressRow({ label, value, total }: { label: string; value: number; to
 function BondProgress({ completed, have, total }: { completed: number; have: number; total: number }) {
   const havePercent = total > 0 ? Math.min(100, (have / total) * 100) : 0;
   const completedPercent = total > 0 ? Math.min(100, (completed / total) * 100) : 0;
+  const L = useL();
   return (
     <div className="collection-progress-row collection-bond-progress">
-      <span>Bond quests</span>
-      <strong>{completed.toLocaleString()} completed / {have.toLocaleString()} have / {total.toLocaleString()} all</strong>
+      <span>{L("Bond quests", "絆クエスト")}</span>
+      <strong>{L("{c} completed / {h} have / {t} all", "クリア {c} / 所持 {h} / 全 {t}", { c: completed.toLocaleString(), h: have.toLocaleString(), t: total.toLocaleString() })}</strong>
       <span
         className="collection-progress-track"
         role="progressbar"
-        aria-label={`Bond quests: ${completed} completed, ${have} owned, ${total} total`}
+        aria-label={L("Bond quests: {c} completed, {h} owned, {t} total", "絆クエスト: クリア {c}、所持 {h}、全 {t}", { c: completed, h: have, t: total })}
         aria-valuemin={0}
         aria-valuemax={total}
         aria-valuenow={completed}
@@ -193,6 +206,7 @@ function CollectionGroupSummary({ title, selected, total, onSelectAll, onClear }
   onSelectAll: () => void;
   onClear: () => void;
 }) {
+  const L = useL();
   return (
     <summary className="collection-group-head">
       <span className="collection-accordion-chevron" aria-hidden="true" />
@@ -204,17 +218,16 @@ function CollectionGroupSummary({ title, selected, total, onSelectAll, onClear }
             type="button"
             disabled={total === 0 || selected === total}
             onClick={(event) => { event.preventDefault(); event.stopPropagation(); onSelectAll(); }}
-          >Select all</button>
+          >{L("Select all", "すべて選択")}</button>
           <button
             type="button"
             disabled={selected === 0}
             onClick={(event) => { event.preventDefault(); event.stopPropagation(); onClear(); }}
-          >Deselect all</button>
+          >{L("Deselect all", "選択を解除")}</button>
         </span>
         <span className="collection-accordion-action">
-          <span className="when-open">Collapse</span>
-          <span className="when-closed">Expand</span>
-          {" section"}
+          <span className="when-open">{L("Collapse section", "閉じる")}</span>
+          <span className="when-closed">{L("Expand section", "開く")}</span>
         </span>
       </span>
     </summary>
@@ -236,6 +249,7 @@ function CollectionTile({
 }) {
   const hasHallBranches = unit.rarity.startsWith("Black") && unit.aw2_branches === 2;
   const currentHall = hallState || 0;
+  const L = useL();
   return (
     <article className={`collection-tile${owned ? " owned" : ""}`}>
       <button
@@ -243,7 +257,7 @@ function CollectionTile({
         className="collection-tile-select"
         onClick={onToggle}
         aria-pressed={owned}
-        title={`${owned ? "remove" : "add"} ${collectionName(unit)}`}
+        title={owned ? L("remove {n}", "{n} を外す", { n: collectionName(unit) }) : L("add {n}", "{n} を追加", { n: collectionName(unit) })}
       >
         <span className="collection-check" aria-hidden="true">{owned ? "✓" : ""}</span>
         <UnitImage kind="icon" id={unit.id} className="collection-icon" alt="" />
@@ -261,7 +275,7 @@ function CollectionTile({
                 className={`collection-mark-btn hall active-path-${path}${active ? " active" : ""}`}
                 onClick={() => onHallChange(currentHall ^ path)}
                 aria-pressed={active}
-                title={`${active ? "Clear" : "Mark"} Hall of Fame for AW2 path ${path}`}
+                title={active ? L("Clear Hall of Fame for AW2 path {p}", "第二覚醒 {p} の殿堂入りを解除", { p: path }) : L("Mark Hall of Fame for AW2 path {p}", "第二覚醒 {p} を殿堂入りにする", { p: path })}
               >
                 <img src={`${UI_ASSET}hall-f${path}.png`} alt="" aria-hidden="true" />
               </button>
@@ -273,7 +287,7 @@ function CollectionTile({
               className={`collection-mark-btn hall${currentHall ? " active" : ""}`}
               onClick={() => onHallChange(currentHall ? 0 : 1)}
               aria-pressed={currentHall > 0}
-              title={currentHall ? "Hall of Fame completed — click to clear" : "Mark Hall of Fame completed"}
+              title={currentHall ? L("Hall of Fame completed — click to clear", "殿堂入り済み — クリックで解除") : L("Mark Hall of Fame completed", "殿堂入りにする")}
             >
               <img src={`${UI_ASSET}hall-f0.png`} alt="" aria-hidden="true" />
             </button>
@@ -284,7 +298,7 @@ function CollectionTile({
               className={`collection-mark-btn bond${bondDone ? " active" : ""}`}
               onClick={onBondToggle}
               aria-pressed={bondDone}
-              title={bondDone ? "Bond quest completed — click to clear" : "Mark bond quest completed"}
+              title={bondDone ? L("Bond quest completed — click to clear", "絆クエストクリア済み — クリックで解除") : L("Mark bond quest completed", "絆クエストをクリア済みにする")}
             >
               <img src={`${UI_ASSET}bond-quest.png`} alt="" aria-hidden="true" />
             </button>
@@ -296,6 +310,7 @@ function CollectionTile({
 }
 
 export default function Collection() {
+  const L = useL();
   const { loading, units, byId } = useUnits();
   const loc = useLocalisation();
   const owned = useUiStore((s) => s.collectionOwned);
@@ -397,7 +412,7 @@ export default function Collection() {
         .sort((a, b) => (labels?.[a] || a).localeCompare(labels?.[b] || b))
         .map((value) => ({ value, label: labels?.[value] || value }));
     const classes = strings(all.flatMap((unit) => unit.class_names || []), loc?.classes);
-    const rarities = strings(all.map((unit) => collectionRarity(unit.rarity)));
+    const rarities = strings(all.map((unit) => collectionRarity(unit.rarity))).map((o) => ({ ...o, label: rarityName(o.value) }));
     const factions = strings(all.map((unit) => unit.faction), loc?.races);
     const races = strings(all.map((unit) => unit.race), loc?.races);
     const attributes = strings(all.flatMap((unit) => unit.identity_tags || []), loc?.tags);
@@ -538,8 +553,8 @@ export default function Collection() {
     setHall(decoded.hall);
     setBondDone(decoded.bondDone);
     setMessage(
-      `Restored ${decoded.unitIds.length} units, ${decoded.princeDots.length} Prince icons, `
-      + `${Object.keys(decoded.hall).length} Hall marks, and ${decoded.bondDone.length} bond quests.`
+      L("Restored {u} units, {p} Prince icons, {h} Hall marks, and {b} bond quests.", "ユニット {u}、王子のアイコン {p}、殿堂入り {h}、絆クエスト {b} を復元しました。",
+        { u: decoded.unitIds.length, p: decoded.princeDots.length, h: Object.keys(decoded.hall).length, b: decoded.bondDone.length })
     );
   };
   const importCode = (code: string): string | null => {
@@ -547,7 +562,7 @@ export default function Collection() {
       applyDecoded(decodeCollection(code));
       return null;
     } catch (error) {
-      return error instanceof Error ? error.message : "could not restore collection";
+      return error instanceof Error ? error.message : L("could not restore collection", "所持状況を復元できませんでした");
     }
   };
   const exportCollectionFile = () => exportFile({
@@ -567,7 +582,7 @@ export default function Collection() {
       });
       return null;
     } catch (error) {
-      return error instanceof Error ? error.message : "could not read that file";
+      return error instanceof Error ? error.message : L("could not read that file", "ファイルを読み込めませんでした");
     }
   };
   const importCharaStat = () => {
@@ -594,13 +609,13 @@ export default function Collection() {
       setOwned(nextUnits);
       setPrinceDots(nextPrinces);
       setMessage(
-        `Imported ${nextUnits.length} units and ${nextPrinces.length} Prince icons from chara-stat.us.`
-        + (excluded ? ` ${excluded} selected records are excluded by this site's current NPC classification.` : "")
-        + (unknown ? ` ${unknown} card ids are not present in this export.` : "")
+        L("Imported {u} units and {p} Prince icons from chara-stat.us.", "chara-stat.us からユニット {u}、王子のアイコン {p} を取り込みました。", { u: nextUnits.length, p: nextPrinces.length })
+        + (excluded ? L(" {n} selected records are excluded by this site's current NPC classification.", " {n} 件はこのサイトでNPC扱いのため除外しました。", { n: excluded }) : "")
+        + (unknown ? L(" {n} card ids are not present in this export.", " {n} 件のカードIDはこのデータにありません。", { n: unknown }) : "")
       );
       setCharaStatCode("");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "could not import chara-stat.us collection");
+      setMessage(error instanceof Error ? error.message : L("could not import chara-stat.us collection", "chara-stat.us の所持状況を取り込めませんでした"));
     }
   };
 
@@ -612,23 +627,23 @@ export default function Collection() {
     if (unitIds.length) setOwned((current) => uniqueSortedIds([...current, ...unitIds]));
     if (dots.length) setPrinceDots((current) => uniqueSortedIds([...current, ...dots]));
     setMessage(
-      `Added ${unitIds.length} unit${unitIds.length === 1 ? "" : "s"}`
-      + (dots.length ? ` and ${dots.length} Prince icon${dots.length === 1 ? "" : "s"}` : "")
-      + " from screenshots."
+      (dots.length
+        ? L("Added {u} unit(s) and {p} Prince icon(s) from screenshots.", "スクリーンショットからユニット {u}、王子のアイコン {p} を追加しました。", { u: unitIds.length, p: dots.length })
+        : L("Added {u} unit(s) from screenshots.", "スクリーンショットからユニット {u} を追加しました。", { u: unitIds.length }))
     );
   };
 
-  if (loading) return <p className="loading">Loading collection…</p>;
+  if (loading) return <p className="loading">{L("Loading collection…", "所持状況を読み込み中…")}</p>;
 
   return (
     <div className="collection-page">
       <div className="collection-head">
         <div>
-          <h2>Collection</h2>
-          <p className="muted">Checks are saved in this browser. Use a restore code to move or back up the collection.</p>
+          <h2>{L("Collection", "所持")}</h2>
+          <p className="muted">{L("Checks are saved in this browser. Use a restore code to move or back up the collection.", "チェックはこのブラウザに保存されます。移行やバックアップには復元コードを使ってください。")}</p>
         </div>
         <div className="collection-overall-progress">
-          <ProgressRow label="All collection" value={totalCollectionOwned} total={totalCollectionCount} />
+          <ProgressRow label={L("All collection", "全体")} value={totalCollectionOwned} total={totalCollectionCount} />
           <BondProgress
             completed={completedBondQuestCount}
             have={ownedBondQuestCount}
@@ -638,72 +653,76 @@ export default function Collection() {
       </div>
 
       <div className="collection-tools">
-        <SearchBox placeholder="Search id / name / class" value={query} onChange={setQuery} />
+        <SearchBox placeholder={L("Search id / name / class", "ID・名前・クラスで検索")} value={query} onChange={setQuery} />
         <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)}>
-          <option value="">all classes</option>
+          <option value="">{L("all classes", "すべてのクラス")}</option>
           {filterOptions.classes.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
         </select>
         <select value={bondStatus} onChange={(e) => setBondStatus(e.target.value as typeof bondStatus)}>
-          <option value="all">all bond quests</option>
-          <option value="available">has bond quest</option>
-          <option value="completed">bond quest completed</option>
-          <option value="incomplete">bond quest not completed</option>
+          <option value="all">{L("all bond quests", "絆クエスト: すべて")}</option>
+          <option value="available">{L("has bond quest", "絆クエストあり")}</option>
+          <option value="completed">{L("bond quest completed", "絆クエストクリア済み")}</option>
+          <option value="incomplete">{L("bond quest not completed", "絆クエスト未クリア")}</option>
         </select>
         <select value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
-          <option value="all">owned + missing</option>
-          <option value="owned">owned only</option>
-          <option value="missing">missing only</option>
+          <option value="all">{L("owned + missing", "所持・未所持")}</option>
+          <option value="owned">{L("owned only", "所持のみ")}</option>
+          <option value="missing">{L("missing only", "未所持のみ")}</option>
         </select>
         <select value={groupBy} onChange={(e) => setGroupBy(e.target.value as typeof groupBy)}>
-          <option value="rarity">group by rarity</option>
-          <option value="implementation">group by implementation year</option>
+          <option value="rarity">{L("group by rarity", "レア度でまとめる")}</option>
+          <option value="implementation">{L("group by implementation year", "実装年でまとめる")}</option>
         </select>
         <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}>
-          <option value="id">sort within group by ID</option>
-          <option value="implementation">sort within group by implementation date</option>
-          <option value="class">sort within group by base class ID</option>
+          <option value="id">{L("sort within group by ID", "ID順")}</option>
+          <option value="implementation">{L("sort within group by implementation date", "実装日順")}</option>
+          <option value="class">{L("sort within group by base class ID", "クラスID順")}</option>
         </select>
         <button
           type="button"
           onClick={() => setReverseSort((value) => !value)}
-          title="Reverse sort direction"
-          aria-label={`Sort direction: ${reverseSort ? "descending" : "ascending"}. Click to reverse.`}
+          title={L("Reverse sort direction", "並び順を反転")}
+          aria-label={reverseSort ? L("Sort direction: descending. Click to reverse.", "降順。クリックで反転。") : L("Sort direction: ascending. Click to reverse.", "昇順。クリックで反転。")}
         >
-          {reverseSort ? "Sort: descending ↓" : "Sort: ascending ↑"}
+          {reverseSort ? L("Sort: descending ↓", "降順 ↓") : L("Sort: ascending ↑", "昇順 ↑")}
         </button>
       </div>
 
       <details className="collection-filters">
-        <summary>Filters{activeFilterCount ? ` (${activeFilterCount})` : ""}</summary>
-        <CheckboxGroup className="filter-group" title="Rarity" options={filterOptions.rarities} selected={rarityFilters} onToggle={(value) => toggleFilter(rarityFilters, setRarityFilters, value)} />
-        <CheckboxGroup className="filter-group" title="Position" options={POSITION_OPTIONS} selected={positionFilters} onToggle={(value) => toggleFilter(positionFilters, setPositionFilters, value)} />
-        <CheckboxGroup className="filter-group" title="Gender" options={GENDER_OPTIONS} selected={genderFilters} onToggle={(value) => toggleFilter(genderFilters, setGenderFilters, value)} />
-        <CheckboxGroup className="filter-group" title="Affiliation" options={filterOptions.factions} selected={factionFilters} onToggle={(value) => toggleFilter(factionFilters, setFactionFilters, value)} />
-        <CheckboxGroup className="filter-group" title="Race" options={filterOptions.races} selected={raceFilters} onToggle={(value) => toggleFilter(raceFilters, setRaceFilters, value)} />
-        <CheckboxGroup className="filter-group" title="Attribute" options={filterOptions.attributes} selected={attributeFilters} onToggle={(value) => toggleFilter(attributeFilters, setAttributeFilters, value)} />
-        <CheckboxGroup className="filter-group" title="Season" options={filterOptions.seasons} selected={seasonFilters} onToggle={(value) => toggleFilter(seasonFilters, setSeasonFilters, value)} />
-        <CheckboxGroup className="filter-group" title="Implementation year" options={filterOptions.years} selected={yearFilters} onToggle={(value) => toggleFilter(yearFilters, setYearFilters, value)} />
-        {activeFilterCount > 0 && <button type="button" className="filter-clear-btn" onClick={clearFilters}>clear all filters</button>}
+        <summary>{L("Filters", "絞り込み")}{activeFilterCount ? ` (${activeFilterCount})` : ""}</summary>
+        <CheckboxGroup className="filter-group" title={L("Rarity", "レア度")} options={filterOptions.rarities} selected={rarityFilters} onToggle={(value) => toggleFilter(rarityFilters, setRarityFilters, value)} />
+        <CheckboxGroup className="filter-group" title={L("Position", "配置")} options={positionOptions(L)} selected={positionFilters} onToggle={(value) => toggleFilter(positionFilters, setPositionFilters, value)} />
+        <CheckboxGroup className="filter-group" title={L("Gender", "性別")} options={genderOptions(L)} selected={genderFilters} onToggle={(value) => toggleFilter(genderFilters, setGenderFilters, value)} />
+        <CheckboxGroup className="filter-group" title={L("Affiliation", "所属")} options={filterOptions.factions} selected={factionFilters} onToggle={(value) => toggleFilter(factionFilters, setFactionFilters, value)} />
+        <CheckboxGroup className="filter-group" title={L("Race", "種族")} options={filterOptions.races} selected={raceFilters} onToggle={(value) => toggleFilter(raceFilters, setRaceFilters, value)} />
+        <CheckboxGroup className="filter-group" title={L("Attribute", "属性")} options={filterOptions.attributes} selected={attributeFilters} onToggle={(value) => toggleFilter(attributeFilters, setAttributeFilters, value)} />
+        <CheckboxGroup className="filter-group" title={L("Season", "季節")} options={filterOptions.seasons} selected={seasonFilters} onToggle={(value) => toggleFilter(seasonFilters, setSeasonFilters, value)} />
+        <CheckboxGroup className="filter-group" title={L("Implementation year", "実装年")} options={filterOptions.years} selected={yearFilters} onToggle={(value) => toggleFilter(yearFilters, setYearFilters, value)} />
+        {activeFilterCount > 0 && <button type="button" className="filter-clear-btn" onClick={clearFilters}>{L("clear all filters", "絞り込みをすべて解除")}</button>}
       </details>
 
       <details className="collection-transfer">
-        <summary>Copy / restore collection</summary>
+        <summary>{L("Copy / restore collection", "所持状況のコピー・復元")}</summary>
         <div className="collection-transfer-grid">
           <BackupPanel
             code={exportCode}
             onImportCode={importCode}
             onExportFile={exportCollectionFile}
             onImportFile={importCollectionFile}
-            labels={{ pasteCode: "Paste an AIGC1, AIGC2, or AIGC3 code" }}
+            labels={getLang() === "ja" ? {
+              title: "バックアップ", code: "復元コード", copy: "コピー", copied: "コピーしました",
+              pasteCode: "AIGC1・AIGC2・AIGC3 のコードを貼り付け", importCode: "コードから復元",
+              exportFile: "ファイルに保存", importFile: "ファイルから復元", imported: "復元しました",
+            } : { pasteCode: "Paste an AIGC1, AIGC2, or AIGC3 code" }}
           />
           <label>
-            Import from chara-stat.us
+            {L("Import from chara-stat.us", "chara-stat.us から取り込み")}
             <textarea
               value={charaStatCode}
               onChange={(e) => setCharaStatCode(e.target.value)}
-              placeholder="Paste a checker URL or raw oryu code"
+              placeholder={L("Paste a checker URL or raw oryu code", "チェッカーのURLまたはコードを貼り付け")}
             />
-            <button type="button" disabled={!charaStatCode.trim()} onClick={importCharaStat}>replace from checker</button>
+            <button type="button" disabled={!charaStatCode.trim()} onClick={importCharaStat}>{L("replace from checker", "チェッカーの内容で置き換え")}</button>
           </label>
         </div>
         {message && <p className="collection-message">{message}</p>}
@@ -719,7 +738,7 @@ export default function Collection() {
       {shownPrinces.length > 0 && (
         <details className="collection-group collection-prince-group" open>
           <CollectionGroupSummary
-            title="Prince"
+            title={L("Prince", "王子")}
             selected={shownPrinces.filter(princeOwned).length}
             total={shownPrinces.length}
             onSelectAll={() => setPrinceDots((current) => uniqueSortedIds([
@@ -731,7 +750,7 @@ export default function Collection() {
               setPrinceDots((current) => current.filter((dot) => !dots.has(dot)));
             }}
           />
-          <p className="muted small">Prince cards sharing the same icon count once.</p>
+          <p className="muted small">{L("Prince cards sharing the same icon count once.", "同じアイコンの王子カードは1つとして数えます。")}</p>
           <div className="collection-grid">
             {shownPrinces.map((group) => (
               <CollectionTile
@@ -744,7 +763,7 @@ export default function Collection() {
                     ? current.filter((dot) => !groupDots.has(dot))
                     : uniqueSortedIds([...current, group.canonicalDot]);
                 })}
-                subtitle={`${group.members.length} card record${group.members.length === 1 ? "" : "s"}`}
+                subtitle={L("{n} card record(s)", "カード {n} 件", { n: group.members.length })}
               />
             ))}
           </div>
@@ -754,7 +773,7 @@ export default function Collection() {
       {sections.map((section) => section.kind === "support" ? (
         <details className="collection-group collection-support-group" key={section.key} open>
           <CollectionGroupSummary
-            title="Support"
+            title={L("Support", "サポート")}
             selected={shownSupport.filter(supportOwned).length}
             total={shownSupport.length}
             onSelectAll={() => setOwned((current) => uniqueSortedIds([
@@ -766,7 +785,7 @@ export default function Collection() {
               setOwned((current) => current.filter((id) => !ids.has(id)));
             }}
           />
-          <p className="muted small">Support card records sharing one icon count once.</p>
+          <p className="muted small">{L("Support card records sharing one icon count once.", "同じアイコンのサポートカードは1つとして数えます。")}</p>
           <div className="collection-grid">
             {shownSupport.map((group) => (
               <CollectionTile
@@ -780,7 +799,7 @@ export default function Collection() {
                     : uniqueSortedIds([...current, group.unit.id]);
                 })}
                 subtitle={group.members.length > 1
-                  ? `${group.members.length} card records`
+                  ? L("{n} card records", "カード {n} 件", { n: group.members.length })
                   : undefined}
               />
             ))}
@@ -789,7 +808,7 @@ export default function Collection() {
       ) : (
         <details className="collection-group" key={section.key} open>
           <CollectionGroupSummary
-            title={section.key}
+            title={sectionTitle(section.key, L)}
             selected={section.items.filter((unit) => ownedSet.has(unit.id)).length}
             total={section.items.length}
             onSelectAll={() => setOwned((current) => uniqueSortedIds([
@@ -824,7 +843,7 @@ export default function Collection() {
       ))}
 
       {shownNormal.length === 0 && shownSupport.length === 0 && shownPrinces.length === 0
-        && <p className="muted">No collection entries match these filters.</p>}
+        && <p className="muted">{L("No collection entries match these filters.", "条件に合うユニットがありません。")}</p>}
     </div>
   );
 }

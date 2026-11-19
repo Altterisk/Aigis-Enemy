@@ -1,18 +1,24 @@
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import { SiteShell, homeLink } from "@altterisk/game-hub";
+import { SegmentedButtons, SiteShell, homeLink } from "@altterisk/game-hub";
 import { LIST_META } from "./meta";
 import { usePageMeta } from "./usePageMeta";
+import { LANGS, hubLabels, setLang, useL, useLang, type Lang } from "./i18n";
 
-const FOOTER_LINKS = [
-  { label: "Source on GitHub", href: "https://github.com/Altterisk/Aigis-Enemy" },
-  { label: "Portfolio", href: "https://altterisk.github.io/portfolio/" },
-  { label: "Ko-fi", href: "https://ko-fi.com/altterisk" },
-];
+function LanguagePicker() {
+  const L = useL();
+  const lang = useLang();
+  return (
+    <SegmentedButtons className="lang-picker" label={L("Language", "言語")} options={LANGS} selected={lang}
+      onToggle={(v) => setLang(v as Lang)} />
+  );
+}
 
 export default function App() {
   // list pages here; detail pages and NotFound call usePageMeta themselves
   const { pathname } = useLocation();
   usePageMeta(LIST_META[pathname.replace(/\/$/, "")] ?? null);
+  const L = useL();
+  const hub = hubLabels(useLang());
   // contained={false}: pages render straight into <main>, which styles.css sizes
   return (
     <SiteShell
@@ -21,20 +27,31 @@ export default function App() {
       renderHomeLink={homeLink(Link, "to")}
       nav={
         <>
-          <NavLink to="/units">Units</NavLink>
-          <NavLink to="/prince">Prince</NavLink>
-          <NavLink to="/collection">Collection</NavLink>
-          <NavLink to="/enemies">Enemies</NavLink>
-          <NavLink to="/stages">Stages</NavLink>
-          <NavLink to="/story">Story</NavLink>
-          <NavLink to="/buffs">Buffs</NavLink>
-          <NavLink to="/costgen">Cost Gen</NavLink>
+          <NavLink to="/units">{L("Units", "ユニット")}</NavLink>
+          <NavLink to="/prince">{L("Prince", "王子")}</NavLink>
+          <NavLink to="/collection">{L("Collection", "所持")}</NavLink>
+          <NavLink to="/enemies">{L("Enemies", "敵")}</NavLink>
+          <NavLink to="/stages">{L("Stages", "ステージ")}</NavLink>
+          <NavLink to="/story">{L("Story", "ストーリー")}</NavLink>
+          <NavLink to="/buffs">{L("Buffs", "バフ")}</NavLink>
+          <NavLink to="/costgen">{L("Cost Gen", "コスト回復")}</NavLink>
           <NavLink to="/dps">DPS</NavLink>
-          <NavLink to="/team">Team</NavLink>
-          <NavLink to="/weather">Weather</NavLink>
+          <NavLink to="/team">{L("Team", "編成")}</NavLink>
+          <NavLink to="/weather">{L("Weather", "天候")}</NavLink>
         </>
       }
-      footer={{ links: FOOTER_LINKS }}
+      actions={<LanguagePicker />}
+      barLabels={hub.bar}
+      errorLabels={hub.error}
+      skipLabel={hub.skip}
+      footer={{
+        links: [
+          { label: L("Source on GitHub", "ソース (GitHub)"), href: "https://github.com/Altterisk/Aigis-Enemy" },
+          { label: L("Portfolio", "ポートフォリオ"), href: "https://altterisk.github.io/portfolio/" },
+          { label: "Ko-fi", href: "https://ko-fi.com/altterisk" },
+        ],
+        labels: hub.footer,
+      }}
       resetKey={pathname}
       contained={false}
     >

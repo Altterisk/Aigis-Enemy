@@ -22,6 +22,7 @@
 import { evaluate, both, isAlways, type EvalCtx, type TargetFacts, type Tri } from "./condEval";
 import { influenceSelectionRule } from "./influenceLabels";
 import type { BuffRow, UnitIndexEntry } from "./types";
+import { getLang } from "./i18n";
 
 export type Mode = "off" | "def" | "util";
 
@@ -141,8 +142,15 @@ export function variantsOf(ur: UnitRows, skillsOn: boolean): Variant[] {
   return classes.flatMap((cls) => skills.map((skill) => ({ cls, skill })));
 }
 
+const SKILL_JA: Record<string, string> = { base: "スキル", class_evolved: "クラスチェンジ後スキル", awakened: "スキル覚醒" };
+/** "awakened skill stage 2" in the current language. */
+const skillText = (s: string) => {
+  if (getLang() !== "ja") return s;
+  const m = /^(base|class_evolved|awakened) skill(?: stage (\d+))?$/.exec(s);
+  return m ? `${SKILL_JA[m[1]]}${m[2] ? ` 段階${m[2]}` : ""}` : s;
+};
 export const variantLabel = (v: Variant, loc?: Record<string, string>) =>
-  [v.cls ? loc?.[v.cls] || v.cls : null, v.skill].filter(Boolean).join(" · ");
+  [v.cls ? loc?.[v.cls] || v.cls : null, v.skill ? skillText(v.skill) : null].filter(Boolean).join(" · ");
 
 // ------------------------------------------------------------------ reach
 

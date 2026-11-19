@@ -5,12 +5,13 @@ import { listState, searchParamsAdapter } from "@altterisk/game-hub/filters";
 import { bannerUrl, useCurrentMissions, useHistoryYears, useStageCategories, useStoryIndex, type StageCategoryTile } from "../data";
 import { ColorCodedText } from "../components";
 import type { StoryGroupEntry } from "../types";
+import { useHubLabels, useL, type Pick } from "../i18n";
 
-function counts(g: StoryGroupEntry): string {
+function counts(g: StoryGroupEntry, L: Pick): string {
   const parts = [];
-  if (g.scenes) parts.push(`${g.scenes} scene${g.scenes === 1 ? "" : "s"}`);
-  if (g.battle) parts.push(`${g.battle} stage${g.battle === 1 ? "" : "s"} with battle dialogue`);
-  return parts.join(" · ") || "battle-screen story";
+  if (g.scenes) parts.push(g.scenes === 1 ? L("1 scene", "シーン 1") : L("{n} scenes", "シーン {n}", { n: g.scenes }));
+  if (g.battle) parts.push(g.battle === 1 ? L("1 stage with battle dialogue", "戦闘会話のあるステージ 1") : L("{n} stages with battle dialogue", "戦闘会話のあるステージ {n}", { n: g.battle }));
+  return parts.join(" · ") || L("battle-screen story", "戦闘画面のストーリー");
 }
 
 // "2026/11/19 11:00:00" -> "11/19 11:00", "2026-11-19" -> "11/19"
@@ -21,6 +22,7 @@ function untilText(until: string): string {
 }
 
 function GroupCard({ g, until }: { g: StoryGroupEntry; until?: string }) {
+  const L = useL();
   const name = <span className="mission-card-missing"><ColorCodedText text={g.title} /></span>;
   return (
     <Link className="mission-card story-card" to={`/story/${g.id}`}>
@@ -30,9 +32,9 @@ function GroupCard({ g, until }: { g: StoryGroupEntry; until?: string }) {
       <span className="mission-card-meta">
         <span className="mission-card-name"><ColorCodedText text={g.title} /></span>
         <span className="muted small">
-          {counts(g)}
-          {until && <span className="event-until"> · until {untilText(until)}</span>}
-          {g.past && <span className="past-tag">past</span>}
+          {counts(g, L)}
+          {until && <span className="event-until">{L(" · until {t}", " · {t}まで", { t: untilText(until) })}</span>}
+          {g.past && <span className="past-tag">{L("past", "終了")}</span>}
         </span>
       </span>
     </Link>
@@ -49,6 +51,7 @@ function Grid({ groups, until }: { groups: StoryGroupEntry[]; until?: Map<number
 
 // A category tile, as on the Stages portal: the game's banner, or a text tile.
 function PortalTile({ tile, count, onPick }: { tile: StageCategoryTile; count: number; onPick: (key: string) => void }) {
+  const L = useL();
   const text = <span className="portal-name">{tile.title}</span>;
   return (
     <button type="button" className={`portal-tile${tile.banner ? "" : " text-only"}`} onClick={() => onPick(tile.key)}
@@ -58,16 +61,18 @@ function PortalTile({ tile, count, onPick }: { tile: StageCategoryTile; count: n
       ) : text}
       <span className="portal-meta">
         {tile.banner && <span className="portal-label">{tile.title}</span>}
-        <span className="muted small">{count} events</span>
+        <span className="muted small">{L("{n} events", "{n} イベント", { n: count })}</span>
       </span>
     </button>
   );
 }
 
-const EPISODE_TILE: StageCategoryTile = { key: "episode", title: "Episodes", categories: ["Episode"], banner: false };
-const OTHER_TILE: StageCategoryTile = { key: "other", title: "Other scenes", categories: ["Other"], banner: false };
+const episodeTile = (L: Pick): StageCategoryTile => ({ key: "episode", title: L("Episodes", "エピソード"), categories: ["Episode"], banner: false });
+const otherTile = (L: Pick): StageCategoryTile => ({ key: "other", title: L("Other scenes", "その他のシーン"), categories: ["Other"], banner: false });
 
 export default function Story() {
+  const L = useL();
+  const hub = useHubLabels();
   const index = useStoryIndex();
   const stageCats = useStageCategories();
   const historyYears = useHistoryYears();
@@ -87,10 +92,10 @@ export default function Story() {
     const rest = [...new Set(groups.map((g) => g.category))]
       .filter((c) => !covered.has(c) && c !== "Episode" && c !== "Other").sort();
     for (const c of rest) out.push({ key: c, title: c, categories: [c], banner: false });
-    out.splice(Math.min(1, out.length), 0, EPISODE_TILE);
-    out.push(OTHER_TILE);
+    out.splice(Math.min(1, out.length), 0, episodeTile(L));
+    out.push(otherTile(L));
     return out.filter((t) => groups.some((g) => t.categories.includes(g.category)));
-  }, [stageCats, groups]);
+  }, [stageCats, groups, L]);
 
   const byGameOrder = useMemo(() => {
     const order = stageCats?.display_order || {};
@@ -112,7 +117,7 @@ export default function Story() {
     setParams(p);
   };
 
-  if (!index) return <p className="loading">Loading…</p>;
+  if (!index) return <p className="loading">{L("Loading…", "読み込み中…")}</p>;
 
   const tile = tiles.find((t) => t.key === cat);
   const inTile = (t: StageCategoryTile) => groups.filter((g) => t.categories.includes(g.category));
@@ -121,9 +126,9 @@ export default function Story() {
     <ListToolbar
       search={(
         <>
-          <SearchBox value={q} onChange={(v) => list.setText("q", v)} placeholder="Search events…" label="Search events" />
-          <select className="hub-select" value={tile ? cat : ""} onChange={(e) => go(e.target.value)} aria-label="Category">
-            <option value="">story portal</option>
+          <SearchBox value={q} onChange={(v) => list.setText("q", v)} placeholder={L("Search events…", "イベントを検索…")} label={L("Search events", "イベントを検索")} clearLabel={hub.clearSearch} />
+          <select className="hub-select" value={tile ? cat : ""} onChange={(e) => go(e.target.value)} aria-label={L("Category", "カテゴリ")}>
+            <option value="">{L("story portal", "ストーリー一覧")}</option>
             {tiles.map((t) => <option key={t.key} value={t.key}>{t.title}</option>)}
           </select>
         </>
@@ -133,8 +138,7 @@ export default function Story() {
   );
   const intro = (
     <p className="muted small">
-      <b>Scenes</b> are the conversations shown outside battle and open in the scene viewer;
-      {" "}<b>battle dialogue</b> links to the stage&apos;s Dialogue tab.
+      {L("Scenes are the conversations shown outside battle and open in the scene viewer; battle dialogue links to the stage's Dialogue tab.", "シーンは戦闘外の会話で、シーンビューアーで再生できます。戦闘会話はステージの会話タブにリンクしています。")}
     </p>
   );
 
@@ -145,8 +149,8 @@ export default function Story() {
       .filter(([, gs]) => gs.length);
     return (
       <div className="story-page">
-        {toolbar(`${hits.length} events`)}
-        {!hits.length && <EmptyState title="No events match." />}
+        {toolbar(L("{n} events", "{n} イベント", { n: hits.length }))}
+        {!hits.length && <EmptyState title={L("No events match.", "該当するイベントがありません。")} />}
         {sections.map(([t, gs]) => (
           <div key={t.key} className="cat-section">
             <h2 className="cat-title">{t.title}</h2>
@@ -167,13 +171,13 @@ export default function Story() {
       for (const y of historyYears) for (const m of y.missions) yearOf.set(m, y.group);
       const pages = [
         ...historyYears.map((y) => ({ key: String(y.group), label: y.title, list: events.filter((g) => g.mission_id != null && yearOf.get(g.mission_id) === y.group) })),
-        { key: "other", label: "Other", list: events.filter((g) => g.mission_id == null || !yearOf.has(g.mission_id)) },
+        { key: "other", label: L("Other", "その他"), list: events.filter((g) => g.mission_id == null || !yearOf.has(g.mission_id)) },
       ].filter((p) => p.list.length);
       const current = pages.find((p) => p.key === yearParam) ?? pages[0];
       if (current) {
         body = (
           <>
-            <div className="year-tabs" role="tablist" aria-label="Year">
+            <div className="year-tabs" role="tablist" aria-label={L("Year", "年")}>
               {pages.map((p) => (
                 <button key={p.key} type="button" role="tab" aria-selected={p.key === current.key}
                   className={`year-tab${p.key === current.key ? " active" : ""}`}
@@ -197,9 +201,9 @@ export default function Story() {
     }
     return (
       <div className="story-page">
-        {toolbar(`${events.length} events`)}
+        {toolbar(L("{n} events", "{n} イベント", { n: events.length }))}
         <div className="portal-head">
-          <button type="button" className="portal-back" onClick={() => go("")}>← Story portal</button>
+          <button type="button" className="portal-back" onClick={() => go("")}>{L("← Story portal", "← ストーリー一覧")}</button>
           {tile.banner && (
             <FallbackImage className="portal-head-banner" srcs={[bannerUrl(`category_${tile.key}`)]} alt={tile.title} missing={null} />
           )}
@@ -219,15 +223,15 @@ export default function Story() {
   });
   return (
     <div className="story-page">
-      {toolbar(`${tiles.length} categories`)}
+      {toolbar(L("{n} categories", "{n} カテゴリ", { n: tiles.length }))}
       {intro}
-      <nav className="portal-grid" aria-label="Story categories">
+      <nav className="portal-grid" aria-label={L("Story categories", "ストーリーのカテゴリ")}>
         {tiles.map((t) => <PortalTile key={t.key} tile={t} count={inTile(t).length} onPick={go} />)}
       </nav>
       <div className="cat-section">
-        <h2 className="cat-title">Now running</h2>
+        <h2 className="cat-title">{L("Now running", "開催中")}</h2>
         {running.length ? <Grid groups={running} until={untilById} />
-          : <EmptyState title="No running event has story right now" hint="Pick a category above." />}
+          : <EmptyState title={L("No running event has story right now", "開催中のイベントにストーリーはありません")} hint={L("Pick a category above.", "上のカテゴリを選んでください。")} />}
       </div>
     </div>
   );

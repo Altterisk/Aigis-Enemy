@@ -50,6 +50,16 @@ import type { AbilityInfluence, BuffRow, SkillStage, Unit, UnitClass, UnitSkill 
 import { copyText } from "@altterisk/game-hub";
 import { both, controlsOf, evaluate, isAlways, targetFacts, type Control, type EvalCtx, type Tri } from "../condEval";
 import { base64url, packJson, unpackJson } from "@altterisk/game-hub/codec";
+import { gameName, getLang, useL } from "../i18n";
+
+// breakdown step names in Japanese (steps are built in English; the page swaps the fixed ones)
+const STEP_JA: Record<string, string> = {
+  "Affection ATK": "好感度の攻撃力", "Skill self ATK": "スキルの自己攻撃力", "Flat ATK buffs": "固定値の攻撃力バフ",
+  "Effective ATK": "実効攻撃力", "Enemy DEF after debuffs": "デバフ後の敵の防御力", "Physical hit": "物理ダメージ",
+  "Enemy MR after debuffs": "デバフ後の敵の魔法耐性", "Magic hit": "魔法ダメージ", "True-damage hit": "貫通ダメージ",
+  "Enemy damage taken": "敵の被ダメージ", "Set PAD": "攻撃後の待ち時間固定", "Hits per attack": "1回の攻撃のヒット数",
+  "Attack interval": "攻撃間隔", "DPS per target": "対象1体あたりのDPS",
+};
 
 type SlotKey = "none" | "base" | "class_evolved" | "awakened";
 type Combine = "multiply" | "add";
@@ -393,13 +403,13 @@ function bufferEffects(
       const cond = [humanize(g.command), humanize(g.activate_command)].filter((x) => x && x !== "1").join(" AND ") || "always";
       let eff: OwnEffect | null = null;
       if (g.influence_type === 1) {
-        eff = { key: `g${gi}-${j}`, src: `granted by ${bu.name_en || bu.name}`, type: 1, label: "Damage modifier on hit",
+        eff = { key: `g${gi}-${j}`, src: `granted by ${gameName(bu.name_en, bu.name)}`, type: 1, label: "Damage modifier on hit",
           cond, exprs, kind: "dmg", value: p[0] ?? 100, chance: p[1] ?? 100 };
       } else if (g.influence_type === 18) {
-        eff = { key: `g${gi}-${j}`, src: `granted by ${bu.name_en || bu.name}`, type: 18, label: "Attack again without PAD (chance)",
+        eff = { key: `g${gi}-${j}`, src: `granted by ${gameName(bu.name_en, bu.name)}`, type: 18, label: "Attack again without PAD (chance)",
           cond, exprs, kind: "pad_zero", value: p[0] ?? 0 };
       } else if (g.influence_type === 22) {
-        eff = { key: `g${gi}-${j}`, src: `granted by ${bu.name_en || bu.name}`, type: 22, label: "True damage chance",
+        eff = { key: `g${gi}-${j}`, src: `granted by ${gameName(bu.name_en, bu.name)}`, type: 22, label: "True damage chance",
           cond, exprs, kind: "true_chance", value: p[0] ?? 0 };
       }
       if (!eff) return;
@@ -467,7 +477,7 @@ function UnitSearch({ placeholder, onPick, exclude }: { placeholder: string; onP
             <button key={x.id} onMouseDown={(e) => e.preventDefault()}
               onClick={() => { onPick(x.id); setQuery(""); setOpen(false); }}>
               <img src={unitImageUrl("icon", x.id)} alt="" loading="lazy" />
-              <span>{x.name_en || x.name} <span className="muted">#{x.id}</span></span>
+              <span>{gameName(x.name_en, x.name)} <span className="muted">#{x.id}</span></span>
             </button>
           ))}
         </div>
@@ -480,7 +490,7 @@ function skillOptions(u: Unit): [SlotKey, string][] {
   const sk = u.skills as Record<string, UnitSkill | null | undefined>;
   return [["none", SLOT_LABEL.none] as [SlotKey, string]].concat(
     (["base", "class_evolved", "awakened"] as const).filter((k) => sk[k])
-      .map((k) => [k, `${SLOT_LABEL[k]} — ${sk[k]?.name_en || sk[k]?.name}`] as [SlotKey, string]));
+      .map((k) => [k, `${SLOT_LABEL[k]} — ${gameName(sk[k]?.name_en, sk[k]?.name)}`] as [SlotKey, string]));
 }
 
 // ---------------------------------------------------------------- share links
@@ -568,6 +578,14 @@ async function decodeShare(code: string): Promise<ShareState | null> {
 }
 
 export default function Dps() {
+  const L = useL();
+  const CAT_JA: Record<string, string> = {
+    SORTIE: "出撃・配置の攻撃力", ATK: "その他の攻撃力バフ", DEF_DEBUFF: "敵の防御力低下", MR_DEBUFF: "敵の魔法耐性低下",
+    DMG_AMP: "敵の被ダメージ増加", PAD: "攻撃後の待ち時間", GRANT: "付与アビリティ",
+  };
+  const catLabel = (k: string, en: string) => L(en, CAT_JA[k] ?? en);
+  const SLOT_JA: Record<string, string> = { "No skill": "スキルなし", "Normal skill": "通常スキル", "Class-change skill": "クラスチェンジスキル", "Awakened skill": "覚醒スキル" };
+  const slotTitle = (t: string) => L(t, SLOT_JA[t] ?? t);
   useExprNames();
   const [buffIndex, setBuffIndex] = useState<BuffRow[] | null>(null);
   useEffect(() => {
@@ -965,7 +983,7 @@ export default function Dps() {
     if (!buffIndex) return null;
     const effs = bufferEffects(b, bu, buffIndex, configs);
     const shown = effs.filter((e) => showAll || effectState(e, b, bu) !== false);
-    if (!shown.length) return <p className="muted small">No buffs from this setup reach the selected unit.</p>;
+    if (!shown.length) return <p className="muted small">{L("No buffs from this setup reach the selected unit.", "この設定から対象ユニットに届くバフはありません。")}</p>;
     return (
       <table className="dps-own">
         <tbody>
@@ -982,10 +1000,10 @@ export default function Dps() {
                       return { ...x, off };
                     })} />
                 </td>
-                <td><span className="dps-badge">{CATS.find((c) => c.k === e.cat)?.label}</span></td>
+                <td><span className="dps-badge">{catLabel(e.cat, CATS.find((c) => c.k === e.cat)?.label ?? e.cat)}</span></td>
                 <td><strong>{e.value}</strong></td>
                 <td className="small">{e.label}<div className="muted"><HumanText text={e.target} /></div></td>
-                <td className="small">{st === true ? "applies" : st === false ? "not now" : "?"}</td>
+                <td className="small">{st === true ? L("applies", "適用") : st === false ? L("not now", "現在は無効") : "?"}</td>
               </tr>
             );
           })}
@@ -998,15 +1016,14 @@ export default function Dps() {
     <div className="dps-page">
       <header className="dps-title">
         <div className="dps-title-row">
-          <h2>DPS calculator</h2>
+          <h2>{L("DPS calculator", "DPS計算機")}</h2>
           <button className="dps-share" onClick={shareLink} disabled={unitId == null}
-            title="Copy a link that restores this whole setup">
-            {copied ? "Link copied" : "Share"}
+            title={L("Copy a link that restores this whole setup", "この設定を復元するリンクをコピー")}>
+            {copied ? L("Link copied", "リンクをコピーしました") : L("Share", "共有")}
           </button>
         </div>
         <p className="muted small">
-          Not decoded, so left as model options: the physical damage floor, how separate buff groups combine, and how
-          several damage modifiers combine.
+          {L("Not decoded, so left as model options: the physical damage floor, how separate buff groups combine, and how several damage modifiers combine.", "未解析のため設定項目にしています: 物理ダメージの下限、別種類のバフの組み合わせ方、複数のダメージ補正の組み合わせ方。")}
         </p>
       </header>
       <div className="dps-layout">
@@ -1014,42 +1031,42 @@ export default function Dps() {
 
       {/* ------------------------------------------------ unit */}
       <section className="dps-section">
-        <h3>Unit</h3>
-        <UnitSearch placeholder="pick unit (name / id)…" onPick={setUnitId} />
-        {unitId != null && !u && <div className="loading">loading…</div>}
+        <h3>{L("Unit", "ユニット")}</h3>
+        <UnitSearch placeholder={L("pick unit (name / id)…", "ユニットを選択 (名前・ID)…")} onPick={setUnitId} />
+        {unitId != null && !u && <div className="loading">{L("loading…", "読み込み中…")}</div>}
         {u && cl && (
           <>
             <div className="cg-card-head">
               <img src={unitImageUrl("icon", u.id)} alt="" />
               <div>
-                <strong>{u.name_en || u.name}</strong> <span className="muted">#{u.id}</span>
+                <strong>{gameName(u.name_en, u.name)}</strong> <span className="muted">#{u.id}</span>
                 <div className="muted small">
-                  {cl.name} · {String(cl.attack_attribute)} · {cl.max_target ?? 1} target(s) · interval {cl.attack_interval}f
+                  {cl.name} · {String(cl.attack_attribute)} · {L("{n} target(s)", "対象 {n}", { n: cl.max_target ?? 1 })} · {L("interval", "攻撃間隔")} {cl.attack_interval}f
                   {cl.attack_wait != null && ` (PAD ${cl.attack_wait}f)`}
                 </div>
               </div>
             </div>
             <div className="cg-ctl-group">
-              <label className="cg-ctl">Class
+              <label className="cg-ctl">{L("Class", "クラス")}
                 <select value={clsIdx} onChange={(e) => setClsIdx(Number(e.target.value))}>
                   {classes.map((c, i) => <option key={c.class_id} value={i}>{CC_LABEL[c.cc] ?? `cc${c.cc}`} — {c.name}</option>)}
                 </select>
               </label>
-              <Sel label="Level" value={level} set={setLevel}
-                opts={[["max", `max (${cl.stats[cl.stats.length - 1]?.level})`], ["1", "1"]]} />
-              <Sel label="Skill" value={slot} set={(v) => { setSlot(v); setStageIdx(0); }} opts={skillOptions(u)} />
+              <Sel label={L("Level", "レベル")} value={level} set={setLevel}
+                opts={[["max", `${L("max", "最大")} (${cl.stats[cl.stats.length - 1]?.level})`], ["1", "1"]]} />
+              <Sel label={L("Skill", "スキル")} value={slot} set={(v) => { setSlot(v); setStageIdx(0); }} opts={skillOptions(u)} />
               {stages.length > 1 && (
-                <label className="cg-ctl">Stage
+                <label className="cg-ctl">{L("Stage", "段階")}
                   <select value={stageIdx} onChange={(e) => setStageIdx(Number(e.target.value))}>
-                    {stages.map((s, i) => <option key={s.id} value={i}>{i + 1}: {s.name_en || s.name}</option>)}
+                    {stages.map((s, i) => <option key={s.id} value={i}>{i + 1}: {gameName(s.name_en, s.name)}</option>)}
                   </select>
                 </label>
               )}
               <label className={`cg-pill${useAff ? " on" : ""}`}>
                 <input type="checkbox" checked={useAff} onChange={(e) => setUseAff(e.target.checked)} />
-                Max affection ATK
+                {L("Max affection ATK", "好感度最大の攻撃力")}
               </label>
-              <label className="cg-ctl">Attack interval (f)
+              <label className="cg-ctl">{L("Attack interval (f)", "攻撃間隔 (f)")}
                 <input type="number" min={1} value={intervalOverride !== "" ? intervalOverride : cl.attack_interval ?? 0}
                   onChange={(e) => setIntervalOverride(e.target.value)} />
               </label>
@@ -1060,23 +1077,23 @@ export default function Dps() {
 
       {/* ------------------------------------------------ enemy + model */}
       <section className="dps-section">
-        <h3>Enemy</h3>
+        <h3>{L("Enemy", "敵")}</h3>
         <div className="cg-ctl-group">
           <NumInput label="HP" value={eHp} set={setEHp} />
-          <NumInput label="DEF" value={eDef} set={setEDef} />
-          <NumInput label="MR %" value={eMr} set={setEMr} max={100} />
+          <NumInput label={L("DEF", "防御力")} value={eDef} set={setEDef} />
+          <NumInput label={L("MR %", "魔法耐性 %")} value={eMr} set={setEMr} max={100} />
         </div>
         <details className="dps-model">
-          <summary className="small">Model options (not decoded)</summary>
+          <summary className="small">{L("Model options (not decoded)", "計算の設定 (未解析)")}</summary>
           <div className="cg-ctl-group">
-            <Sel label="Chance procs" value={procMode} set={setProcMode}
-              opts={[["expected", "expected value"], ["always", "always proc"], ["never", "never proc"]]} />
-            <label className="cg-ctl" title="Physical hits deal at least this percent of ATK.">Min dmg % of ATK
+            <Sel label={L("Chance procs", "確率発動")} value={procMode} set={setProcMode}
+              opts={[["expected", L("expected value", "期待値")], ["always", L("always proc", "必ず発動")], ["never", L("never proc", "発動しない")]]} />
+            <label className="cg-ctl" title={L("Physical hits deal at least this percent of ATK.", "物理攻撃は最低でも攻撃力のこの割合のダメージを与えます。")}>{L("Min dmg % of ATK", "最低ダメージ (攻撃力の%)")}
               <input type="number" min={0} max={100} value={floorPct} onChange={(e) => setFloorPct(Number(e.target.value) || 0)} />
             </label>
-            <Sel label="Buff groups" value={combine} set={setCombine} opts={[["multiply", "multiply"], ["add", "add percents"]]} />
-            <Sel label="Damage modifiers" value={dmgCombine} set={setDmgCombine}
-              opts={[["highest", "highest only"], ["multiply", "multiply"]]} />
+            <Sel label={L("Buff groups", "バフの種類")} value={combine} set={setCombine} opts={[["multiply", L("multiply", "乗算")], ["add", L("add percents", "加算")]]} />
+            <Sel label={L("Damage modifiers", "ダメージ補正")} value={dmgCombine} set={setDmgCombine}
+              opts={[["highest", L("highest only", "最大のみ")], ["multiply", L("multiply", "乗算")]]} />
           </div>
         </details>
       </section>
@@ -1084,8 +1101,8 @@ export default function Dps() {
       {/* ------------------------------------------------ conditions */}
       {u && cl && (
         <section className="dps-section">
-          <h3>Conditions</h3>
-          {controls.length === 0 && <p className="muted small">No conditions in the current setup.</p>}
+          <h3>{L("Conditions", "条件")}</h3>
+          {controls.length === 0 && <p className="muted small">{L("No conditions in the current setup.", "現在の設定に条件はありません。")}</p>}
           <div className="dps-conds">
             {controls.filter((c) => c.kind === "slider").map((c) => (
               <label key={c.key} className="cg-slider">
@@ -1107,11 +1124,11 @@ export default function Dps() {
       {/* ------------------------------------------------ own effects */}
       {u && cl && (
         <section className="dps-section">
-          <h3>Unit's own conditional effects</h3>
-          {own.length === 0 && <p className="muted small">No conditional damage / ATK effects on this class tier.</p>}
+          <h3>{L("Unit's own conditional effects", "ユニット自身の条件付き効果")}</h3>
+          {own.length === 0 && <p className="muted small">{L("No conditional damage / ATK effects on this class tier.", "このクラスに条件付きのダメージ・攻撃力効果はありません。")}</p>}
           {own.length > 0 && (
             <table className="dps-own">
-              <thead><tr><th>Use</th><th>Effect</th><th>Value</th><th>Condition</th><th>Active</th></tr></thead>
+              <thead><tr><th>{L("Use", "使用")}</th><th>{L("Effect", "効果")}</th><th>{L("Value", "値")}</th><th>{L("Condition", "条件")}</th><th>{L("Active", "有効")}</th></tr></thead>
               <tbody>
                 {own.map((e) => {
                   const m = ownMatch(e);
@@ -1137,7 +1154,7 @@ export default function Dps() {
                         })()}
                       </td>
                       <td className="small"><HumanText text={e.cond} /></td>
-                      <td>{m === true ? "yes" : m === false ? "no" : "?"}</td>
+                      <td>{m === true ? L("yes", "はい") : m === false ? L("no", "いいえ") : "?"}</td>
                     </tr>
                   );
                 })}
@@ -1149,29 +1166,28 @@ export default function Dps() {
 
       {/* ------------------------------------------------ buffers */}
       <section className="dps-section">
-        <h3>Buffers</h3>
+        <h3>{L("Buffers", "バフ役")}</h3>
         <p className="muted small">
-          Each buffer applies every buff of its chosen class tier and skill that can reach the selected unit. Rows
-          sharing a stack key keep the highest; sortie/deployment buffs add up; other groups keep the highest.
+          {L("Each buffer applies every buff of its chosen class tier and skill that can reach the selected unit. Rows sharing a stack key keep the highest; sortie/deployment buffs add up; other groups keep the highest.", "各バフ役は、選んだクラスとスキルのうち対象ユニットに届くすべてのバフを適用します。スタックキーが同じものは最大値、出撃・配置バフは加算、その他の種類は最大値を取ります。")}
         </p>
         <div className="cg-ctl-group">
           {CATS.map((c) => (
             <label key={c.k} className={`cg-pill${catOn[c.k] ? " on" : ""}`}>
               <input type="checkbox" checked={catOn[c.k]} onChange={(e) => setCatOn({ ...catOn, [c.k]: e.target.checked })} />
-              {c.label}
+              {catLabel(c.k, c.label)}
             </label>
           ))}
         </div>
         <div className="cg-ctl-group">
-          <UnitSearch placeholder="add buffer (unit name / id)…" onPick={addBuffer}
+          <UnitSearch placeholder={L("add buffer (unit name / id)…", "バフ役を追加 (名前・ID)…")} onPick={addBuffer}
             exclude={new Set([...buffers.map((b) => b.id), ...(u ? [u.id] : [])])} />
           <label className={`cg-pill${selfBuff ? " on" : ""}`}>
             <input type="checkbox" checked={selfBuff} onChange={(e) => setSelfBuff(e.target.checked)} />
-            Count this unit's own buffs on itself
+            {L("Count this unit's own buffs on itself", "このユニット自身のバフも含める")}
           </label>
           <label className={`cg-pill${showAll ? " on" : ""}`}>
             <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
-            Show rows that cannot apply
+            {L("Show rows that cannot apply", "適用されない行も表示")}
           </label>
         </div>
 
@@ -1179,7 +1195,7 @@ export default function Dps() {
           <div className="dps-buffer">
             <div className="dps-buffer-head">
               <img src={unitImageUrl("icon", u.id)} alt="" />
-              <strong>{u.name_en || u.name}</strong> <span className="muted small">(itself — follows the unit settings above)</span>
+              <strong>{gameName(u.name_en, u.name)}</strong> <span className="muted small">{L("(itself — follows the unit settings above)", "(自身 — 上のユニット設定に従う)")}</span>
             </div>
             {renderEffects(allBuffers(!!stage)[0].b, u, true)}
           </div>
@@ -1187,39 +1203,39 @@ export default function Dps() {
 
         {buffers.map((b) => {
           const bu = bufUnits[b.id];
-          if (!bu) return <div key={b.id} className="loading">loading #{b.id}…</div>;
+          if (!bu) return <div key={b.id} className="loading">{L("loading #{id}…", "#{id} を読み込み中…", { id: b.id })}</div>;
           const bcl = bu.classes[Math.min(b.tier, bu.classes.length - 1)];
           const sk = b.slot === "none" ? null : (bu.skills as Record<string, UnitSkill | null | undefined>)[b.slot];
           return (
             <div key={b.id} className="dps-buffer">
               <div className="dps-buffer-head">
                 <img src={unitImageUrl("icon", bu.id)} alt="" />
-                <strong>{bu.name_en || bu.name}</strong> <span className="muted">#{bu.id}</span>
-                <label className="cg-ctl">Class
+                <strong>{gameName(bu.name_en, bu.name)}</strong> <span className="muted">#{bu.id}</span>
+                <label className="cg-ctl">{L("Class", "クラス")}
                   <select value={b.tier} onChange={(e) => patchBuffer(b.id, (x) => ({ ...x, tier: Number(e.target.value) }))}>
                     {bu.classes.map((c, i) => <option key={c.class_id} value={i}>{CC_LABEL[c.cc] ?? `cc${c.cc}`} — {c.name}</option>)}
                   </select>
                 </label>
-                <Sel label="Skill" value={b.slot} set={(v) => patchBuffer(b.id, (x) => ({ ...x, slot: v, stage: 0, skillOn: v !== "none" }))}
+                <Sel label={L("Skill", "スキル")} value={b.slot} set={(v) => patchBuffer(b.id, (x) => ({ ...x, slot: v, stage: 0, skillOn: v !== "none" }))}
                   opts={skillOptions(bu)} />
                 {(sk?.stages?.length ?? 0) > 1 && (
-                  <label className="cg-ctl">Stage
+                  <label className="cg-ctl">{L("Stage", "段階")}
                     <select value={b.stage} onChange={(e) => patchBuffer(b.id, (x) => ({ ...x, stage: Number(e.target.value) }))}>
-                      {sk!.stages.map((s, i) => <option key={s.id} value={i}>{i + 1}: {s.name_en || s.name}</option>)}
+                      {sk!.stages.map((s, i) => <option key={s.id} value={i}>{i + 1}: {gameName(s.name_en, s.name)}</option>)}
                     </select>
                   </label>
                 )}
                 <label className={`cg-pill${b.deployed ? " on" : ""}`}>
                   <input type="checkbox" checked={b.deployed} onChange={(e) => patchBuffer(b.id, (x) => ({ ...x, deployed: e.target.checked }))} />
-                  Deployed
+                  {L("Deployed", "出撃中")}
                 </label>
                 {b.slot !== "none" && (
                   <label className={`cg-pill${b.skillOn ? " on" : ""}`}>
                     <input type="checkbox" checked={b.skillOn} onChange={(e) => patchBuffer(b.id, (x) => ({ ...x, skillOn: e.target.checked }))} />
-                    Skill active
+                    {L("Skill active", "スキル発動中")}
                   </label>
                 )}
-                <button className="dps-remove" title="remove buffer" onClick={() => setBuffers(buffers.filter((x) => x.id !== b.id))}>remove</button>
+                <button className="dps-remove" title={L("remove buffer", "バフ役を外す")} onClick={() => setBuffers(buffers.filter((x) => x.id !== b.id))}>{L("remove", "外す")}</button>
               </div>
               {bcl && renderEffects(b, bu, false)}
             </div>
@@ -1232,26 +1248,26 @@ export default function Dps() {
       {/* ------------------------------------------------ results */}
       {resNo && (
         <section className="dps-section dps-results">
-          <h3>Result</h3>
+          <h3>{L("Result", "結果")}</h3>
           <div className="dps-tiles">
             {[["No skill", resNo] as const, ...(resSkill ? [[SLOT_LABEL[slot], resSkill] as const] : [])].map(([title, r]) => (
               <div key={title} className="dps-tile">
-                <div className="dps-tile-title">{title}</div>
+                <div className="dps-tile-title">{slotTitle(title)}</div>
                 <div className="dps-tile-value">{fmt(r.dps)}</div>
-                <div className="dps-tile-sub">DPS / target{r.targets > 1 ? ` · ${fmt(r.dps * r.targets)} on ${r.targets}` : ""}</div>
-                <div className="dps-tile-sub">{ttk(r) !== "-" ? `kills in ${ttk(r)}` : "set enemy HP for time to kill"}</div>
+                <div className="dps-tile-sub">{L("DPS / target", "DPS / 1体")}{r.targets > 1 ? L(" · {d} on {n}", " · {n}体で {d}", { d: fmt(r.dps * r.targets), n: r.targets }) : ""}</div>
+                <div className="dps-tile-sub">{ttk(r) !== "-" ? L("kills in {t}", "{t}で撃破", { t: ttk(r) }) : L("set enemy HP for time to kill", "敵のHPを入力すると撃破時間を表示")}</div>
               </div>
             ))}
           </div>
           <table className="dps-result">
             <thead>
-              <tr><th></th><th>ATK</th><th>per hit</th><th>interval</th><th>DPS</th></tr>
+              <tr><th></th><th>{L("ATK", "攻撃力")}</th><th>{L("per hit", "1ヒット")}</th><th>{L("interval", "攻撃間隔")}</th><th>DPS</th></tr>
             </thead>
             <tbody>
               {[["No skill", resNo] as const, ...(resSkill ? [[SLOT_LABEL[slot], resSkill] as const] : [])].map(([title, r]) => (
                 <tr key={title}>
                   <td>
-                    {title}
+                    {slotTitle(title)}
                     {r.facts?.duration != null && <div className="muted small">{r.facts.duration}s · CD {r.facts.cooldown ?? "-"}s</div>}
                   </td>
                   <td>{r.atkFinal}</td><td>{fmt(r.perHit)}</td><td>{r.interval}f</td><td>{fmt(r.dps)}</td>
@@ -1262,12 +1278,12 @@ export default function Dps() {
           <div className="dps-steps">
             {[["No skill", resNo] as const, ...(resSkill ? [[SLOT_LABEL[slot], resSkill] as const] : [])].map(([title, r]) => (
               <div key={title}>
-                <h4>{title} — breakdown</h4>
+                <h4>{L("{t} — breakdown", "{t} — 内訳", { t: slotTitle(title) })}</h4>
                 <table className="dps-breakdown">
                   <tbody>
                     {r.steps.map((s, i) => (
                       <tr key={i} className={s.em ? "em" : ""}>
-                        <td>{s.label}{s.note && <div className="dps-note">{s.note}</div>}</td><td>{s.value}</td>
+                        <td>{(getLang() === "ja" && STEP_JA[s.label]) || s.label}{s.note && <div className="dps-note">{s.note}</div>}</td><td>{s.value}</td>
                       </tr>
                     ))}
                   </tbody>

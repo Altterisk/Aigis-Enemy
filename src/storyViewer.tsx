@@ -3,6 +3,7 @@ import { SceneControls, SceneFrame, SceneTextBox, sceneTextSetting, useSceneStep
 import { storyBgUrl, storyCharaUrl } from "./data";
 import { ColorCodedText } from "./components";
 import type { StoryChara, StoryPage, StoryScene } from "./types";
+import { useL, useLang } from "./i18n";
 
 const STAGE_W = 960;
 const STAGE_H = 640;
@@ -106,6 +107,8 @@ export function StoryViewer({ scene, onClose }: { scene: StoryScene; onClose: ()
   }, []);
 
   const speaking = useMemo(() => new Set(line?.w ? [line.w] : []), [line]);
+  const L = useL();
+  const lang = useLang();
   const history = useMemo(
     () => pages.slice(0, Math.min(at + 1, pages.length)).map((p) => scene.lines[p.l]),
     [pages, at, scene.lines],
@@ -130,8 +133,8 @@ export function StoryViewer({ scene, onClose }: { scene: StoryScene; onClose: ()
           <div className="sv-end" onClick={(e) => e.stopPropagation()} translate="no">
             <div className="sv-end-title">{scene.title}</div>
             <div className="sv-end-actions">
-              <button type="button" onClick={() => { setDone(false); base.go(0); }}>Replay</button>
-              <button type="button" onClick={onClose}>Close</button>
+              <button type="button" onClick={() => { setDone(false); base.go(0); }}>{L("Replay", "もう一度")}</button>
+              <button type="button" onClick={onClose}>{L("Close", "閉じる")}</button>
             </div>
           </div>
         )}
@@ -147,8 +150,12 @@ export function StoryViewer({ scene, onClose }: { scene: StoryScene; onClose: ()
         )}
       </SceneFrame>
       <SceneControls className="sv-controls" stepper={stepper} count={pages.length} nextDisabled={done}
-        allLines={allLines} onAllLines={setAllLines} onClose={onClose}>
-        <button type="button" className="hub-btn" aria-pressed={log} onClick={() => setLog((v) => !v)}>Log</button>
+        allLines={allLines} onAllLines={setAllLines} onClose={onClose}
+        labels={lang === "ja" ? {
+          back: "戻る", next: "次へ", auto: "オート", textAll: "全文", textOne: "1行ずつ", textTitle: "テキストの表示",
+          theater: "シアター", exitTheater: "シアターを終了", close: "閉じる", position: "位置",
+        } : undefined}>
+        <button type="button" className="hub-btn" aria-pressed={log} onClick={() => setLog((v) => !v)}>{L("Log", "ログ")}</button>
       </SceneControls>
     </div>
   );

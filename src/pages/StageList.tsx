@@ -8,6 +8,7 @@ import {
 } from "../data";
 import { ColorCodedText } from "../components";
 import type { StageIndexEntry } from "../types";
+import { useHubLabels, useL } from "../i18n";
 
 interface EventGroup {
   event: string;
@@ -26,6 +27,7 @@ function untilText(until: string): string {
 
 // One event block: banner + title, then its stages.
 function EventBlock({ event, category, missionId, until, stages }: EventGroup) {
+  const L = useL();
   return (
     <section className="event-group">
       <div className="event-head">
@@ -35,8 +37,8 @@ function EventBlock({ event, category, missionId, until, stages }: EventGroup) {
             {category && <span className="cat-badge">{category}</span>} {event}
           </h3>
           <div className="muted small">
-            {stages.length} stage(s)
-            {until && <span className="event-until"> · until {untilText(until)}</span>}
+            {L("{n} stage(s)", "{n} ステージ", { n: stages.length })}
+            {until && <span className="event-until">{L(" · until {t}", " · {t}まで", { t: untilText(until) })}</span>}
           </div>
         </div>
       </div>
@@ -49,13 +51,13 @@ function EventBlock({ event, category, missionId, until, stages }: EventGroup) {
               <Link to={`/stages/${s.quest_id}`}>
                 <ColorCodedText text={s.name} />
                 <span className="muted small"> ×{s.multiplier ?? 1}</span>
-                <span className="muted small"> · {s.enemy_count ?? 0} enemies</span>
+                <span className="muted small">{L(" · {n} enemies", " · 敵 {n} 体", { n: s.enemy_count ?? 0 })}</span>
                 {(s.marker_count ?? 0) > 0 && (
-                  <span className="muted small" title="fixtures / clones the game does not count as enemies">
-                    {" "}+ {s.marker_count} markers
+                  <span className="muted small" title={L("fixtures / clones the game does not count as enemies", "ゲームが敵として数えないオブジェクト・分身")}>
+                    {L(" + {n} markers", " + オブジェクト {n}", { n: s.marker_count ?? 0 })}
                   </span>
                 )}
-                {s.active === false && <span className="past-tag">past</span>}
+                {s.active === false && <span className="past-tag">{L("past", "終了")}</span>}
               </Link>
             </li>
           ))}
@@ -67,6 +69,7 @@ function EventBlock({ event, category, missionId, until, stages }: EventGroup) {
 // One mission in a category's banner list, as the game lists it: its banner,
 // opening the mission's stage list.
 function MissionCard({ ev, onOpen }: { ev: EventGroup; onOpen: (mid: number) => void }) {
+  const L = useL();
   if (!ev.missionId) return null;
   const mid = ev.missionId;
   return (
@@ -81,7 +84,7 @@ function MissionCard({ ev, onOpen }: { ev: EventGroup; onOpen: (mid: number) => 
         <span className="mission-card-name"><ColorCodedText text={ev.event} /></span>
         <span className="muted small">
           {ev.stages.length} stage(s)
-          {ev.until && <span className="event-until"> · until {untilText(ev.until)}</span>}
+          {ev.until && <span className="event-until">{L(" · until {t}", " · {t}まで", { t: untilText(ev.until) })}</span>}
         </span>
       </span>
     </button>
@@ -103,6 +106,7 @@ function PortalTile({ tile, events, onPick }: {
   events: number;
   onPick: (key: string) => void;
 }) {
+  const L = useL();
   const text = <span className="portal-name">{tile.title}</span>;
   return (
     <button
@@ -116,7 +120,7 @@ function PortalTile({ tile, events, onPick }: {
       ) : text}
       <span className="portal-meta">
         {tile.banner && <span className="portal-label">{tile.title}</span>}
-        <span className="muted small">{events} events</span>
+        <span className="muted small">{L("{n} events", "{n} イベント", { n: events })}</span>
       </span>
     </button>
   );
@@ -146,6 +150,8 @@ function groupEvents(stages: StageIndexEntry[], untilById: Map<number, string>):
 const LIST_VIEWS = ["running", "permanent", "all"];
 
 export default function StageList() {
+  const L = useL();
+  const hub = useHubLabels();
   const { loading, stages } = useStages();
   const currentMissions = useCurrentMissions();
   const historyYears = useHistoryYears();
@@ -229,12 +235,12 @@ export default function StageList() {
         const be = b.category === "Emergency" ? 0 : 1;
         return ae - be || (b.missionId || 0) - (a.missionId || 0);
       });
-      return events.length ? [["Now running", events]] : [];
+      return events.length ? [[L("Now running", "開催中"), events]] : [];
     }
 
     const byCat = new Map<string, EventGroup[]>();
     for (const ev of events) {
-      const c = ev.category || "Other";
+      const c = ev.category || L("Other", "その他");
       if (!byCat.has(c)) byCat.set(c, []);
       byCat.get(c)!.push(ev);
     }
@@ -243,7 +249,7 @@ export default function StageList() {
     }
     const order = tile ? tile.categories : [...byCat.keys()].sort();
     return order.filter((c) => byCat.has(c)).map((c) => [c, byCat.get(c)!] as [string, EventGroup[]]);
-  }, [stages, listMode, cat, term, tile, currentSet, permanentSet, untilById]);
+  }, [stages, listMode, cat, term, tile, currentSet, permanentSet, untilById, L]);
 
   // History events clustered into year groups (falls back to a flat list
   // when the year data is missing).
@@ -304,7 +310,7 @@ export default function StageList() {
   const pickTile = (key: string) => go({ cat: key });
   const openMission = (mid: number) => go({ cat: tile?.key ?? (LIST_VIEWS.includes(cat) ? cat : ""), m: mid });
 
-  if (loading) return <p className="loading">Loading stages…</p>;
+  if (loading) return <p className="loading">{L("Loading stages…", "ステージを読み込み中…")}</p>;
 
   const openEvent = openMid ? allEvents.find((ev) => ev.missionId === openMid) : undefined;
 
@@ -312,12 +318,12 @@ export default function StageList() {
     <ListToolbar
       search={(
         <>
-          <SearchBox value={q} onChange={(v) => list.setText("q", v)} placeholder="Search stage / event / quest id" />
+          <SearchBox value={q} onChange={(v) => list.setText("q", v)} placeholder={L("Search stage / event / quest id", "ステージ・イベント・クエストIDで検索")} clearLabel={hub.clearSearch} />
           <select className="hub-select" value={cat} onChange={(e) => go({ cat: e.target.value })}>
-            <option value="">mission portal</option>
-            <option value="running">now running</option>
-            <option value="permanent">permanent</option>
-            <option value="all">all categories</option>
+            <option value="">{L("mission portal", "ミッション一覧")}</option>
+            <option value="running">{L("now running", "開催中")}</option>
+            <option value="permanent">{L("permanent", "常設")}</option>
+            <option value="all">{L("all categories", "すべてのカテゴリ")}</option>
             {tiles.map((t) => (
               <option key={t.key} value={t.key}>{t.title}</option>
             ))}
@@ -331,11 +337,11 @@ export default function StageList() {
 
   // --- one mission: its stages ---
   if (openEvent && !term) {
-    const back = tile ? tile.title : cat === "running" ? "Now running" : cat === "permanent" ? "Permanent"
-      : cat === "all" ? "All categories" : "Mission portal";
+    const back = tile ? tile.title : cat === "running" ? L("Now running", "開催中") : cat === "permanent" ? L("Permanent", "常設")
+      : cat === "all" ? L("All categories", "すべてのカテゴリ") : L("Mission portal", "ミッション一覧");
     return (
       <div>
-        {toolbar(`${openEvent.stages.length} stages`)}
+        {toolbar(L("{n} stages", "{n} ステージ", { n: openEvent.stages.length }))}
         <button type="button" className="portal-back" onClick={() => go({ cat })}>← {back}</button>
         <EventBlock {...openEvent} />
       </div>
@@ -347,9 +353,9 @@ export default function StageList() {
     const totalEvents = sections.reduce((n, [, evs]) => n + evs.length, 0);
     return (
       <div>
-        {toolbar(`${totalEvents} events`)}
+        {toolbar(L("{n} events", "{n} イベント", { n: totalEvents }))}
         {cat === "running" && !term && totalEvents === 0 && (
-          <EmptyState title="No limited-time missions right now" hint="Pick a category above." />
+          <EmptyState title={L("No limited-time missions right now", "現在開催中の期間限定ミッションはありません")} hint={L("Pick a category above.", "上のカテゴリを選んでください。")} />
         )}
         {sections.map(([category, events]) => (
           <div key={category} className="cat-section">
@@ -371,9 +377,9 @@ export default function StageList() {
     const closed = events.filter((ev) => !isOpen(ev));
     return (
       <div>
-        {toolbar(`${events.length} events`)}
+        {toolbar(L("{n} events", "{n} イベント", { n: events.length }))}
         <div className="portal-head">
-          <button type="button" className="portal-back" onClick={() => go({})}>← Mission portal</button>
+          <button type="button" className="portal-back" onClick={() => go({})}>{L("← Mission portal", "← ミッション一覧")}</button>
           {tile.banner && (
             <FallbackImage className="portal-head-banner" srcs={[bannerUrl(`category_${tile.key}`)]} alt={tile.title} missing={null} />
           )}
@@ -386,14 +392,14 @@ export default function StageList() {
           const years = historyYears.filter((y) => clusters.has(y.group));
           const pages = [
             ...years.map((y) => ({ key: String(y.group), label: y.title, group: y.group as number | null })),
-            ...(rest.length ? [{ key: "other", label: "Other", group: null }] : []),
+            ...(rest.length ? [{ key: "other", label: L("Other", "その他"), group: null }] : []),
           ];
           const current = pages.find((p) => p.key === yearParam) ?? pages[0];
           if (!current) return null;
           const shown = current.group === null ? rest : clusters.get(current.group)!;
           return (
             <>
-              <div className="year-tabs" role="tablist" aria-label="Year">
+              <div className="year-tabs" role="tablist" aria-label={L("Year", "年")}>
                 {pages.map((p) => (
                   <button
                     key={p.key}
@@ -418,13 +424,13 @@ export default function StageList() {
           <>
             {open.length > 0 && (
               <div className="cat-section">
-                <h2 className="cat-title">Open now</h2>
+                <h2 className="cat-title">{L("Open now", "開催中")}</h2>
                 <MissionGrid events={open} onOpen={openMission} />
               </div>
             )}
             {closed.length > 0 && (
               <div className="cat-section">
-                <h2 className="cat-title">{open.length ? "Not open now" : "Missions"}</h2>
+                <h2 className="cat-title">{open.length ? L("Not open now", "開催していないミッション") : L("Missions", "ミッション")}</h2>
                 <MissionGrid events={closed} onOpen={openMission} />
               </div>
             )}
@@ -443,17 +449,17 @@ export default function StageList() {
   });
   return (
     <div>
-      {toolbar(`${tiles.filter(hasEvents).length} categories`)}
-      <nav className="portal-grid" aria-label="Stage categories">
+      {toolbar(L("{n} categories", "{n} カテゴリ", { n: tiles.filter(hasEvents).length }))}
+      <nav className="portal-grid" aria-label={L("Stage categories", "ステージのカテゴリ")}>
         {tiles.filter(hasEvents).map((t) => (
           <PortalTile key={t.key} tile={t} events={tileEvents.get(t.key) ?? 0} onPick={pickTile} />
         ))}
       </nav>
 
       <div className="cat-section">
-        <h2 className="cat-title">Now running</h2>
+        <h2 className="cat-title">{L("Now running", "開催中")}</h2>
         {running.length ? <MissionGrid events={running} onOpen={openMission} />
-          : <EmptyState title="No limited-time missions right now" hint="Pick a category above." />}
+          : <EmptyState title={L("No limited-time missions right now", "現在開催中の期間限定ミッションはありません")} hint={L("Pick a category above.", "上のカテゴリを選んでください。")} />}
       </div>
     </div>
   );

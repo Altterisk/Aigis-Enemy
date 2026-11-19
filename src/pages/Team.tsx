@@ -13,10 +13,16 @@ import {
   type Contribution, type Mode, type UnitRows, type Variant,
 } from "../team";
 import type { BuffRow, Stage, UnitIndexEntry } from "../types";
+import { gameName, rarityName, useL } from "../i18n";
 
 const PAGE = 20;
+const STAT_LABEL_JA: Record<string, string> = {
+  ATK: "攻撃力", DEF: "防御力", HP: "HP", MR: "魔法耐性", RNG: "射程", PAD_REDUCTION: "攻撃後の待ち時間短縮",
+  CDR: "スキル再使用時間短縮", ATK_DEBUFF: "敵の攻撃力低下", DEF_DEBUFF: "敵の防御力低下",
+  MR_DEBUFF: "敵の魔法耐性低下", PAD_DEBUFF: "敵の攻撃後の待ち時間増加", DMG_AMP: "敵の被ダメージ増加",
+};
 
-const nameOf = (u?: UnitIndexEntry) => (u ? u.name_en || u.name : "");
+const nameOf = (u?: UnitIndexEntry) => (u ? gameName(u.name_en, u.name) : "");
 const matchesQuery = (u: UnitIndexEntry, q: string) => {
   const s = q.trim().toLowerCase();
   return !s || (u.name_en ?? "").toLowerCase().includes(s) || (u.name ?? "").includes(q.trim()) || String(u.id) === s;
@@ -41,6 +47,7 @@ export default function Team() {
   const [stageQ, setStageQ] = useState("");
   const [shown, setShown] = useState(PAGE);
   const [stage, setStage] = useState<Stage | null>(null);
+  const L = useL();
 
   useEffect(() => {
     loadJSONFile<BuffRow[]>("buff_index").then(setRows).catch(() => setFailed(true));
@@ -133,21 +140,21 @@ export default function Team() {
       .sort((a, b) => b.score - a.score || b.fresh - a.fresh);
   }, [units, rows, current, fromCollection, owned, excluded, slotsUsed, capacity, mode, skillsOn]);
 
-  if (failed) return <p className="muted">buff_index.json not found — re-run export_units.py.</p>;
-  if (!rows || !units || !byId) return <p className="loading">Loading…</p>;
+  if (failed) return <p className="muted">{L("buff_index.json not found — re-run export_units.py.", "buff_index.json がありません — export_units.py を再実行してください。")}</p>;
+  if (!rows || !units || !byId) return <p className="loading">{L("Loading…", "読み込み中…")}</p>;
 
   const keyTitle = (key: string, r: BuffRow) => {
     const [stat, g] = key.split("|");
     const lab = (r.ns === "skill" ? labels?.skill : r.ns === "ability" ? labels?.ability : undefined)?.[String(r.t)];
     const name = r.grp ? groupName(r.grp, (t) => (r.ns === "skill" ? labels?.skill : labels?.ability)?.[String(t)]?.name, r.t)
-      : g === "dmg_amp" ? "Damage taken" : lab?.name || `${r.ns} ${r.t}`;
-    return `${STAT_LABEL[stat] ?? stat} · ${name}${r.fl ? " (flat)" : r.vk === "share" ? " (share)" : ""}`;
+      : g === "dmg_amp" ? L("Damage taken", "被ダメージ") : lab?.name || `${r.ns} ${r.t}`;
+    return `${L(STAT_LABEL[stat] ?? stat, STAT_LABEL_JA[stat] ?? stat)} · ${name}${r.fl ? L(" (flat)", " (固定値)") : r.vk === "share" ? L(" (share)", " (割合付与)") : ""}`;
   };
   const describe = (c: Contribution) => {
     const giver = byId.get(c.giver);
     const tr = c.r.tr ? humanize(c.r.tr) : "";
     return [`${nameOf(giver)}: ${fmtAmount(c.r, c.m)}`, loc?.classes[c.r.s] || c.r.s, c.r.tgt ? String(c.r.tgt) : "",
-      tr, c.state === null ? "conditional" : ""].filter(Boolean).join(" · ");
+      tr, c.state === null ? L("conditional", "条件付き") : ""].filter(Boolean).join(" · ");
   };
   const sortKeys = (m: Map<string, Contribution[]>) =>
     [...m.entries()].sort((a, b) => keyTitle(a[0], a[1][0].r).localeCompare(keyTitle(b[0], b[1][0].r)));
@@ -180,6 +187,7 @@ export default function Team() {
     setParams(next, { replace: true });
   };
   const setMode = (m: Mode) => set("mode", m === "off" ? null : m);
+  const modeLabel = (m: Mode) => (m === "off" ? L("Offense", "攻撃") : m === "def" ? L("Defense", "防御") : L("Utility", "補助"));
 
   const picks = q ? units.filter((u) => playable(u) && matchesQuery(u, q)).slice(0, 24) : [];
   const addPicks = addQ
@@ -194,33 +202,33 @@ export default function Team() {
 
   return (
     <div className="page team-page">
-      <PageHeader title="Team builder" subtitle="Pick a unit to buff, build her formation and see who adds the most buffs next." />
+      <PageHeader title={L("Team builder", "編成ビルダー")} subtitle={L("Pick a unit to buff, build her formation and see who adds the most buffs next.", "強化したいユニットを選んで編成を組み、次にバフを多く与えるユニットを確認します。")} />
       <div className="team-options">
-        <SegmentedButtons label="Candidates" selected={fromCollection ? "own" : "all"}
-          options={[{ value: "own", label: `My collection (${owned.length})` }, { value: "all", label: "All units" }]}
+        <SegmentedButtons label={L("Candidates", "候補")} selected={fromCollection ? "own" : "all"}
+          options={[{ value: "own", label: L("My collection ({n})", "所持ユニット ({n})", { n: owned.length }) }, { value: "all", label: L("All units", "全ユニット") }]}
           onToggle={(v) => set("pool", v === "all" ? "all" : null)} />
         <label className="team-check">
-          <input type="checkbox" checked={skillsOn} onChange={(e) => set("sk", e.target.checked ? null : "0")} /> Count skill buffs
+          <input type="checkbox" checked={skillsOn} onChange={(e) => set("sk", e.target.checked ? null : "0")} /> {L("Count skill buffs", "スキルのバフを含める")}
         </label>
       </div>
-      {!owned.length && <p className="muted small">No collection yet — suggestions come from every unit. <Link to="/collection">Collection</Link></p>}
+      {!owned.length && <p className="muted small">{L("No collection yet — suggestions come from every unit.", "所持ユニットが未登録のため、全ユニットから提案します。")} <Link to="/collection">{L("Collection", "所持")}</Link></p>}
 
-      <Panel title="Stage">
+      <Panel title={L("Stage", "ステージ")}>
         <div className="team-stage">
           {stage ? (
             <span>
               <Link to={`/stages/${stage.quest_id}`}>{stage.name}</Link>
               {stage.event ? <span className="muted"> · {stage.event}</span> : null}
-              <span className="team-num"> · deploy limit {stage.capacity}</span>
-              <button className="hub-btn hub-btn--sm team-stage__x" onClick={() => set("q", null)}>clear</button>
+              <span className="team-num">{L(" · deploy limit {n}", " · 出撃上限 {n}", { n: stage.capacity ?? 0 })}</span>
+              <button className="hub-btn hub-btn--sm team-stage__x" onClick={() => set("q", null)}>{L("clear", "解除")}</button>
             </span>
           ) : (
-            <label className="cg-ctl">Deploy limit
+            <label className="cg-ctl">{L("Deploy limit", "出撃上限")}
               <input type="number" min={1} max={MAX_TEAM} value={Number(params.get("cap")) || ""} placeholder={String(MAX_TEAM)}
                 onChange={(e) => set("cap", e.target.value && Number(e.target.value) < MAX_TEAM ? String(Number(e.target.value)) : null)} />
             </label>
           )}
-          {!stage && <SearchBox value={stageQ} onChange={setStageQ} placeholder="or pick a stage (name / event / quest id)" />}
+          {!stage && <SearchBox value={stageQ} onChange={setStageQ} placeholder={L("or pick a stage (name / event / quest id)", "またはステージを選択 (名前・イベント・クエストID)")} />}
         </div>
         {!stage && stageQ && (
           <div className="team-picks">
@@ -229,34 +237,34 @@ export default function Team() {
                 <span>{s.name}{s.event ? <span className="muted"> · {s.event}</span> : null}</span>
               </button>
             ))}
-            {!stagePicks.length && <span className="muted small">No stage matches.</span>}
+            {!stagePicks.length && <span className="muted small">{L("No stage matches.", "該当するステージがありません。")}</span>}
           </div>
         )}
       </Panel>
 
-      <Panel title="Unit to buff">
+      <Panel title={L("Unit to buff", "強化するユニット")}>
         {target ? (
           <div className="team-target">
             <Link className="team-unit" to={`/units/${target.id}`}>
               <Face id={target.id} size={56} />
               <span>
                 <span className="team-unit__name">{nameOf(target)}</span>
-                <span className="team-unit__meta">{target.rarity} · {loc?.classes[target.class ?? ""] || target.class}</span>
+                <span className="team-unit__meta">{rarityName(target.rarity)} · {loc?.classes[target.class ?? ""] || target.class}</span>
               </span>
             </Link>
-            <button className="hub-btn" onClick={() => { set("t", null); setQ(""); }}>change</button>
+            <button className="hub-btn" onClick={() => { set("t", null); setQ(""); }}>{L("change", "変更")}</button>
           </div>
         ) : (
           <>
-            <SearchBox value={q} onChange={setQ} placeholder="search units (name / id)" />
+            <SearchBox value={q} onChange={setQ} placeholder={L("search units (name / id)", "ユニットを検索 (名前・ID)")} />
             <div className="team-picks">
               {picks.map((u) => (
                 <button key={u.id} className="team-pick" onClick={() => { set("t", String(u.id)); setQ(""); }}>
                   <Face id={u.id} size={36} /><span>{nameOf(u)}</span>
                 </button>
               ))}
-              {q && !picks.length && <span className="muted small">Nothing matches.</span>}
-              {!q && <span className="muted small">Search for the unit the formation should buff.</span>}
+              {q && !picks.length && <span className="muted small">{L("Nothing matches.", "該当なし")}</span>}
+              {!q && <span className="muted small">{L("Search for the unit the formation should buff.", "編成で強化したいユニットを検索してください。")}</span>}
             </div>
           </>
         )}
@@ -264,8 +272,8 @@ export default function Team() {
 
       {target && (
         <>
-          <Panel title={`Formation (${team.length}/${MAX_TEAM}) · deployed ${slotsUsed}/${capacity}`}>
-            {slotsUsed > capacity && <p className="team-warn small">More units deployed than the deploy limit — set some to formation only.</p>}
+          <Panel title={L("Formation ({n}/{max}) · deployed {d}/{cap}", "編成 ({n}/{max}) · 出撃 {d}/{cap}", { n: team.length, max: MAX_TEAM, d: slotsUsed, cap: capacity })}>
+            {slotsUsed > capacity && <p className="team-warn small">{L("More units deployed than the deploy limit — set some to formation only.", "出撃上限を超えています — 一部を編成のみにしてください。")}</p>}
             <div className="team-members">
               {team.map((id) => {
                 const u = byId.get(id);
@@ -275,15 +283,15 @@ export default function Team() {
                   <span key={id} className={`team-member${id === target.id ? " is-target" : ""}${dep ? "" : " is-bench"}`}>
                     <Link to={`/units/${id}`} title={nameOf(u) || String(id)}><Face id={id} size={44} /></Link>
                     <span className="team-member__name">{nameOf(u) || `#${id}`}</span>
-                    {pick && <span className="team-member__pick" title="the class / skill counted for her">{pick}</span>}
-                    {noSlot.has(id) && <span className="team-member__pick">no deploy slot</span>}
+                    {pick && <span className="team-member__pick" title={L("the class / skill counted for her", "計算に使うクラス・スキル")}>{pick}</span>}
+                    {noSlot.has(id) && <span className="team-member__pick">{L("no deploy slot", "出撃枠を使わない")}</span>}
                     {id !== target.id && (
                       <>
-                        <button className="team-member__x" aria-label="remove" title="remove" onClick={() => setTeam(members.filter((m) => m !== id))}>×</button>
+                        <button className="team-member__x" aria-label={L("remove", "外す")} title={L("remove", "外す")} onClick={() => setTeam(members.filter((m) => m !== id))}>×</button>
                         <button className="team-member__t" disabled={!dep && slotsUsed >= capacity && !noSlot.has(id)}
-                          title={dep ? "deployed — click for formation only (sortie buffs only)" : "formation only — click to deploy"}
-                          onClick={() => toggleDeploy(id)}>{dep ? "deployed" : "bench"}</button>
-                        <button className="team-member__t" title="buff her instead" onClick={() => makeTarget(id)}>buff her</button>
+                          title={dep ? L("deployed — click for formation only (sortie buffs only)", "出撃中 — クリックで編成のみ (出撃時バフのみ)") : L("formation only — click to deploy", "編成のみ — クリックで出撃")}
+                          onClick={() => toggleDeploy(id)}>{dep ? L("deployed", "出撃") : L("bench", "控え")}</button>
+                        <button className="team-member__t" title={L("buff her instead", "このユニットを強化対象にする")} onClick={() => makeTarget(id)}>{L("buff her", "対象")}</button>
                       </>
                     )}
                   </span>
@@ -292,7 +300,7 @@ export default function Team() {
             </div>
             {team.length < MAX_TEAM && (
               <div className="team-add-manual">
-                <SearchBox value={addQ} onChange={setAddQ} placeholder="add a unit by hand (name / id)" />
+                <SearchBox value={addQ} onChange={setAddQ} placeholder={L("add a unit by hand (name / id)", "ユニットを手動で追加 (名前・ID)")} />
                 {addQ && (
                   <div className="team-picks">
                     {addPicks.map((u) => (
@@ -300,19 +308,19 @@ export default function Team() {
                         <Face id={u.id} size={36} /><span>{nameOf(u)}</span>
                       </button>
                     ))}
-                    {!addPicks.length && <span className="muted small">Nothing matches.</span>}
+                    {!addPicks.length && <span className="muted small">{L("Nothing matches.", "該当なし")}</span>}
                   </div>
                 )}
               </div>
             )}
-            {members.length > 0 && <button className="hub-btn team-clear" onClick={() => setTeam([], new Set())}>clear formation</button>}
+            {members.length > 0 && <button className="hub-btn team-clear" onClick={() => setTeam([], new Set())}>{L("clear formation", "編成をクリア")}</button>}
           </Panel>
 
-          <Panel title={`What the formation gives ${nameOf(target)}`}>
+          <Panel title={L("What the formation gives {name}", "編成から{name}への効果", { name: nameOf(target) })}>
             <div className="team-overall">
               {(["off", "def", "util"] as const).map((m) => (
                 <div key={m} className="team-overall__col">
-                  <h3 className="team-overall__h">{m === "off" ? "Offense" : m === "def" ? "Defense" : "Utility"}</h3>
+                  <h3 className="team-overall__h">{modeLabel(m)}</h3>
                   {formation[m].contrib.size ? (
                     <ul className="team-overall__list">
                       {sortKeys(formation[m].contrib).map(([k, cs]) => (
@@ -322,28 +330,28 @@ export default function Team() {
                         </li>
                       ))}
                     </ul>
-                  ) : <p className="muted small">Nothing yet.</p>}
+                  ) : <p className="muted small">{L("Nothing yet.", "まだありません。")}</p>}
                 </div>
               ))}
             </div>
-            <p className="muted small">One line per buff group: buffs in the same group don't stack (except additive ones); different groups are listed separately. "?" = depends on a condition (enemy kind, HP, class-change state…).</p>
+            <p className="muted small">{L("One line per buff group: buffs in the same group don't stack (except additive ones); different groups are listed separately. \"?\" = depends on a condition (enemy kind, HP, class-change state…).", "バフの種類ごとに1行: 同じ種類のバフは重複しません (加算型を除く)。種類が違うものは別々に表示します。「?」= 条件付き (敵の種類・HP・クラスチェンジ段階など)。")}</p>
           </Panel>
 
-          <FilterRow label="Suggest">
+          <FilterRow label={L("Suggest", "提案")}>
             {(["off", "def", "util"] as const).map((m) => (
               <FilterChip key={m} active={mode === m} onClick={() => setMode(m)}>
-                {m === "off" ? "Offense" : m === "def" ? "Defense" : "Utility"}
+                {modeLabel(m)}
               </FilterChip>
             ))}
           </FilterRow>
-          <p className="muted small">{MODE_STATS[mode].map((s) => STAT_LABEL[s]).join(" · ")}</p>
+          <p className="muted small">{MODE_STATS[mode].map((s) => L(STAT_LABEL[s], STAT_LABEL_JA[s] ?? s)).join(" · ")}</p>
 
-          <h2 className="team-h">Who to add next</h2>
-          {team.length >= MAX_TEAM ? <p className="muted">The formation is full ({MAX_TEAM}).</p> : (
+          <h2 className="team-h">{L("Who to add next", "次に追加するユニット")}</h2>
+          {team.length >= MAX_TEAM ? <p className="muted">{L("The formation is full ({n}).", "編成が満員です ({n})。", { n: MAX_TEAM })}</p> : (
             <>
               <p className="muted small">
-                Ranked by what each unit would add for {nameOf(target)}: new buff groups first, then the share of each group's new total.
-                {slotsUsed >= capacity ? " The deploy limit is reached, so a new unit joins the formation only: only her sortie buffs count." : ""}
+                {L("Ranked by what each unit would add for {name}: new buff groups first, then the share of each group's new total.", "{name}に追加される効果で順位付け: 新しい種類のバフを優先し、次に各種類の合計に占める割合。", { name: nameOf(target) })}
+                {slotsUsed >= capacity ? L(" The deploy limit is reached, so a new unit joins the formation only: only her sortie buffs count.", " 出撃上限に達しているため、追加するユニットは編成のみ: 出撃時バフだけが有効です。") : ""}
               </p>
               <ol className="team-cands">
                 {ranked.slice(0, shown).map(({ u, list, fresh, score, v, deployed }) => (
@@ -354,17 +362,17 @@ export default function Team() {
                         <span>
                           <span className="team-unit__name">{nameOf(u)}</span>
                           <span className="team-unit__meta">
-                            {u.rarity} · {loc?.classes[u.class ?? ""] || u.class}
+                            {rarityName(u.rarity)} · {loc?.classes[u.class ?? ""] || u.class}
                             {pickLabel(v) ? ` · ${pickLabel(v)}` : ""}
-                            {noSlot.has(u.id) ? " · no deploy slot" : deployed ? "" : " · formation only"}
+                            {noSlot.has(u.id) ? L(" · no deploy slot", " · 出撃枠を使わない") : deployed ? "" : L(" · formation only", " · 編成のみ")}
                           </span>
                         </span>
                       </Link>
-                      <span className="team-cand__score" title="ranking score">
-                        {fresh > 0 && <span className="team-new">{fresh} new</span>}
+                      <span className="team-cand__score" title={L("ranking score", "スコア")}>
+                        {fresh > 0 && <span className="team-new">{L("{n} new", "新規 {n}", { n: fresh })}</span>}
                         <span className="muted small">{score.toFixed(2)}</span>
                       </span>
-                      <button className="hub-btn team-add" onClick={() => addMember(u.id)}>add</button>
+                      <button className="hub-btn team-add" onClick={() => addMember(u.id)}>{L("add", "追加")}</button>
                     </div>
                     <div className="team-gains">
                       {list.map((g) => {
@@ -372,7 +380,7 @@ export default function Team() {
                         return (
                           <span key={g.key}
                             className={`team-gain${g.isNew ? " is-new" : up ? " is-up" : " is-none"}${g.best.near ? " is-near" : ""}${g.best.state === null ? " is-cond" : ""}`}
-                            title={`${describe(g.best)}\n${up ? `${fmtAmount(g.best.r, g.before)} → ${fmtAmount(g.best.r, g.after)}` : "no gain: the formation already has as much"}`}>
+                            title={`${describe(g.best)}\n${up ? `${fmtAmount(g.best.r, g.before)} → ${fmtAmount(g.best.r, g.after)}` : L("no gain: the formation already has as much", "効果なし: 編成に同等以上の効果があります")}`}>
                             {keyTitle(g.key, g.best.r)} <strong>{fmtAmount(g.best.r, g.best.m)}</strong>
                           </span>
                         );
@@ -381,14 +389,14 @@ export default function Team() {
                   </li>
                 ))}
               </ol>
-              {!ranked.length && <p className="muted">No unit adds anything here.</p>}
-              {ranked.length > shown && <button className="hub-btn" onClick={() => setShown(shown + PAGE)}>show {Math.min(PAGE, ranked.length - shown)} more ({ranked.length - shown} left)</button>}
+              {!ranked.length && <p className="muted">{L("No unit adds anything here.", "効果を追加できるユニットはありません。")}</p>}
+              {ranked.length > shown && <button className="hub-btn" onClick={() => setShown(shown + PAGE)}>{L("show {n} more ({left} left)", "さらに{n}件表示 (残り{left}件)", { n: Math.min(PAGE, ranked.length - shown), left: ranked.length - shown })}</button>}
             </>
           )}
           <p className="muted small">
-            Every unit counts at its top form: the awakened ability if she has one, her last class (the better 2nd-awakening branch), and the one skill that adds the most.
-            Values are each buff's cap, as on <Link to="/buffs">Buffs</Link>. Dashed = depends on placement (in range / nearby); faded = conditional.
-            Set-PAD skills and the 1st-barrack (possession) buffs are left out.
+            {L("Every unit counts at its top form: the awakened ability if she has one, her last class (the better 2nd-awakening branch), and the one skill that adds the most. Values are each buff's cap, as on", "各ユニットは最終形態で計算: 覚醒アビリティ (あれば)、最終クラス (第二覚醒は効果の高い方)、最も効果の高いスキル1つ。数値は各バフの上限値です。参照:")}{" "}
+            <Link to="/buffs">{L("Buffs", "バフ")}</Link>.{" "}
+            {L("Dashed = depends on placement (in range / nearby); faded = conditional. Set-PAD skills and the 1st-barrack (possession) buffs are left out.", "破線 = 配置次第 (射程内・周囲)、薄色 = 条件付き。攻撃後の待ち時間固定のスキルと所持効果は含みません。")}
           </p>
         </>
       )}

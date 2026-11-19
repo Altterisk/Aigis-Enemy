@@ -5,6 +5,7 @@ import { listState, searchParamsAdapter } from "@altterisk/game-hub/filters";
 import { useEnemies, useSpecialtyConfig, useInfluenceLabels, useExprNames } from "../data";
 import { Sprite, DamageBadge, fillLabel } from "../components";
 import type { GlobalEnemy, SpecialtyConfig } from "../types";
+import { useHubLabels, useL } from "../i18n";
 
 const PAGE = 60;
 const FILTER_KEYS = ["q", "dmg", "tag", "infl"];
@@ -17,6 +18,8 @@ function enemyInfluences(e: GlobalEnemy, spcfg: SpecialtyConfig | null): number[
 }
 
 export default function EnemyList() {
+  const L = useL();
+  const hub = useHubLabels();
   useExprNames();
   const { loading, enemies } = useEnemies();
   const spcfg = useSpecialtyConfig();
@@ -67,7 +70,7 @@ export default function EnemyList() {
     });
   }, [enemies, spcfg, q, dmg, tag, infl]);
 
-  if (loading) return <p className="loading">Loading enemies…</p>;
+  if (loading) return <p className="loading">{L("Loading enemies…", "敵を読み込み中…")}</p>;
 
   const pages = Math.ceil(filtered.length / PAGE);
   const shown = filtered.slice(page * PAGE, page * PAGE + PAGE);
@@ -82,33 +85,34 @@ export default function EnemyList() {
       <ListToolbar
         search={(
           <>
-            <SearchBox value={q} onChange={setFilter("q")} placeholder="Search id / type / tag" />
+            <SearchBox value={q} onChange={setFilter("q")} placeholder={L("Search id / type / tag", "ID・タイプ・タグで検索")} clearLabel={hub.clearSearch} />
             <select className="hub-select" value={dmg} onChange={(e) => setFilter("dmg")(e.target.value)}>
-              <option value="all">all damage</option>
-              <option value="physical">physical</option>
-              <option value="magical">magical</option>
-              <option value="true">true</option>
+              <option value="all">{L("all damage", "すべての攻撃")}</option>
+              <option value="physical">{L("physical", "物理")}</option>
+              <option value="magical">{L("magical", "魔法")}</option>
+              <option value="true">{L("true", "貫通")}</option>
             </select>
             <select className="hub-select" value={tag} onChange={(e) => setFilter("tag")(e.target.value)}>
-              <option value="all">all tags</option>
+              <option value="all">{L("all tags", "すべてのタグ")}</option>
               {tagOpts.map((t) => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>
             <select className="hub-select" value={infl} onChange={(e) => setFilter("infl")(e.target.value)}>
-              <option value="all">all abilities</option>
+              <option value="all">{L("all abilities", "すべての特性")}</option>
               {inflOpts.map((i) => (
                 <option key={i} value={String(i)}>{inflLabel(i)}</option>
               ))}
             </select>
           </>
         )}
-        count={`${filtered.length.toLocaleString()} enemies`}
+        count={L("{n} enemies", "{n} 体", { n: filtered.length.toLocaleString() })}
         activeFilters={activeFilters}
         onClearFilters={() => list.clear(FILTER_KEYS)}
+        labels={hub.toolbar}
       />
 
-      {shown.length === 0 && <EmptyState title="No enemies match these filters." hint="Change the search or clear the filters." />}
+      {shown.length === 0 && <EmptyState title={L("No enemies match these filters.", "条件に合う敵がいません。")} hint={L("Change the search or clear the filters.", "検索条件を変えるか、絞り込みを解除してください。")} />}
 
       <div className="enemy-grid">
         {shown.map((e) => (
@@ -125,14 +129,14 @@ export default function EnemyList() {
               </div>
               <div><DamageBadge type={e.damage_type} /></div>
               <div className="muted small">
-                HP {(e.hp ?? 0).toLocaleString()} · ATK {(e.attack ?? 0).toLocaleString()}
+                HP {(e.hp ?? 0).toLocaleString()} · {L("ATK", "攻撃力")} {(e.attack ?? 0).toLocaleString()}
               </div>
             </div>
           </Link>
         ))}
       </div>
 
-      <Pager page={page + 1} pages={pages} onPage={(p) => adapter.set({ page: p > 1 ? String(p - 1) : null })} />
+      <Pager page={page + 1} pages={pages} onPage={(p) => adapter.set({ page: p > 1 ? String(p - 1) : null })} labels={hub.pager} />
     </div>
   );
 }

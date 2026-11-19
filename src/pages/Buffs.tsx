@@ -7,58 +7,59 @@ import { HumanText, UnitIconLink, fmtFrames } from "../components";
 import type { BuffRow, InfluenceSelectionRule, UnitInfluenceLabel } from "../types";
 import { influenceSelectionRule } from "../influenceLabels";
 import { groupName } from "../buffGroups";
+import { gameName, getLang, useL } from "../i18n";
 
 // ally stat buffs, then enemy-facing stat effects (the picker's first two rows)
 const STATS = [
-  { k: "ATK", label: "ATK" },
-  { k: "DEF", label: "DEF" },
-  { k: "HP", label: "HP" },
-  { k: "MR", label: "MR" },
-  { k: "RNG", label: "Range" },
-  { k: "PAD_REDUCTION", label: "PAD Reduction" },
-  { k: "CDR", label: "Skill CD Reduction" },
+  { k: "ATK", label: "ATK", ja: "攻撃力" },
+  { k: "DEF", label: "DEF", ja: "防御力" },
+  { k: "HP", label: "HP", ja: "HP" },
+  { k: "MR", label: "MR", ja: "魔法耐性" },
+  { k: "RNG", label: "Range", ja: "射程" },
+  { k: "PAD_REDUCTION", label: "PAD Reduction", ja: "攻撃後の待ち時間短縮" },
+  { k: "CDR", label: "Skill CD Reduction", ja: "スキル再使用時間短縮" },
 ] as const;
 const DEBUFFS = [
-  { k: "ATK_DEBUFF", label: "ATK debuff" },
-  { k: "DEF_DEBUFF", label: "DEF debuff" },
-  { k: "MR_DEBUFF", label: "MR debuff" },
-  { k: "PAD_DEBUFF", label: "Enemy PAD increase" },
-  { k: "DMG_AMP", label: "Enemy damage taken" },
+  { k: "ATK_DEBUFF", label: "ATK debuff", ja: "攻撃力低下" },
+  { k: "DEF_DEBUFF", label: "DEF debuff", ja: "防御力低下" },
+  { k: "MR_DEBUFF", label: "MR debuff", ja: "魔法耐性低下" },
+  { k: "PAD_DEBUFF", label: "Enemy PAD increase", ja: "敵の攻撃後の待ち時間増加" },
+  { k: "DMG_AMP", label: "Enemy damage taken", ja: "敵の被ダメージ増加" },
 ] as const;
 // non-stat effect categories (third picker row): innate abilities + effects
 // granted to allies, each row carrying its application condition. Token-
 // sourced rows are attributed to the owner (source column names the token).
 const EFFECTS = [
-  { k: "MAKAI", label: "Makai" },
-  { k: "TENKAI", label: "Tenkai" },
-  { k: "WEATHER", label: "Weather" },
-  { k: "DEEPSEA", label: "Deep Sea" },
-  { k: "STATUS", label: "Status Ailments" },
-  { k: "STEALTH", label: "Stealth" },
-  { k: "TAUNT", label: "Taunt" },
-  { k: "EVASION", label: "Evasion" },
-  { k: "NULLIFY", label: "Nullification" },
-  { k: "INVULN", label: "Invulnerability" },
-  { k: "BARRIER", label: "Barrier" },
-  { k: "OVERHEAL", label: "Overheal" },
-  { k: "LIMIT", label: "Deploy Limit" },
-  { k: "HPCUT", label: "HP Cut" },
-  { k: "TIMESTOP", label: "Time Stop" },
+  { k: "MAKAI", label: "Makai", ja: "魔界" },
+  { k: "TENKAI", label: "Tenkai", ja: "天界" },
+  { k: "WEATHER", label: "Weather", ja: "天候" },
+  { k: "DEEPSEA", label: "Deep Sea", ja: "水中" },
+  { k: "STATUS", label: "Status Ailments", ja: "状態異常" },
+  { k: "STEALTH", label: "Stealth", ja: "隠密" },
+  { k: "TAUNT", label: "Taunt", ja: "挑発" },
+  { k: "EVASION", label: "Evasion", ja: "回避" },
+  { k: "NULLIFY", label: "Nullification", ja: "ダメージ無効化" },
+  { k: "INVULN", label: "Invulnerability", ja: "無敵" },
+  { k: "BARRIER", label: "Barrier", ja: "バリア" },
+  { k: "OVERHEAL", label: "Overheal", ja: "オーバーヒール" },
+  { k: "LIMIT", label: "Deploy Limit", ja: "出撃数" },
+  { k: "HPCUT", label: "HP Cut", ja: "HP割合ダメージ" },
+  { k: "TIMESTOP", label: "Time Stop", ja: "時間停止" },
 ] as const;
 type StatKey = (typeof STATS)[number]["k"] | (typeof DEBUFFS)[number]["k"] | (typeof EFFECTS)[number]["k"];
-const PICKER_ROWS: { label: string; tabs: readonly { k: StatKey; label: string }[] }[] = [
-  { label: "Stats", tabs: STATS },
-  { label: "Debuffs", tabs: DEBUFFS },
-  { label: "Effects", tabs: EFFECTS },
+const PICKER_ROWS: { label: string; ja: string; tabs: readonly { k: StatKey; label: string; ja: string }[] }[] = [
+  { label: "Stats", ja: "ステータス", tabs: STATS },
+  { label: "Debuffs", ja: "デバフ", tabs: DEBUFFS },
+  { label: "Effects", ja: "効果", tabs: EFFECTS },
 ];
 // active colour for the enemy-facing stat reductions
 const DEBUFF_CHIP_COLOR = "#f7768e";
 
 const TARGET_SCOPE_OPTIONS = [
-  { value: "range", label: "In range / nearby" },
-  { value: "all", label: "All" },
-  { value: "self", label: "Self" },
-  { value: "enemy", label: "Enemies" },
+  { value: "range", label: "In range / nearby", ja: "射程内・周囲" },
+  { value: "all", label: "All", ja: "全体" },
+  { value: "self", label: "Self", ja: "自身" },
+  { value: "enemy", label: "Enemies", ja: "敵" },
 ];
 
 function targetScopeMatches(target: string, scope: string): boolean {
@@ -74,12 +75,12 @@ const GROUP_PREVIEW = 10; // rows shown per type before "show all"
 const buffSelectionRule = (r: BuffRow): InfluenceSelectionRule | undefined =>
   r.ns === "special" ? undefined : influenceSelectionRule(r.ns, r.t);
 
-const RULE_TEXT: Partial<Record<InfluenceSelectionRule, string>> = {
-  highest_value: "Highest value applies; these rows do not stack within the group.",
-  highest_duration: "Longest duration takes priority; effect value does not decide the winner.",
-  additive: "Rows in this group stack additively.",
-  additive_then_sortie_multiplicative: "These add with each other, then multiply with sortie HP buffs.",
-  highest_within_stack_id: "Only the highest value within the same stack ID applies.",
+const RULE_TEXT: Partial<Record<InfluenceSelectionRule, [string, string]>> = {
+  highest_value: ["Highest value applies; these rows do not stack within the group.", "最も高い値が適用され、同じ種類の中では重複しません。"],
+  highest_duration: ["Longest duration takes priority; effect value does not decide the winner.", "効果時間が最も長いものが優先され、効果量では決まりません。"],
+  additive: ["Rows in this group stack additively.", "この種類は加算で重複します。"],
+  additive_then_sortie_multiplicative: ["These add with each other, then multiply with sortie HP buffs.", "互いに加算され、その後出撃時HPバフと乗算されます。"],
+  highest_within_stack_id: ["Only the highest value within the same stack ID applies.", "同じスタックIDの中で最も高い値だけが適用されます。"],
 };
 
 // skill mul3 values are normally "percent of base" TOTAL multipliers (130 =
@@ -151,10 +152,12 @@ function rowTarget(row: BuffRow): string {
 export default function Buffs() {
   const namesReady = useExprNames();
   const [rows, setRows] = useState<BuffRow[] | null>(null);
+  const L = useL();
   const [failed, setFailed] = useState(false);
   const labels = useUnitInfluenceLabels();
   const loc = useLocalisation();
-  const { units } = useUnits();
+  const { units, byId } = useUnits();
+  const unitName = (id: number, en?: string | null) => (getLang() === "ja" ? gameName(null, byId?.get(id)?.name) || en || "" : en || "");
   // selected tab lives in the URL so back/forward and shared links restore it
   const [params, setParams] = useSearchParams();
   const rawStat = params.get("stat") || "ATK";
@@ -305,9 +308,9 @@ export default function Buffs() {
   }, [rows, stat, targetScope, targetFaction, targetRace, targetAttr, targetSeason, targetClass]);
 
   if (failed) {
-    return <p className="muted">buff_index.json not found — re-run export_units.py.</p>;
+    return <p className="muted">{L("buff_index.json not found — re-run export_units.py.", "buff_index.json がありません — export_units.py を再実行してください。")}</p>;
   }
-  if (!rows) return <p className="loading">Loading buff index…</p>;
+  if (!rows) return <p className="loading">{L("Loading buff index…", "バフ一覧を読み込み中…")}</p>;
 
   const toggleExpanded = (k: string) => {
     setExpanded((prev) => {
@@ -319,16 +322,13 @@ export default function Buffs() {
 
   return (
     <div className="buffs-page">
-      <h2>Buff ranking</h2>
+      <h2>{L("Buff ranking", "バフランキング")}</h2>
       <p className="muted small">
-        Ally buffs and enemy debuffs, one ranked list per effect type (values
-        are only comparable within a type), ranked by the buff&apos;s cap — its
-        max achievable value. Hover a value for the raw params. Self-only,
-        1st-barrack, token-targeted and specific-unit rows are excluded.
+        {L("Ally buffs and enemy debuffs, one ranked list per effect type (values are only comparable within a type), ranked by the buff's cap — its max achievable value. Hover a value for the raw params. Self-only, 1st-barrack, token-targeted and specific-unit rows are excluded.", "味方へのバフと敵へのデバフを効果の種類ごとにランキング (値は同じ種類の中でのみ比較できます)。順位はバフの上限値です。値にカーソルを合わせると元のパラメータを表示します。自身のみ・所持効果・トークン対象・特定ユニット対象のものは除外しています。")}
       </p>
 
       {PICKER_ROWS.map((row) => (
-        <FilterRow key={row.label} label={row.label}>
+        <FilterRow key={row.label} label={L(row.label, row.ja)}>
           {row.tabs.map((s) => (
             <FilterChip
               key={s.k}
@@ -338,25 +338,25 @@ export default function Buffs() {
               color={s.k.endsWith("_DEBUFF") ? DEBUFF_CHIP_COLOR : undefined}
               onClick={() => setStat(s.k)}
             >
-              {s.label}
+              {L(s.label, s.ja)}
             </FilterChip>
           ))}
         </FilterRow>
       ))}
       <div className="hub-toolbar hub-toolbar--panel buff-toolbar">
         <button className="hub-btn hub-btn--sm" onClick={() => setShowTargetFilters(!showTargetFilters)}>
-          {showTargetFilters ? "hide target filters ▲" : "target filters ▼"}
+          {showTargetFilters ? L("hide target filters ▲", "対象の絞り込みを隠す ▲") : L("target filters ▼", "対象で絞り込み ▼")}
           {targetFilterCount ? ` (${targetFilterCount})` : ""}
         </button>
-        <span className="hub-toolbar__end hub-muted hub-small">{groups.length} effect types</span>
+        <span className="hub-toolbar__end hub-muted hub-small">{L("{n} effect types", "効果 {n} 種", { n: groups.length })}</span>
         {showTargetFilters && (
           <div className="buff-target-panel">
-            <CheckboxGroup className="filter-group" title="Scope" options={TARGET_SCOPE_OPTIONS} selected={targetScope} onToggle={(v) => toggleTarget("targetScope", targetScope, v)} />
-            <CheckboxGroup className="filter-group" title="Affiliation" options={targetOptions.factions} selected={targetFaction} onToggle={(v) => toggleTarget("targetFaction", targetFaction, v)} />
-            <CheckboxGroup className="filter-group" title="Race" options={targetOptions.races} selected={targetRace} onToggle={(v) => toggleTarget("targetRace", targetRace, v)} />
-            <CheckboxGroup className="filter-group" title="Attribute" options={targetOptions.attrs} selected={targetAttr} onToggle={(v) => toggleTarget("targetAttr", targetAttr, v)} />
-            <CheckboxGroup className="filter-group" title="Season" options={targetOptions.seasons} selected={targetSeason} onToggle={(v) => toggleTarget("targetSeason", targetSeason, v)} />
-            <CheckboxGroup className="filter-group" title="Class" options={targetOptions.classes} selected={targetClass} onToggle={(v) => toggleTarget("targetClass", targetClass, v)} />
+            <CheckboxGroup className="filter-group" title={L("Scope", "範囲")} options={TARGET_SCOPE_OPTIONS.map((o) => ({ value: o.value, label: L(o.label, o.ja) }))} selected={targetScope} onToggle={(v) => toggleTarget("targetScope", targetScope, v)} />
+            <CheckboxGroup className="filter-group" title={L("Affiliation", "所属")} options={targetOptions.factions} selected={targetFaction} onToggle={(v) => toggleTarget("targetFaction", targetFaction, v)} />
+            <CheckboxGroup className="filter-group" title={L("Race", "種族")} options={targetOptions.races} selected={targetRace} onToggle={(v) => toggleTarget("targetRace", targetRace, v)} />
+            <CheckboxGroup className="filter-group" title={L("Attribute", "属性")} options={targetOptions.attrs} selected={targetAttr} onToggle={(v) => toggleTarget("targetAttr", targetAttr, v)} />
+            <CheckboxGroup className="filter-group" title={L("Season", "季節")} options={targetOptions.seasons} selected={targetSeason} onToggle={(v) => toggleTarget("targetSeason", targetSeason, v)} />
+            <CheckboxGroup className="filter-group" title={L("Class", "クラス")} options={targetOptions.classes} selected={targetClass} onToggle={(v) => toggleTarget("targetClass", targetClass, v)} />
             {targetFilterCount > 0 && (
               <button
                 className="hub-btn hub-btn--sm hub-btn--ghost"
@@ -367,7 +367,7 @@ export default function Buffs() {
                   setParams(next, { replace: true });
                 }}
               >
-                clear target filters
+                {L("clear target filters", "対象の絞り込みを解除")}
               </button>
             )}
           </div>
@@ -375,15 +375,12 @@ export default function Buffs() {
       </div>
       {isEffect && (
         <p className="muted small">
-          Innate abilities and effects granted to allies (self-only skill rows
-          included where they define the effect, e.g. invulnerability).
-          Conditions and skill-gating are shown per row; token-granted effects
-          list the owner, with the token named in the source column.
+          {L("Innate abilities and effects granted to allies (self-only skill rows included where they define the effect, e.g. invulnerability). Conditions and skill-gating are shown per row; token-granted effects list the owner, with the token named in the source column.", "固有の能力と味方に付与する効果 (無敵など、効果そのものを定める自身のみのスキルも含む)。条件とスキル発動中かどうかは行ごとに表示します。トークンが付与する効果は持ち主のユニットとして表示し、トークン名は出典の列にあります。")}
         </p>
       )}
       <div className={`hub-group-grid${isEffect ? " hub-group-grid--wide" : ""}`}>
         {groups.length === 0 && (
-          <p className="muted">No rows match this target filter.</p>
+          <p className="muted">{L("No rows match this target filter.", "この対象の絞り込みに合うものがありません。")}</p>
         )}
         {groups.map((g) => {
           const lab = labelOf(g.nsK, g.t);
@@ -394,18 +391,18 @@ export default function Buffs() {
               key={g.k}
               className="buff-group"
               title={g.grp ? groupName(g.grp, (t) => labelOf(g.nsK, t)?.name, g.t) : lab?.name || `type ${g.t}`}
-              count={`${g.ranked.length} units`}
+              count={L("{n} units", "{n} ユニット", { n: g.ranked.length })}
               meta={<>
                 {g.grp ? g.nsK : `${g.nsK} ${g.t}`}
-                {lab && !lab.verified && <em className="unverified"> unverified</em>}
+                {lab && !lab.verified && <em className="unverified">{L(" unverified", " 未確認")}</em>}
               </>}
-              note={g.rule && RULE_TEXT[g.rule]}
+              note={g.rule && RULE_TEXT[g.rule] && L(RULE_TEXT[g.rule]![0], RULE_TEXT[g.rule]![1])}
             >
               <table className="grid buff-table hub-table--stack">
                 <thead>
                   <tr>
-                    <th>#</th><th>{isEffect ? "Value" : "Cap"}</th><th>Unit</th>
-                    <th>Target</th>{isEffect && <th>Condition</th>}<th>Source</th>
+                    <th>#</th><th>{isEffect ? L("Value", "値") : L("Cap", "上限")}</th><th>{L("Unit", "ユニット")}</th>
+                    <th>{L("Target", "対象")}</th>{isEffect && <th>{L("Condition", "条件")}</th>}<th>{L("Source", "出典")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -425,10 +422,10 @@ export default function Buffs() {
                           </div>
                         )}
                         {buffSelectionRule(r) === "highest_duration" && r.selection_priority != null && (
-                          <span className="buff-priority">priority: {fmtFrames(r.selection_priority)}</span>
+                          <span className="buff-priority">{L("priority:", "優先:")} {fmtFrames(r.selection_priority)}</span>
                         )}
                       </td>
-                      <td data-label="Unit"><UnitIconLink id={r.u} name={r.n} /></td>
+                      <td data-label="Unit"><UnitIconLink id={r.u} name={unitName(r.u, r.n)} /></td>
                       <td data-label="Target" className="muted small">
                         {rowTarget(r) ? <HumanText text={rowTarget(r)} /> : "-"}
                       </td>
@@ -444,7 +441,7 @@ export default function Buffs() {
               </table>
               {g.ranked.length > GROUP_PREVIEW && (
                 <button className="buff-more" onClick={() => toggleExpanded(g.k)}>
-                  {isExpanded ? "collapse" : `expand (${g.ranked.length})`}
+                  {isExpanded ? L("collapse", "閉じる") : L("expand ({n})", "すべて表示 ({n})", { n: g.ranked.length })}
                 </button>
               )}
             </GroupCard>

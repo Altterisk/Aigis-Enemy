@@ -6,23 +6,25 @@ import {
 } from "../data";
 import { UnitImage } from "../components";
 import type { UnitIndexEntry } from "../types";
+import { altName, gameName, rarityName, useL, type Pick } from "../i18n";
 import type { CurrentSummon } from "../data";
 
-const SECTIONS = [
-  { to: "/units", label: "Units", desc: "Stats, skills, abilities, quotes and art for every unit" },
-  { to: "/collection", label: "Collection", desc: "Track owned units, import from screenshots" },
-  { to: "/enemies", label: "Enemies", desc: "Enemy stats, specialties and where they appear" },
-  { to: "/stages", label: "Stages", desc: "Waves, map terms, weather and dialogue" },
-  { to: "/buffs", label: "Buffs", desc: "Units ranked by the buffs and debuffs they give" },
-  { to: "/costgen", label: "Cost Gen", desc: "Simulate cost generation for a team" },
-  { to: "/dps", label: "DPS", desc: "Damage against an enemy's defense and MR" },
-  { to: "/weather", label: "Weather", desc: "Weather effects and the skills that create them" },
+const sections = (L: Pick) => [
+  { to: "/units", label: L("Units", "ユニット"), desc: L("Stats, skills, abilities, quotes and art for every unit", "全ユニットのステータス・スキル・アビリティ・台詞・イラスト") },
+  { to: "/collection", label: L("Collection", "所持"), desc: L("Track owned units, import from screenshots", "所持ユニットの管理、スクリーンショットから取り込み") },
+  { to: "/enemies", label: L("Enemies", "敵"), desc: L("Enemy stats, specialties and where they appear", "敵のステータス・特性・出現ステージ") },
+  { to: "/stages", label: L("Stages", "ステージ"), desc: L("Waves, map terms, weather and dialogue", "出撃の敵・マップ効果・天候・会話") },
+  { to: "/buffs", label: L("Buffs", "バフ"), desc: L("Units ranked by the buffs and debuffs they give", "バフ・デバフ別のユニットランキング") },
+  { to: "/costgen", label: L("Cost Gen", "コスト回復"), desc: L("Simulate cost generation for a team", "編成のコスト回復をシミュレート") },
+  { to: "/dps", label: "DPS", desc: L("Damage against an enemy's defense and MR", "敵の防御力・魔法耐性に対するダメージ") },
+  { to: "/team", label: L("Team", "編成"), desc: L("Build a formation around a unit and see who buffs her most", "ユニットを中心に編成し、バフを多く与えるユニットを提案") },
+  { to: "/weather", label: L("Weather", "天候"), desc: L("Weather effects and the skills that create them", "天候の効果と天候を起こすスキル") },
 ];
 
-const ACQUISITION: { key: UnitIndexEntry["acquisition"] | null; label: string }[] = [
-  { key: "gacha_paid", label: "Summon" },
-  { key: "event", label: "Event" },
-  { key: null, label: "Other" },
+const acquisition = (L: Pick): { key: UnitIndexEntry["acquisition"] | null; label: string }[] => [
+  { key: "gacha_paid", label: L("Summon", "召喚") },
+  { key: "event", label: L("Event", "イベント") },
+  { key: null, label: L("Other", "その他") },
 ];
 
 // "2026/11/19 11:00:00" -> "11/19 11:00", "2026-11-19" -> "11/19"
@@ -43,9 +45,10 @@ function shortTime(time: string): string {
   return m ? `${Number(m[1])}/${Number(m[2])} ${m[3]}` : time;
 }
 
-function timeLeft(ms: number): string {
+function timeLeft(ms: number, L: Pick): string {
   const h = Math.floor(ms / 3_600_000);
-  return h >= 24 ? `${Math.floor(h / 24)}d ${h % 24}h` : `${h}h ${Math.floor((ms % 3_600_000) / 60_000)}m`;
+  return h >= 24 ? L("{d}d {h}h", "{d}日{h}時間", { d: Math.floor(h / 24), h: h % 24 })
+    : L("{h}h {m}m", "{h}時間{m}分", { h, m: Math.floor((ms % 3_600_000) / 60_000) });
 }
 
 function UnitTile({ u, loc }: { u: UnitIndexEntry; loc: ReturnType<typeof useLocalisation> }) {
@@ -53,10 +56,10 @@ function UnitTile({ u, loc }: { u: UnitIndexEntry; loc: ReturnType<typeof useLoc
     <Link to={`/units/${u.id}`} className="home-unit-tile">
       <UnitImage kind="icon" id={u.id} className="home-unit-icon" alt="" />
       <div className="home-unit-body">
-        <div className="unit-tile-name">{u.name_en || u.name || `#${u.id}`}</div>
-        {u.name_en && u.name && <div className="muted small">{u.name}</div>}
+        <div className="unit-tile-name">{gameName(u.name_en, u.name) || `#${u.id}`}</div>
+        {altName(u.name_en, u.name) && <div className="muted small">{u.name}</div>}
         <div className="small">
-          {u.rarity} · {(u.class && loc?.classes[u.class]) || u.class || "?"}
+          {rarityName(u.rarity)} · {(u.class && loc?.classes[u.class]) || u.class || "?"}
         </div>
       </div>
     </Link>
@@ -68,6 +71,7 @@ export default function Home() {
   const summons = useCurrentSummons();
   const { units, byId } = useUnits();
   const loc = useLocalisation();
+  const L = useL();
 
   const now = Date.now();
   const isOpen = (s: CurrentSummon) => jst(s.open) <= now && (!s.close || now <= jst(s.close));
@@ -103,18 +107,18 @@ export default function Home() {
     <div className="home-page">
       <div className="home-hero">
         <h1>Aigis Database</h1>
-        <p className="muted">Fan-made Millennium War Aigis database: units, enemies, stages and calculators.</p>
+        <p className="muted">{L("Fan-made Millennium War Aigis database: units, enemies, stages and calculators.", "千年戦争アイギスの非公式データベース: ユニット・敵・ステージ・各種計算機")}</p>
       </div>
 
       <section className="home-section">
         <div className="home-section-head">
-          <h2>Current events</h2>
-          <Link to="/stages" className="small">all running ›</Link>
+          <h2>{L("Current events", "開催中のイベント")}</h2>
+          <Link to="/stages" className="small">{L("all running ›", "開催中をすべて見る ›")}</Link>
         </div>
         {missions === null ? (
-          <p className="loading">Loading events…</p>
+          <p className="loading">{L("Loading events…", "イベントを読み込み中…")}</p>
         ) : running.length === 0 ? (
-          <p className="muted">No limited-time missions right now.</p>
+          <p className="muted">{L("No limited-time missions right now.", "現在開催中の期間限定ミッションはありません。")}</p>
         ) : (
           <div className="home-events">
             {running.map((m) => (
@@ -123,7 +127,7 @@ export default function Home() {
                 <div className="home-event-body">
                   <div><span className="cat-badge">{m.category}</span></div>
                   <div className="home-event-name">{m.name}</div>
-                  {m.until && <div className="muted small">until {untilText(m.until)}</div>}
+                  {m.until && <div className="muted small">{L("until {t}", "{t}まで", { t: untilText(m.until) })}</div>}
                 </div>
               </Link>
             ))}
@@ -134,7 +138,7 @@ export default function Home() {
       {rateUps.length > 0 && (
         <section className="home-section">
           <div className="home-section-head">
-            <h2>Current rate-up</h2>
+            <h2>{L("Current rate-up", "開催中のピックアップ")}</h2>
           </div>
           <div className="home-summons">
             {rateUps.map(({ current, rotations }) => (
@@ -148,7 +152,7 @@ export default function Home() {
                   <div className="home-summon-head">
                     {current.title && <h3 className="home-summon-title">{current.title}</h3>}
                     {current.close && (
-                      <span className="home-summon-left">ends in {timeLeft(jst(current.close) - now)}</span>
+                      <span className="home-summon-left">{L("ends in {t}", "残り{t}", { t: timeLeft(jst(current.close) - now, L) })}</span>
                     )}
                   </div>
                   <ol className="home-rotations">
@@ -157,8 +161,8 @@ export default function Home() {
                       return (
                         <li key={s.key} className={`home-rotation home-rotation--${state}`}>
                           <div className="home-rotation-time">
-                            <span className={`home-rotation-badge home-rotation-badge--${state}`}>{state}</span>
-                            {shortTime(s.open)} – {s.close ? `${shortTime(s.close)} JST` : "no end"}
+                            <span className={`home-rotation-badge home-rotation-badge--${state}`}>{state === "now" ? L("now", "開催中") : state === "upcoming" ? L("upcoming", "予定") : L("ended", "終了")}</span>
+                            {shortTime(s.open)} – {s.close ? `${shortTime(s.close)} JST` : L("no end", "終了未定")}
                           </div>
                           <div className="home-rotation-units">
                             {s.units.map((id) => {
@@ -167,8 +171,8 @@ export default function Home() {
                                 <Link key={id} to={`/units/${id}`} className="home-unit-chip">
                                   <UnitImage kind="icon" id={id} className="home-unit-chip-icon" alt="" />
                                   <span className="home-unit-chip-text">
-                                    <span className="home-unit-chip-name">{u ? u.name_en || u.name : `#${id}`}</span>
-                                    {u && <span className="muted small">{u.rarity}</span>}
+                                    <span className="home-unit-chip-name">{u ? gameName(u.name_en, u.name) : `#${id}`}</span>
+                                    {u && <span className="muted small">{rarityName(u.rarity)}</span>}
                                   </span>
                                 </Link>
                               );
@@ -187,14 +191,14 @@ export default function Home() {
 
       <section className="home-section">
         <div className="home-section-head">
-          <h2>New units</h2>
-          {newest.date && <span className="muted small">added {newest.date}</span>}
-          <Link to="/units" className="small">all units ›</Link>
+          <h2>{L("New units", "新ユニット")}</h2>
+          {newest.date && <span className="muted small">{L("added {d}", "{d} 追加", { d: newest.date })}</span>}
+          <Link to="/units" className="small">{L("all units ›", "全ユニット ›")}</Link>
         </div>
         {!units ? (
-          <p className="loading">Loading units…</p>
+          <p className="loading">{L("Loading units…", "ユニットを読み込み中…")}</p>
         ) : (
-          ACQUISITION.map(({ key, label }) => {
+          acquisition(L).map(({ key, label }) => {
             const group = newest.units.filter((u) => (u.acquisition ?? null) === key);
             if (!group.length) return null;
             return (
@@ -211,7 +215,7 @@ export default function Home() {
 
       <section className="home-section">
         <div className="home-links">
-          {SECTIONS.map((s) => (
+          {sections(L).map((s) => (
             <Link key={s.to} to={s.to} className="home-link">
               <strong>{s.label}</strong>
               <span className="muted small">{s.desc}</span>

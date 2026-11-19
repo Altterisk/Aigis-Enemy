@@ -31,6 +31,7 @@ import { INFLUENCE_LABELS } from "./influenceLabels";
 import { setExprNames, type ExprNames } from "./humanize";
 import { RACE_LABELS, TAG_LABELS } from "./tagLabels";
 import { bucketFor, createJsonLoader, parseBounds } from "@altterisk/game-hub/data";
+import { TAG_JA, getLang, useLang } from "./i18n";
 
 // retryOn keeps the old behaviour of retrying any non-OK response once
 const loader = createJsonLoader({
@@ -233,15 +234,21 @@ export function useExprNames(): boolean {
 // Shares the cached unit index with useUnits.
 // Built once and shared: HumanText renders hundreds of times per page.
 // `needed` = false skips loading the unit index at all.
-let unitNameMap: Map<number, string> | null = null;
-let unitNameLoad: Promise<Map<number, string>> | null = null;
+// In Japanese mode the Japanese name.
+type NameMaps = { en: Map<number, string>; ja: Map<number, string> };
+let unitNameMap: NameMaps | null = null;
+let unitNameLoad: Promise<NameMaps> | null = null;
 export function useUnitNameMap(needed = true): Map<number, string> | null {
-  const [names, set] = useState<Map<number, string> | null>(unitNameMap);
+  const lang = useLang();
+  const [names, set] = useState<NameMaps | null>(unitNameMap);
   useEffect(() => {
     if (!needed || unitNameMap) return;
     unitNameLoad ??= loadJSON<UnitIndexEntry[]>("units")
-      .then((units) => new Map(units.map((u) => [u.id, u.name_en || u.name || `#${u.id}`] as [number, string])))
-      .catch(() => new Map<number, string>());
+      .then((units) => ({
+        en: new Map(units.map((u) => [u.id, u.name_en || u.name || `#${u.id}`] as [number, string])),
+        ja: new Map(units.map((u) => [u.id, u.name || u.name_en || `#${u.id}`] as [number, string])),
+      }))
+      .catch(() => ({ en: new Map<number, string>(), ja: new Map<number, string>() }));
     let alive = true;
     unitNameLoad.then((m) => {
       unitNameMap = m;
@@ -249,7 +256,7 @@ export function useUnitNameMap(needed = true): Map<number, string> | null {
     });
     return () => { alive = false; };
   }, [needed]);
-  return names;
+  return names ? names[lang] : null;
 }
 
 // One unit's FULL data, loaded on demand (per-unit file).
@@ -276,10 +283,14 @@ export function useUnitDetail(id: number) {
 // voting pipeline, which can't move client-side the same way).
 // A unit tag in English: identity/season tags are in `tags`, factions and races in `races`.
 export function tagName(loc: Localisation | null, tag: string): string {
+  if (getLang() === "ja") return TAG_JA[tag] ?? tag;
   return loc?.tags[tag] || loc?.races[tag] || tag;
 }
 
+// In Japanese mode every map is empty, so callers fall back to the game's own name.
+const NO_LOCALISATION: Localisation = { classes: {}, races: {}, tags: {}, skills: {}, abilities: {} };
 export function useLocalisation(): Localisation | null {
+  const lang = useLang();
   const [loc, set] = useState<Localisation | null>(null);
   useEffect(() => {
     // tagLabels.ts wins; the exported maps fill any tag it does not name yet
@@ -287,7 +298,7 @@ export function useLocalisation(): Localisation | null {
       .then((l) => set({ ...l, races: { ...l.races, ...RACE_LABELS }, tags: { ...l.tags, ...TAG_LABELS } }))
       .catch(() => set({ classes: {}, races: RACE_LABELS, tags: TAG_LABELS, skills: {}, abilities: {} }));
   }, []);
-  return loc;
+  return loc && lang === "ja" ? NO_LOCALISATION : loc;
 }
 
 // Machine-translated skill/ability/class descriptions (data/texts.json).
@@ -295,14 +306,16 @@ export function useLocalisation(): Localisation | null {
 // pages that render descriptions pay for it. Missing file -> empty maps (JP shows).
 const EMPTY_TEXTS: Texts = { skill_texts: {}, ability_texts: {}, class_texts: {} };
 
+// Japanese mode: no translations, the original text shows.
 export function useTexts(): Texts {
+  const lang = useLang();
   const [texts, set] = useState<Texts>(EMPTY_TEXTS);
   useEffect(() => {
     loadJSON<Texts>("texts")
       .then((t) => set({ ...EMPTY_TEXTS, ...t }))
       .catch(() => set(EMPTY_TEXTS));
   }, []);
-  return texts;
+  return lang === "ja" ? EMPTY_TEXTS : texts;
 }
 
 // War God Blessing items and rows; empty until the export has produced it.

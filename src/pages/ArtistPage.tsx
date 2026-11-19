@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { gameName, useL } from "../i18n";
 import { Link, useSearchParams } from "react-router-dom";
 import { useUnits, loadJSONFile } from "../data";
 import { SearchBox } from "@altterisk/game-hub";
@@ -17,6 +18,7 @@ const fold = (s: string) =>
 // highlights that artist's row; ?q= keeps the rows whose artist name or any
 // unit name (JP / EN) contains the query.
 export default function ArtistPage() {
+  const L = useL();
   const { loading, units } = useUnits();
   const [params, setParams] = useSearchParams();
   const focus = params.get("artist");
@@ -56,17 +58,17 @@ export default function ArtistPage() {
     document.querySelector(`[data-artist="${CSS.escape(focus)}"]`)?.scrollIntoView({ block: "start" });
   }, [loading, links, focus]);
 
-  if (loading) return <p className="loading">Loading units…</p>;
+  if (loading) return <p className="loading">{L("Loading units…", "ユニットを読み込み中…")}</p>;
 
   return (
     <div>
-      <h2>Artists</h2>
+      <h2>{L("Artists", "イラストレーター")}</h2>
       <div className="toolbar">
-        <SearchBox value={q} onChange={setQ} placeholder="Search artist / unit name" />
-        <span className="count">{shown.length.toLocaleString()} artists</span>
+        <SearchBox value={q} onChange={setQ} placeholder={L("Search artist / unit name", "イラストレーター・ユニット名で検索")} />
+        <span className="count">{L("{n} artists", "{n} 人", { n: shown.length.toLocaleString() })}</span>
       </div>
       <table className="grid artist-table">
-        <thead><tr><th>Artist</th><th>Links</th><th>Units</th></tr></thead>
+        <thead><tr><th>{L("Artist", "イラストレーター")}</th><th>{L("Links", "リンク")}</th><th>{L("Units", "ユニット")}</th></tr></thead>
         <tbody>
           {shown.map(([name, list]) => (
             <tr key={name} data-artist={name} className={name === focus ? "focused" : undefined}>
@@ -79,7 +81,7 @@ export default function ArtistPage() {
               <td>
                 <div className="artist-units">
                   {list.sort((a, b) => a.id - b.id).map((u) => (
-                    <Link key={u.id} to={`/units/${u.id}`} title={`#${u.id} ${u.name_en || u.name || ""}`}>
+                    <Link key={u.id} to={`/units/${u.id}`} title={`#${u.id} ${gameName(u.name_en, u.name)}`}>
                       <UnitImage kind="icon" id={u.id} className="unit-icon-mini" alt={String(u.id)} />
                     </Link>
                   ))}

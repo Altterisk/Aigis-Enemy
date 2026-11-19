@@ -2,6 +2,7 @@
 // title families and English renderings of the game's fixed text templates.
 // Text that matches no template is returned as null and shown in Japanese.
 import type { PrinceData, PrinceTitle } from "./types";
+import { gameName, getLang } from "./i18n";
 
 export const PRINCE_ID = 1;
 
@@ -38,7 +39,7 @@ export function familyTitle(f: PrinceFamily): string {
 }
 
 export function familyName(f: PrinceFamily): string {
-  return f.first.card_name_en || f.first.card_name || familyTitle(f);
+  return gameName(f.first.card_name_en, f.first.card_name) || familyTitle(f);
 }
 
 const SKILL_UP: Record<string, string> = { 小: "small", 中: "medium", 大: "large", 特大: "extra large" };
@@ -50,6 +51,7 @@ const CARD_EXPLAN: Record<string, string> = {
 
 /** The effect line in English, or null when it has no fixed template. */
 export function explanEn(t: PrinceTitle): string | null {
+  if (getLang() === "ja") return null;
   switch (t.effect) {
     case 1: return `HP +${t.power}%`;
     case 2: return `ATK +${t.power}%`;
@@ -64,7 +66,7 @@ export function explanEn(t: PrinceTitle): string | null {
 
 /** The unlock condition in English, or null when it has no fixed template. */
 export function conditionEn(text: string | undefined): string | null {
-  if (!text) return null;
+  if (!text || getLang() === "ja") return null;
   if (text === "最初から所持") return "Owned from the start";
   if (text === "期間限定") return "Limited-time";
   let m = /^プレイヤーランクが(\d+)になると解放$/.exec(text);
