@@ -124,6 +124,27 @@ test("parked enemies and flag-gated transforms name what happens", async ({ page
   await expect(page.locator(".trigger-badge", { hasText: "when stage flag 50 is set → transform into form 2" }).first()).toBeVisible();
 });
 
+test("HP-threshold changes of the same body are phases, not extra forms", async ({ page }) => {
+  await page.goto("/stages/40019");
+  const boss = page.locator(".enemy-card", { hasText: "Enemy #4 · form 3/3" });
+  await expect(boss).toBeVisible();
+  await expect(boss.locator(".variant-row .trigger-badge", { hasText: "at 25% HP" })).toBeVisible();
+  await expect(page.getByText("form 4/4")).toHaveCount(0);
+  const two = page.locator(".enemy-card", { hasText: "Enemy #8 · form 2/2" });
+  await expect(two.locator(".variant-row .trigger-badge")).toHaveText(["at 75% HP", "at 25% HP"]);
+});
+
+test("4★ switch rescales enemy stats and popups start collapsed", async ({ page }) => {
+  await page.goto("/stages/40019");
+  await expect(page.locator(".popups-details")).not.toHaveAttribute("open", "");
+  await expect(page.locator(".popups-details .popup").first()).toBeHidden();
+  const hp = page.locator(".enemy-card", { hasText: "Enemy #4 · form 1/" }).locator("td.num").first();
+  await expect(hp).toHaveText("1,000,000");
+  await page.locator(".difficulty-pick button", { hasText: "4★" }).click();
+  await expect(page).toHaveURL(/diff=4/);
+  await expect(hp).toHaveText("1,125,000");
+});
+
 test("in-game color markup in stage names renders as colored text", async ({ page }) => {
   await page.goto("/stages/7540");
   const title = page.locator(".stage-header").getByText("第三陣 飛行部隊の増援").first();

@@ -243,6 +243,8 @@ section h3 { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
   font-size: 15px;
 }
 .c-attack { white-space: nowrap; }
+/* on-hit / missile detail lines wrap in a capped width rather than widen the table */
+.c-attack .muted { white-space: normal; min-width: 12em; max-width: 18em; }
 .c-speed { text-align: right; white-space: nowrap; }
 .c-support { white-space: nowrap; line-height: 1.35; }
 .c-effect { width: 36%; }
@@ -252,6 +254,10 @@ section h3 { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 .eff-cond { color: var(--muted); font-style: italic; }
 .variant-row td { background: rgba(255, 255, 255, 0.03); }
 .variant-row .block-label { display: block; margin-bottom: 2px; }
+.phase-label.trigger-badge { display: table; margin: 0 0 4px; }
+.difficulty-pick { display: flex; justify-content: flex-end; margin: 4px 0 10px; }
+.popups-details > summary { cursor: pointer; }
+.popups-details[open] > summary { margin-bottom: 8px; }
 
 .enemy-card details { margin-top: 8px; }
 .enemy-card summary { cursor: pointer; color: var(--muted); font-size: 12px; }
@@ -1243,6 +1249,10 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   /* enemy card: sprite above the stats, not beside */
   .enemy-row { flex-direction: column; gap: 10px; }
   .enemy-sprite-cell { width: 96px; height: 96px; }
+  /* stacked: the main column takes the card width, so its table wraps instead of sizing to its content */
+  .enemy-main { align-self: stretch; width: 100%; }
+  /* long form-change badges wrap inside the card instead of overflowing it */
+  .enemy-name .trigger-badge { white-space: normal; max-width: 100%; margin-left: 0; margin-right: 6px; }
   .enemy-stat-table { font-size: 12px; }
   .enemy-stat-table th, .enemy-stat-table td { padding: 4px 6px; }
   .enemy-stat-table td.num { font-size: 14px; }

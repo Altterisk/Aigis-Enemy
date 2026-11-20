@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
-import { Breadcrumbs, FallbackImage, MetaChip, MetaChips, PageHeader, Panel, TabPanel, UrlTabs, tabParam } from "@altterisk/game-hub";
+import { Breadcrumbs, FallbackImage, MetaChip, MetaChips, PageHeader, Panel, SegmentedButtons, TabPanel, UrlTabs, tabParam } from "@altterisk/game-hub";
 import { searchParamsAdapter } from "@altterisk/game-hub/filters";
 import { LIST_META, NOT_FOUND_META, plainText, stageMeta } from "../meta";
 import { usePageMeta } from "../usePageMeta";
@@ -34,6 +34,17 @@ function displayRange(range?: number, dotRate?: number): number {
   return Math.round(((range ?? 0) * dr) / 1.5);
 }
 
+// Label for an HP-threshold phase row (Param_ChangeCondition 3/5/6/7).
+function hpPhaseText(c: number): string {
+  switch (c) {
+    case 3: return "at 50% HP";
+    case 5: return "at 99% HP (first damage)";
+    case 6: return "at 25% HP";
+    case 7: return "at 75% HP";
+    default: return `change condition ${c} (UNVERIFIED trigger)`;
+  }
+}
+
 // Human label for HOW a form is reached (from_condition + flags/ticks/wait).
 function triggerText(d: StageEnemy): string | null {
   const c = d.from_condition;
@@ -50,10 +61,13 @@ function triggerText(d: StageEnemy): string | null {
     }
     case 5: return "at 99% HP (on first damage)";
     case 3: return "at 50% HP";
+    case 6: return "at 25% HP";
+    case 7: return "at 75% HP";
     case 1: return "while blocked";
     case 0:
       return d.from_flag ? `when stage flag ${d.from_flag[0]} is set` : "next state";
-    default: return "next state";
+    // codes outside 0-7 have no decoded meaning: show the raw code.
+    default: return `change condition ${c} (UNVERIFIED trigger)`;
   }
 }
 
@@ -78,11 +92,14 @@ function becomesText(d: StageEnemy): string | null {
     }
     case 5: when = "at 99% HP (first damage)"; break;
     case 3: when = "at 50% HP"; break;
+    case 6: when = "at 25% HP"; break;
+    case 7: when = "at 75% HP"; break;
     case 1: when = "while blocked"; break;
     case 0:
       when = d.to_flag ? `when stage flag ${d.to_flag[0]} is set` : null;
       break;
-    default: when = null;
+    // codes outside 0-7 have no decoded meaning: show the raw code.
+    default: when = `change condition ${c} (UNVERIFIED trigger)`;
   }
   return when ? `${when} → ${dest}` : `→ ${dest}`;
 }
@@ -128,20 +145,35 @@ function effectLines(effects: Effect[], labels: InfluenceLabels | null): EffectL
 function StatRow({
   d,
   variant,
+  phase,
+  mult,
   labels,
   spcfg,
 }: {
   d: StageEnemyForm;
   variant?: boolean;
+  /** HP-threshold label when this row is a phase of the form. */
+  phase?: string;
+  /** stat multiplier override (the 4★ multiplier); the exported hp/attack use the 3★ one. */
+  mult?: number;
   labels: InfluenceLabels | null;
   spcfg: SpecialtyConfig | null;
 }) {
   const effects = (d.special_effect_id && spcfg?.[String(d.special_effect_id)]) || [];
   const L = useL();
+  const ranged = (d.attack_range ?? 0) > 0;
+  // multiplier hits HP and melee ATK only; ranged ATK stays at base.
+  const hp = mult != null ? Math.round((d.base_hp ?? 0) * mult) : d.hp;
+  const attack = mult != null ? (ranged ? d.base_attack ?? 0 : Math.round((d.base_attack ?? 0) * mult)) : d.attack;
   return (
-    <tr className={variant ? "variant-row" : ""}>
+    <tr className={variant || phase ? "variant-row" : ""}>
       <td className="c-attack">
         {variant && <span className="block-label">{L("alt. attack", "別の攻撃")}</span>}
+        {phase && (
+          <span className="phase-label trigger-badge" title={L("same body, changed in place at this HP", "同じ個体がこのHPで変化")}>
+            {phase}
+          </span>
+        )}
         <DamageBadge type={d.damage_type} />
         <div className="muted small">
           {(d.attack_range ?? 0) > 0
@@ -174,16 +206,16 @@ function StatRow({
           </div>
         )}
       </td>
-      <td className="num" title={`base ${num(d.base_hp)} × mult`}>{num(d.hp)}</td>
+      <td className="num" title={`base ${num(d.base_hp)} × mult`}>{num(hp)}</td>
       <td
         className="num"
         title={
-          (d.attack_range ?? 0) > 0
+          ranged
             ? `base ${num(d.base_attack)} (ranged ATK is NOT multiplied)`
             : `base ${num(d.base_attack)} × mult`
         }
       >
-        {num(d.attack)}
+        {num(attack)}
       </td>
       <td className="num">{d.armor_defense ?? 0}</td>
       <td className="num">{d.magic_defense ?? 0}</td>
@@ -274,20 +306,26 @@ function RouteBehaviour({ rb, formIndex }: { rb: RB; formIndex: number }) {
 
 function EnemyCard({
   e,
+  mult,
   labels,
   races,
   spcfg,
 }: {
   e: StageEnemy;
+  mult?: number;
   labels: InfluenceLabels | null;
   races: RaceLabels | null;
   spcfg: SpecialtyConfig | null;
 }) {
   const race = e.race_id != null ? races?.[String(e.race_id)] : null;
   const L = useL();
-  const blocks: { d: StageEnemyForm; variant?: boolean }[] = [
+  const blocks: { d: StageEnemyForm; variant?: boolean; phase?: string }[] = [
     { d: e },
     ...(e.variants || []).map((v) => ({ d: v, variant: true })),
+    ...(e.phases || []).flatMap((p) => [
+      { d: p as StageEnemyForm, phase: hpPhaseText(p.condition) },
+      ...(p.variants || []).map((v) => ({ d: v, variant: true })),
+    ]),
   ];
 
   return (
@@ -364,7 +402,7 @@ function EnemyCard({
             </thead>
             <tbody>
               {blocks.map((b, i) => (
-                <StatRow key={i} d={b.d} variant={b.variant} labels={labels} spcfg={spcfg} />
+                <StatRow key={i} d={b.d} variant={b.variant} phase={b.phase} mult={mult} labels={labels} spcfg={spcfg} />
               ))}
             </tbody>
           </table>
@@ -501,6 +539,8 @@ export default function StageDetail() {
     { id: "dialogue", label: L("Dialogue", "会話"), count: dialogueCount, hidden: !hasDialogue },
   ];
   const [activeTab, setTab] = tabParam(searchParamsAdapter(params, setParams), TABS);
+  // ?diff=4 shows the 4★ (hard) stat multiplier; default is the 3★ one.
+  const hard = !!stage.hard && params.get("diff") === "4";
 
   return (
     <div className="detail stage-page">
@@ -569,7 +609,7 @@ export default function StageDetail() {
             </>
           )}
           <div className="muted small">
-            {L("Enemy HP/ATK are rescaled to ×{n} (same enemies as below).", "敵のHP・攻撃力は ×{n} に再計算されます (敵は下と同じ)。", { n: stage.hard.multiplier ?? 1 })}
+            {L("Enemy HP/ATK are rescaled to ×{n} (same enemies). Switch the enemy list with its 3★ / 4★ buttons.", "敵のHP・攻撃力は ×{n} に再計算されます (敵は同じ)。敵一覧の ★3 / ★4 ボタンで切り替えできます。", { n: stage.hard.multiplier ?? 1 })}
           </div>
         </Panel>
       )}
@@ -579,19 +619,39 @@ export default function StageDetail() {
       {activeTab === "enemies" && (
         <TabPanel tab="enemies" idBase="stage">
           {stage.popups && stage.popups.length > 0 && (
-            <Panel title={L("Ability popups ({n})", "特性の説明 ({n})", { n: stage.popups.length })} note={L("In-game explanation popups shown in this stage.", "このステージでゲーム内に表示される説明。")}>
-              <div className="popups">
-                {stage.popups.map((p, i) => (
-                  <div className="popup" key={i}>{p}</div>
-                ))}
-              </div>
+            <Panel title={L("Ability popups", "特性の説明")} note={L("In-game explanation popups shown in this stage.", "このステージでゲーム内に表示される説明。")}>
+              <details className="popups-details">
+                <summary>{L("{n} popups", "{n} 件", { n: stage.popups.length })}</summary>
+                <div className="popups">
+                  {stage.popups.map((p, i) => (
+                    <div className="popup" key={i}>{p}</div>
+                  ))}
+                </div>
+              </details>
             </Panel>
           )}
           <section>
             {!hasDialogue && !hasMap && <h3>{L("Enemies ({n})", "敵 ({n})", { n: enemies.length })}</h3>}
+            {stage.hard && (
+              <div className="difficulty-pick">
+                <SegmentedButtons
+                  label={L("Enemy stats for", "敵ステータス")}
+                  options={[
+                    { value: "3", label: L("3★ ×{n}", "★3 ×{n}", { n: stage.multiplier ?? 1 }) },
+                    { value: "4", label: L("4★ ×{n}", "★4 ×{n}", { n: stage.hard.multiplier ?? 1 }) },
+                  ]}
+                  selected={hard ? "4" : "3"}
+                  onToggle={(v) => setParams((p) => {
+                    const n = new URLSearchParams(p);
+                    if (v === "4") n.set("diff", "4"); else n.delete("diff");
+                    return n;
+                  }, { replace: true })}
+                />
+              </div>
+            )}
             <div className="enemy-cards">
               {enemies.map((e, i) => (
-                <EnemyCard key={`${e.enemy_id}-${i}`} e={e} labels={labels} races={races} spcfg={spcfg} />
+                <EnemyCard key={`${e.enemy_id}-${i}`} e={e} mult={hard ? stage.hard!.multiplier ?? 1 : undefined} labels={labels} races={races} spcfg={spcfg} />
               ))}
             </div>
           </section>

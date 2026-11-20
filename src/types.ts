@@ -120,6 +120,12 @@ export interface StageEnemyForm {
   change_condition?: number | null;
 }
 
+// the same body changing in place at an HP threshold (condition = Param_ChangeCondition).
+export interface StageEnemyPhase extends StageEnemyForm {
+  condition: number;
+  variants?: StageEnemyForm[];
+}
+
 // a stage enemy entry (a base form, with variants + spawn/transform metadata).
 export interface StageEnemy extends StageEnemyForm {
   enemy_id: number;
@@ -129,6 +135,7 @@ export interface StageEnemy extends StageEnemyForm {
   form_index?: number;
   form_count?: number;
   variants?: StageEnemyForm[];
+  phases?: StageEnemyPhase[];
   from_condition?: number | "sp_change" | null;
   to_condition?: number | null;
   from_flag?: [number, number] | null;
