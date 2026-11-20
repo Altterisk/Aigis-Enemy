@@ -440,6 +440,7 @@ export interface CurrentSummon {
   consume_item: string | null;
   banner_id: number;
   source: "server" | "art";
+  ocr?: boolean; // art entry read by the export's banner OCR (absent = entered by hand)
   banner: boolean; // banners/summon_<key>.png exists
 }
 

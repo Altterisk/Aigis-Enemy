@@ -30,12 +30,21 @@ test("home lists every running rate-up with its units", async ({ page }) => {
   }
 });
 
-test("unit list puts the newest unit first", async ({ page }) => {
+test("unit list puts the newest release first, not the highest id", async ({ page }) => {
+  const units: { id: number; npc?: boolean; implementation_date?: string | null }[] =
+    await (await page.request.get("/data/units.json")).json();
   await page.goto("/units");
   await expect(page.locator(".unit-grid .unit-tile").first()).toBeVisible();
   const ids = await page.locator(".unit-grid .unit-tile-sub").evaluateAll((els) =>
-    els.slice(0, 5).map((e) => Number(/#(\d+)/.exec(e.textContent ?? "")?.[1])));
-  expect(ids).toEqual([...ids].sort((a, b) => b - a));
+    els.slice(0, 20).map((e) => Number(/#(\d+)/.exec(e.textContent ?? "")?.[1])));
+  const date = new Map(units.map((u) => [u.id, u.implementation_date || ""]));
+  const dates = ids.map((id) => date.get(id)!);
+  expect(dates).toEqual([...dates].sort().reverse());
+  // within one release day, highest id first
+  for (let i = 1; i < ids.length; i++) if (dates[i] === dates[i - 1]) expect(ids[i]).toBeLessThan(ids[i - 1]);
+  // every unit released after the 20th tile's day is in those 20, low ids included
+  const cutoff = dates[dates.length - 1];
+  for (const u of units) if (!u.npc && (u.implementation_date || "") > cutoff) expect(ids).toContain(u.id);
 });
 
 // Each page's data rendering has its own spec; this one only checks the header links route,

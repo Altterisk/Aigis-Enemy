@@ -232,7 +232,9 @@ export default function UnitList() {
         if (!hay.includes(term)) return false;
       }
       return true;
-    }).sort((a, b) => b.id - a.id);
+    }).sort((a, b) =>
+      // newest release first; a card can ship long after its id was assigned
+      (b.implementation_date || "").localeCompare(a.implementation_date || "") || b.id - a.id);
   }, [
     units, q, sInf, aInf, cls, showNpc, classFilter, tagFilter,
     rarityF, positionF, genderF, factionF, raceF, attrF, seasonF, yearF,
