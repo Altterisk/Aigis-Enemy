@@ -38,7 +38,7 @@ test("a large buff group expands and collapses", async ({ page }) => {
 
 test("buff ranking filters rows by a concrete target affiliation and keeps it in the URL", async ({ page }) => {
   await page.goto("/buffs");
-  await page.getByRole("button", { name: "target filters" }).click();
+  await page.getByRole("button", { name: "receiver conditions ▼" }).click();
   const affiliation = page.locator(".filter-group", { hasText: "Affiliation" });
   await affiliation.locator("label").first().click();
   await expect(page).toHaveURL(/targetFaction=/);
@@ -50,8 +50,38 @@ test("buff ranking filters rows by a concrete target affiliation and keeps it in
   ).toBeVisible();
 
   await page.reload();
-  await page.getByRole("button", { name: /target filters/ }).click();
+  await page.getByRole("button", { name: /receiver conditions/ }).click();
   await expect(affiliation.locator("input").first()).toBeChecked();
+});
+
+test("receiver chips split unconditional, conditional and token-only buffs", async ({ page }) => {
+  await page.goto("/buffs");
+  const receiver = page.locator(".hub-filter-row", { hasText: "Receiver" });
+  await receiver.getByRole("button", { name: /^All allies\b(?! matching)/ }).click();
+  await expect(page).toHaveURL(/targetScope=all(&|$)/);
+  // unconditional "all" rows carry no "(condition)" after the target
+  await expect(page.locator(".buff-table tbody tr td:nth-child(4)", { hasText: "(" })).toHaveCount(0);
+  await page.goto("/buffs?targetScope=token");
+  await expect(page.locator(".buff-table tbody tr").first()).toBeVisible();
+  // Pupuru's ATK aura only reaches servant tokens
+  await expect(page.locator(".buff-table a[href='/units/225']").first()).toBeVisible();
+});
+
+test("giving-unit filters limit rows to buffs from matching units", async ({ page }) => {
+  const atkCount = async () => {
+    const chip = page.locator(".stat-tab", { hasText: /^ATK/ }).first();
+    await expect(chip).toBeVisible();
+    return Number(((await chip.textContent()) || "").replace(/\D/g, ""));
+  };
+  await page.goto("/buffs");
+  await expect(page.locator(".buff-table tbody tr").first()).toBeVisible();
+  const all = await atkCount();
+  await page.goto("/buffs?grarity=Black");
+  await expect(page.locator(".buff-giver-filters input:checked")).toHaveCount(1);
+  await expect(page.locator(".buff-table tbody tr").first()).toBeVisible();
+  const black = await atkCount();
+  expect(black).toBeGreaterThan(0);
+  expect(black).toBeLessThan(all);
 });
 
 test("on-hit debuffs visibly rank by duration instead of reduction", async ({ page }) => {

@@ -106,6 +106,8 @@ export interface EvalCtx {
   // also answer CheckInBattleClassID / IsClassID / GetRarity /
   // GetCardInitialCost from the target, and treat IsEnabledPossession as owned
   possession?: boolean;
+  // functions pinned to a value (null = can't tell), checked before anything else
+  fixed?: Record<string, Val>;
 }
 
 export type Val = number | string | boolean | null;
@@ -130,6 +132,7 @@ export function evaluate(src: string, ctx: EvalCtx): Tri {
   const call = (name: string, rawArgs: (number | string)[]): Val => {
     const strs = rawArgs.map(String);
     const nums = rawArgs.map(Number);
+    if (ctx.fixed && name in ctx.fixed) return ctx.fixed[name];
     switch (name) {
       case "IsInvokedSkill": return ctx.skillUnknown ? null : ctx.skillActive;
       case "IsSkillID": return ctx.skillUnknown ? null : ctx.skillId != null && nums.includes(ctx.skillId);

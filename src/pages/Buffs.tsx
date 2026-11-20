@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { loadJSONFile, useExprNames, useUnitInfluenceLabels, useLocalisation, useUnits } from "../data";
-import { humanize } from "../humanize";
+import { humanize, isTokenClassType } from "../humanize";
 import { CheckboxGroup, FilterChip, FilterRow, GroupCard } from "@altterisk/game-hub";
 import { HumanText, UnitIconLink, fmtFrames } from "../components";
 import type { BuffRow, InfluenceSelectionRule, UnitInfluenceLabel } from "../types";
 import { influenceSelectionRule } from "../influenceLabels";
+import { evaluate, type EvalCtx } from "../condEval";
+import { useUnitFilters } from "../unitFilters";
 import { groupName } from "../buffGroups";
 import { gameName, getLang, useL } from "../i18n";
 
@@ -55,19 +57,45 @@ const PICKER_ROWS: { label: string; ja: string; tabs: readonly { k: StatKey; lab
 // active colour for the enemy-facing stat reductions
 const DEBUFF_CHIP_COLOR = "#f7768e";
 
-const TARGET_SCOPE_OPTIONS = [
+// Who a row's effect lands on: its area (tgt) split by whether a condition
+// expression (tr) narrows the receivers. "token" = only tokens can receive it.
+const RECEIVER_OPTIONS = [
+  { value: "all", label: "All allies", ja: "味方全体" },
+  { value: "all_cond", label: "All allies matching a condition", ja: "条件に合う味方全体" },
   { value: "range", label: "In range / nearby", ja: "射程内・周囲" },
-  { value: "all", label: "All", ja: "全体" },
+  { value: "range_cond", label: "In range, matching a condition", ja: "射程内の条件に合う味方" },
   { value: "self", label: "Self", ja: "自身" },
+  { value: "token", label: "Tokens only", ja: "トークンのみ" },
   { value: "enemy", label: "Enemies", ja: "敵" },
-];
+  { value: "other", label: "Other (on hit, overhealed allies…)", ja: "その他 (攻撃時、オーバーヒール中の味方など)" },
+] as const;
+type Receiver = (typeof RECEIVER_OPTIONS)[number]["value"];
 
-function targetScopeMatches(target: string, scope: string): boolean {
-  const text = target.toLowerCase();
-  if (scope === "range") return /in range|nearby|within range|enemy_in_range/.test(text);
-  if (scope === "all") return /^all\b/.test(text);
-  if (scope === "self") return /^self\b/.test(text);
-  return text.includes("enemy");
+// The condition can never hold for a receiver that is not a token: token checks
+// pinned to false, an IsClassType() naming only token class types read as false,
+// everything else unknown, and the result is still false.
+const NOT_TOKEN: EvalCtx = {
+  skillActive: false, skillId: null, skillUnknown: true, classChange: 0,
+  fixed: { IsToken: false, IsServantToken: false, GetClassChange: null },
+};
+const tokenOnly = (tr?: string | null) => {
+  if (!tr) return false;
+  const src = tr.replace(/IsClassType\(([^()]*)\)/g, (call, args: string) => {
+    const types = args.split(",").map((a) => Number(a.trim())).filter((n) => Number.isFinite(n));
+    return types.length && types.every(isTokenClassType) ? "0" : call;
+  });
+  return evaluate(src, NOT_TOKEN) === false;
+};
+
+function receiverOf(row: BuffRow): Receiver {
+  const tgt = String(row.tgt ?? "").toLowerCase();
+  if (tgt.includes("enemy") || tgt.includes("enemies")) return "enemy";
+  if (/^self\b/.test(tgt)) return "self";
+  if (tokenOnly(row.tr)) return "token";
+  const cond = !!row.tr;
+  if (/^all\b/.test(tgt)) return cond ? "all_cond" : "all";
+  if (/in range|nearby|within range/.test(tgt)) return cond ? "range_cond" : "range";
+  return "other";
 }
 
 const GROUP_PREVIEW = 10; // rows shown per type before "show all"
@@ -178,8 +206,10 @@ export default function Buffs() {
   const targetAttr = csv("targetAttr");
   const targetSeason = csv("targetSeason");
   const targetClass = csv("targetClass");
-  const targetFilterCount = targetScope.length + targetFaction.length + targetRace.length
+  const targetFilterCount = targetFaction.length + targetRace.length
     + targetAttr.length + targetSeason.length + targetClass.length;
+  // the unit list's filters, applied to the unit that GIVES the buff (?g<key>=...)
+  const giver = useUnitFilters(units, loc, params, setParams, "g", L("Giving unit", "付与するユニット"));
   const [showTargetFilters, setShowTargetFilters] = useState(false);
   const toggleTarget = (key: string, selected: string[], value: string) => {
     const next = new URLSearchParams(params);
@@ -234,8 +264,9 @@ export default function Buffs() {
   }, [rows, units, loc, stat, namesReady]);
 
   const targetMatches = (row: BuffRow): boolean => {
+    if (giver.activeCount && !giver.matches(byId?.get(row.u))) return false;
+    if (targetScope.length && !targetScope.includes(receiverOf(row))) return false;
     const target = rowTarget(row);
-    if (targetScope.length && !targetScope.some((scope) => targetScopeMatches(target, scope))) return false;
     const hasTag = (values: string[]) => values.some((value) => target.includes(`[[tag:${value}]]`));
     if (targetFaction.length && !hasTag(targetFaction)) return false;
     if (targetRace.length && !hasTag(targetRace)) return false;
@@ -255,7 +286,7 @@ export default function Buffs() {
       set.add(r.u);
     });
     return by;
-  }, [rows, targetScope, targetFaction, targetRace, targetAttr, targetSeason, targetClass]);
+  }, [rows, targetScope, targetFaction, targetRace, targetAttr, targetSeason, targetClass, giver.matches, byId, namesReady]);
   const groupKey = (r: BuffRow) => r.grp ?? `${r.ns}:${r.t}`;
 
   // every group for the selected stat, each ranked by cap value, one row
@@ -288,8 +319,11 @@ export default function Buffs() {
         list.forEach((r) => {
           const m = r.s.match(/ \+ (.+)$/);
           const label = m ? m[1] : "base";
+          // one value per label: the best one (lowest for Set PAD)
           const cur = tiers.get(r.u) ?? [];
-          if (!cur.some((x) => x.label === label && x.r.v === r.v)) cur.push({ label, r });
+          const at = cur.findIndex((x) => x.label === label);
+          const better = isSetPad(r) ? (at >= 0 && r.v < cur[at].r.v) : (at >= 0 && r.v > cur[at].r.v);
+          if (at < 0) cur.push({ label, r }); else if (better) cur[at] = { label, r };
           tiers.set(r.u, cur);
         });
         tiers.forEach((cur) => cur.sort((a, b) => a.r.v - b.r.v));
@@ -305,7 +339,21 @@ export default function Buffs() {
         return { k, grp, nsK, t, rule, ranked, tiers };
       })
       .sort((a, b) => b.ranked.length - a.ranked.length);
-  }, [rows, stat, targetScope, targetFaction, targetRace, targetAttr, targetSeason, targetClass]);
+  }, [rows, stat, targetScope, targetFaction, targetRace, targetAttr, targetSeason, targetClass, giver.matches, byId, namesReady]);
+
+  // units per receiver kind for the selected effect, under every other filter
+  const receiverCounts = useMemo(() => {
+    const by = new Map<string, Set<number>>();
+    (rows || []).forEach((r) => {
+      if (r.stat !== stat) return;
+      if (giver.activeCount && !giver.matches(byId?.get(r.u))) return;
+      const k = receiverOf(r);
+      let set = by.get(k);
+      if (!set) by.set(k, (set = new Set()));
+      set.add(r.u);
+    });
+    return by;
+  }, [rows, stat, giver.matches, byId, namesReady]);
 
   if (failed) {
     return <p className="muted">{L("buff_index.json not found — re-run export_units.py.", "buff_index.json がありません — export_units.py を再実行してください。")}</p>;
@@ -343,15 +391,29 @@ export default function Buffs() {
           ))}
         </FilterRow>
       ))}
+      <FilterRow label={L("Receiver", "対象")}>
+        <FilterChip active={!targetScope.length} onClick={() => {
+          const next = new URLSearchParams(params);
+          next.delete("targetScope");
+          setParams(next, { replace: true });
+        }}>{L("Any", "すべて")}</FilterChip>
+        {RECEIVER_OPTIONS.filter((o) => receiverCounts.has(o.value) || targetScope.includes(o.value)).map((o) => (
+          <FilterChip key={o.value} active={targetScope.includes(o.value)}
+            count={receiverCounts.get(o.value)?.size ?? 0}
+            onClick={() => toggleTarget("targetScope", targetScope, o.value)}>
+            {L(o.label, o.ja)}
+          </FilterChip>
+        ))}
+      </FilterRow>
+      <div className="buff-giver-filters">{giver.panel}</div>
       <div className="hub-toolbar hub-toolbar--panel buff-toolbar">
         <button className="hub-btn hub-btn--sm" onClick={() => setShowTargetFilters(!showTargetFilters)}>
-          {showTargetFilters ? L("hide target filters ▲", "対象の絞り込みを隠す ▲") : L("target filters ▼", "対象で絞り込み ▼")}
+          {showTargetFilters ? L("hide receiver conditions ▲", "対象の条件を隠す ▲") : L("receiver conditions ▼", "対象の条件で絞り込み ▼")}
           {targetFilterCount ? ` (${targetFilterCount})` : ""}
         </button>
         <span className="hub-toolbar__end hub-muted hub-small">{L("{n} effect types", "効果 {n} 種", { n: groups.length })}</span>
         {showTargetFilters && (
           <div className="buff-target-panel">
-            <CheckboxGroup className="filter-group" title={L("Scope", "範囲")} options={TARGET_SCOPE_OPTIONS.map((o) => ({ value: o.value, label: L(o.label, o.ja) }))} selected={targetScope} onToggle={(v) => toggleTarget("targetScope", targetScope, v)} />
             <CheckboxGroup className="filter-group" title={L("Affiliation", "所属")} options={targetOptions.factions} selected={targetFaction} onToggle={(v) => toggleTarget("targetFaction", targetFaction, v)} />
             <CheckboxGroup className="filter-group" title={L("Race", "種族")} options={targetOptions.races} selected={targetRace} onToggle={(v) => toggleTarget("targetRace", targetRace, v)} />
             <CheckboxGroup className="filter-group" title={L("Attribute", "属性")} options={targetOptions.attrs} selected={targetAttr} onToggle={(v) => toggleTarget("targetAttr", targetAttr, v)} />
@@ -362,7 +424,7 @@ export default function Buffs() {
                 className="hub-btn hub-btn--sm hub-btn--ghost"
                 onClick={() => {
                   const next = new URLSearchParams(params);
-                  ["targetScope", "targetFaction", "targetRace", "targetAttr", "targetSeason", "targetClass"]
+                  ["targetFaction", "targetRace", "targetAttr", "targetSeason", "targetClass"]
                     .forEach((key) => next.delete(key));
                   setParams(next, { replace: true });
                 }}
@@ -413,13 +475,14 @@ export default function Buffs() {
                         <strong>{fmtValue(r)}</strong>
                         {r.mod?.length ? <span className="buff-mod">*</span> : null}
                         {(g.tiers.get(r.u)?.length ?? 0) > 1 && (
-                          <div className="buff-tiers">
+                          <details className="buff-tiers">
+                            <summary>{L("{n} values", "{n} 段階", { n: g.tiers.get(r.u)!.length })}</summary>
                             {g.tiers.get(r.u)!.map((x) => (
                               <div key={`${x.label}-${x.r.v}`} title={x.r.s}>
                                 {fmtValue(x.r)} <span className="muted">{x.label}</span>
                               </div>
                             ))}
-                          </div>
+                          </details>
                         )}
                         {buffSelectionRule(r) === "highest_duration" && r.selection_priority != null && (
                           <span className="buff-priority">{L("priority:", "優先:")} {fmtFrames(r.selection_priority)}</span>

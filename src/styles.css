@@ -255,6 +255,7 @@ section h3 { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 .variant-row td { background: rgba(255, 255, 255, 0.03); }
 .variant-row .block-label { display: block; margin-bottom: 2px; }
 .phase-label.trigger-badge { display: table; margin: 0 0 4px; }
+.buff-giver-filters { margin: 10px 0; }
 .difficulty-pick { display: flex; justify-content: flex-end; margin: 4px 0 10px; }
 .popups-details > summary { cursor: pointer; }
 .popups-details[open] > summary { margin-bottom: 8px; }
@@ -2172,7 +2173,8 @@ main:has(.dps-page) { max-width: 1480px; }
 
 /* /buffs: per-unit value tiers (skill-stage boosted ability values) */
 .buff-tiers { margin-top: 4px; font-size: 11px; font-weight: 400; text-align: left; line-height: 1.35; }
-.buff-tiers div { white-space: nowrap; }
+.buff-tiers > summary { cursor: pointer; color: var(--muted); }
+.buff-tiers div { white-space: normal; max-width: 22em; }
 
 /* /dps share button */
 .dps-title-row { display: flex; align-items: center; gap: 12px; }

@@ -172,6 +172,7 @@ export interface ExprNames {
   skills: Record<string, string>; // skill id -> JP name
   non_omni_types?: number[]; // class types some real unit deploys melee-only or ranged-only
   npc_cards?: number[]; // NPC / placeholder card ids
+  token_types?: number[]; // class types held only by summoned tokens
 }
 
 interface Tables {
@@ -181,11 +182,12 @@ interface Tables {
   skillName: Map<number, string>;
   nonOmniTypes: Set<number>;
   npcCards: Set<number>;
+  tokenTypes: Set<number>;
 }
 
 let tables: Tables = {
   className: new Map(), classTypeNames: new Map(), classRoot: new Map(), skillName: new Map(),
-  nonOmniTypes: new Set(), npcCards: new Set(),
+  nonOmniTypes: new Set(), npcCards: new Set(), tokenTypes: new Set(),
 };
 const memo = new Map<string, string | null>();
 
@@ -204,9 +206,13 @@ export function setExprNames(n: ExprNames): void {
     skillName: new Map(Object.entries(n.skills).map(([k, v]) => [Number(k), v])),
     nonOmniTypes: new Set(n.non_omni_types ?? []),
     npcCards: new Set(n.npc_cards ?? []),
+    tokenTypes: new Set(n.token_types ?? []),
   };
   memo.clear();
 }
+
+// Is this class type held only by summoned tokens (never a real unit's class)?
+export const isTokenClassType = (t: number): boolean => tables.tokenTypes.has(t);
 
 const isDigits = (p: string) => /^\d+$/.test(p);
 

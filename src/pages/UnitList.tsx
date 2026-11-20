@@ -5,16 +5,10 @@ import { UnitImage } from "../components";
 import { CheckboxGroup, EmptyState, FilterChip, FilterPanel, ListToolbar, Pager, SearchBox } from "@altterisk/game-hub";
 import { useUiStore } from "../store";
 import type { UnitIndexEntry, UnitInfluenceLabel, TagMentions } from "../types";
-import { altName, gameName, rarityName, useHubLabels, useL, type Pick } from "../i18n";
+import { altName, gameName, rarityName, useHubLabels, useL } from "../i18n";
+import { baseRarity, genderOpts, positionOpts, unitFilterOptions } from "../unitFilters";
 
 const PAGE = 60;
-
-// "Platinum Hero" / "Black Hero" are a card-art variant of Platinum/Black,
-// not a distinct rarity tier. Strip the suffix so the checkbox list shows
-// one entry per real tier and selecting it matches both.
-function baseRarity(r: string): string {
-  return r.replace(/ Hero$/, "");
-}
 
 // Searchable single-select combobox: a text input that filters a long
 // option list live, for dropdowns too large to scan by scrolling (class
@@ -103,17 +97,6 @@ function influenceOption(
   const lab = labels?.[String(id)];
   return lab?.name ? `${id} — ${lab.name}` : `influence ${id}`;
 }
-
-const positionOpts = (L: Pick) => [
-  { value: "melee", label: L("Melee", "近接") },
-  { value: "ranged", label: L("Ranged", "遠距離") },
-  { value: "omni", label: L("Omni (deployable either spot)", "両用 (どちらの配置場所にも出撃可)") },
-  { value: "anywhere", label: L("Anywhere (designated tile)", "指定地点 (任意のマスに配置可)") },
-];
-const genderOpts = (L: Pick) => [
-  { value: "Female", label: L("Female", "女性") },
-  { value: "Male", label: L("Male", "男性") },
-];
 
 export default function UnitList() {
   const { loading, units } = useUnits();
@@ -217,43 +200,7 @@ export default function UnitList() {
   // hand-maintained list to fall out of sync with new units).
   const {
     rarityOpts, factionOpts, raceOpts, attrOpts, seasonOpts, yearOpts,
-  } = useMemo(() => {
-    // track the game's own internal id for each value (its minimum seen id
-    // across carriers) so options list in the game's own menu order, not
-    // an arbitrary string sort.
-    const ids = new Map<string, number>();
-    const track = (v: string, id?: number | null) => {
-      if (id == null) return;
-      const cur = ids.get(v);
-      if (cur == null || id < cur) ids.set(v, id);
-    };
-    const rarity = new Set<string>();
-    const faction = new Set<string>();
-    const race = new Set<string>();
-    const attr = new Set<string>();
-    const season = new Set<string>();
-    const year = new Set<number>();
-    (units || []).forEach((u) => {
-      if (u.npc) return;
-      if (u.rarity) { rarity.add(baseRarity(u.rarity)); track(baseRarity(u.rarity), u.rarity_id); }
-      if (u.faction) { faction.add(u.faction); track(u.faction, u.faction_id); }
-      if (u.race) { race.add(u.race); track(u.race, u.race_id); }
-      (u.identity_tags || []).forEach((t, i) => { attr.add(t); track(t, u.identity_ids?.[i]); });
-      if (u.genus) { season.add(u.genus); track(u.genus, u.genus_id); }
-      if (u.release_year) year.add(u.release_year);
-    });
-    const byId = (a: string, b: string) => (ids.get(a) ?? 1e9) - (ids.get(b) ?? 1e9);
-    const toOpts = (s: Set<string>, tr?: Record<string, string>) =>
-      [...s].sort(byId).map((v) => ({ value: v, label: tr?.[v] || v }));
-    return {
-      rarityOpts: [...rarity].sort(byId).map((v) => ({ value: v, label: rarityName(v) })),
-      factionOpts: toOpts(faction, loc?.races),
-      raceOpts: toOpts(race, loc?.races),
-      attrOpts: toOpts(attr, loc?.tags),
-      seasonOpts: toOpts(season, loc?.tags),
-      yearOpts: [...year].sort((a, b) => a - b).map((y) => ({ value: String(y), label: String(y) })),
-    };
-  }, [units, loc]);
+  } = useMemo(() => unitFilterOptions(units, loc), [units, loc]);
 
   const filtered = useMemo(() => {
     if (!units) return [] as UnitIndexEntry[];
