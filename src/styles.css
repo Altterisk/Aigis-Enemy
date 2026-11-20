@@ -257,6 +257,8 @@ section h3 { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 /* block of its own line; not display:table, which inherits the stat table's
    border-collapse and loses the badge's padding and rounded corners */
 .phase-label.trigger-badge { display: block; width: fit-content; margin: 0 0 4px; }
+.phase-sprite { margin: 2px 0 4px; }
+.phase-sprite .sprite { display: block; image-rendering: pixelated; }
 .buff-giver-filters { margin: 10px 0; }
 .difficulty-pick { display: flex; justify-content: flex-end; margin: 4px 0 10px; }
 .popups-details > summary { cursor: pointer; }

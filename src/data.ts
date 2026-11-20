@@ -187,6 +187,22 @@ export function useSpecialtyConfig(): SpecialtyConfig | null {
   return cfg;
 }
 
+// PatternID -> lowest PatternID with a pixel-identical sprite (only aliased ids are listed).
+export type SpriteAlias = Record<string, number>;
+
+export function useSpriteAlias(): SpriteAlias | null {
+  const [alias, set] = useState<SpriteAlias | null>(null);
+  useEffect(() => {
+    loadJSON<SpriteAlias>("sprite_alias").then(set).catch(() => set({}));
+  }, []);
+  return alias;
+}
+
+export function sameSprite(alias: SpriteAlias | null, a?: number | null, b?: number | null): boolean {
+  if (a == null || b == null) return a === b;
+  return (alias?.[String(a)] ?? a) === (alias?.[String(b)] ?? b);
+}
+
 export function useRaceLabels(): RaceLabels | null {
   const [labels, set] = useState<RaceLabels | null>(null);
   useEffect(() => {

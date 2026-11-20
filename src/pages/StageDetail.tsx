@@ -4,7 +4,7 @@ import { Breadcrumbs, FallbackImage, MetaChip, MetaChips, PageHeader, Panel, Seg
 import { searchParamsAdapter } from "@altterisk/game-hub/filters";
 import { LIST_META, NOT_FOUND_META, plainText, stageMeta } from "../meta";
 import { usePageMeta } from "../usePageMeta";
-import { useStageDetail, useInfluenceLabels, useRaceLabels, useSpecialtyConfig, useStoryTalk, talkFaceUrl, bannerUrl, useExprNames } from "../data";
+import { useStageDetail, useInfluenceLabels, useRaceLabels, useSpecialtyConfig, useStoryTalk, talkFaceUrl, bannerUrl, useExprNames, useSpriteAlias, sameSprite } from "../data";
 import { Sprite, DamageBadge, Effects, Tags, auraRadius, periodicRate, missileOnHitText, HumanText, routerLink, extDisplay, ColorCodedText } from "../components";
 import { humanize } from "../humanize";
 import { StageMap } from "../stageMap";
@@ -146,6 +146,7 @@ function StatRow({
   d,
   variant,
   phase,
+  sprite,
   mult,
   labels,
   spcfg,
@@ -154,6 +155,8 @@ function StatRow({
   variant?: boolean;
   /** HP-threshold label when this row is a phase of the form. */
   phase?: string;
+  /** the phase's own PatternID, when its art differs from the state before it. */
+  sprite?: number;
   /** stat multiplier override (the 4★ multiplier); the exported hp/attack use the 3★ one. */
   mult?: number;
   labels: InfluenceLabels | null;
@@ -173,6 +176,11 @@ function StatRow({
           <span className="phase-label trigger-badge" title={L("same body, changed in place at this HP", "同じ個体がこのHPで変化")}>
             {phase}
           </span>
+        )}
+        {sprite != null && (
+          <div className="phase-sprite" title={L("this phase's sprite", "この段階のドット")}>
+            <Sprite patternId={sprite} size={64} alt="" fit />
+          </div>
         )}
         <DamageBadge type={d.damage_type} />
         <div className="muted small">
@@ -319,13 +327,20 @@ function EnemyCard({
 }) {
   const race = e.race_id != null ? races?.[String(e.race_id)] : null;
   const L = useL();
-  const blocks: { d: StageEnemyForm; variant?: boolean; phase?: string }[] = [
+  const alias = useSpriteAlias();
+  // a phase shows its own sprite when its art differs from the state before it
+  let shown = e.pattern_id;
+  const blocks: { d: StageEnemyForm; variant?: boolean; phase?: string; sprite?: number }[] = [
     { d: e },
     ...(e.variants || []).map((v) => ({ d: v, variant: true })),
-    ...(e.phases || []).flatMap((p) => [
-      { d: p as StageEnemyForm, phase: hpPhaseText(p.condition) },
-      ...(p.variants || []).map((v) => ({ d: v, variant: true })),
-    ]),
+    ...(e.phases || []).flatMap((p) => {
+      const changed = alias != null && p.pattern_id != null && !sameSprite(alias, p.pattern_id, shown);
+      if (changed) shown = p.pattern_id;
+      return [
+        { d: p as StageEnemyForm, phase: hpPhaseText(p.condition), sprite: changed ? p.pattern_id ?? undefined : undefined },
+        ...(p.variants || []).map((v) => ({ d: v, variant: true })),
+      ];
+    }),
   ];
 
   return (
@@ -402,7 +417,7 @@ function EnemyCard({
             </thead>
             <tbody>
               {blocks.map((b, i) => (
-                <StatRow key={i} d={b.d} variant={b.variant} phase={b.phase} mult={mult} labels={labels} spcfg={spcfg} />
+                <StatRow key={i} d={b.d} variant={b.variant} phase={b.phase} sprite={b.sprite} mult={mult} labels={labels} spcfg={spcfg} />
               ))}
             </tbody>
           </table>
