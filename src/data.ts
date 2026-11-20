@@ -429,7 +429,7 @@ export function useCurrentMissions(): CurrentMission[] | null {
 
 // Summon lineups, live plus every one seen before; times are JST ("2026/11/19 11:30:00"), close "" = no end.
 export interface CurrentSummon {
-  key: string; // summon_id, or "b<banner_id>" for a rotation known only from banner art
+  key: string; // summon_id, or "a<series>-<open digits>" for a rotation known only from banner art
   summon_id: number | null;
   series: number; // title text id: rotations of one banner share it (0 = home-rotation only)
   title: string;
