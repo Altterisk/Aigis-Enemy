@@ -2068,7 +2068,7 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 
 @media (max-width: 900px) {
   .wx-table { display: block; overflow-x: auto; }
-  .wx-source-table { min-width: 0; }
+  .wx-source-table { min-width: 0; display: block; max-width: 100%; overflow-x: auto; }
 }
 
 .wx-banner {
