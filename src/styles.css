@@ -1796,6 +1796,9 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 .collection-message { margin: 8px 0 0; color: var(--accent); font-size: 12px; }
 .collection-scan-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
 .collection-scan-controls input[type="file"] { font-size: 12px; color: var(--muted); }
+.collection-added { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 8px; }
+.collection-added a { display: block; }
+.collection-added-icon { display: block; width: 40px; height: 40px; border-radius: 4px; }
 .collection-scan-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));

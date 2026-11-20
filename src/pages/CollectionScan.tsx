@@ -23,16 +23,23 @@ interface Candidate {
   checked: boolean;
 }
 
-export default function ScreenshotImport({ byId, unitName, isOwned, onApply }: {
+interface Added {
+  unit: UnitIndexEntry;
+  tier: number;
+}
+
+export default function ScreenshotImport({ byId, unitName, isOwned, onApply, onUndo }: {
   byId: Map<number, UnitIndexEntry> | null;
   unitName: (unit: UnitIndexEntry) => string;
   isOwned: (unit: UnitIndexEntry) => boolean;
   onApply: (units: UnitIndexEntry[]) => void;
+  onUndo: (units: UnitIndexEntry[]) => void;
 }) {
   const dbRef = useRef<IconHashDb | null>(null);
   const [scanning, setScanning] = useState(false);
   const [progress, setProgress] = useState("");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [added, setAdded] = useState<Added[]>([]);
   const [note, setNote] = useState("");
   const L = useL();
 
@@ -50,7 +57,7 @@ export default function ScreenshotImport({ byId, unitName, isOwned, onApply }: {
       // confident matches are applied directly; only uncertain ones are
       // queued for review. addedIds treats units applied earlier in this
       // batch as owned (the isOwned prop closes over pre-apply state).
-      const autoAdd = new Map<number, UnitIndexEntry>();
+      const autoAdd = new Map<number, Added>();
       const review = new Map<number, Candidate>();
       const addedIds = new Set<number>();
       let alreadyOwned = 0;
@@ -73,7 +80,7 @@ export default function ScreenshotImport({ byId, unitName, isOwned, onApply }: {
             return;
           }
           if (m.dist <= AUTO_ACCEPT_DIST) {
-            autoAdd.set(unit.id, unit);
+            autoAdd.set(unit.id, { unit, tier: m.tier });
             addedIds.add(unit.id);
             review.delete(unit.id);
             return;
@@ -89,7 +96,8 @@ export default function ScreenshotImport({ byId, unitName, isOwned, onApply }: {
           });
         });
       }
-      if (autoAdd.size) onApply([...autoAdd.values()]);
+      if (autoAdd.size) onApply([...autoAdd.values()].map((a) => a.unit));
+      setAdded([...autoAdd.values()]);
       setCandidates([...review.values()]);
       const parts = [
         autoAdd.size
@@ -151,6 +159,26 @@ export default function ScreenshotImport({ byId, unitName, isOwned, onApply }: {
       </div>
       {scanning && <p className="collection-message">{progress}</p>}
       {note && !scanning && <p className="collection-message">{note}</p>}
+      {added.length > 0 && !scanning && (
+        <div className="collection-added">
+          {added.map((a) => (
+            <Link key={a.unit.id} to={`/units/${a.unit.id}`} title={unitName(a.unit)}>
+              <UnitImage kind="icon" id={a.unit.id} tier={a.tier} className="collection-added-icon" alt={unitName(a.unit)} />
+            </Link>
+          ))}
+          <button
+            type="button"
+            title={L("Take these back out of the collection", "これらを所持から外す")}
+            onClick={() => {
+              onUndo(added.map((a) => a.unit));
+              setAdded([]);
+              setNote(L("Undone.", "取り消しました。"));
+            }}
+          >
+            {L("undo", "取り消し")}
+          </button>
+        </div>
+      )}
       {candidates.length > 0 && (
         <div className="collection-scan-grid">
           {candidates.map((c) => {

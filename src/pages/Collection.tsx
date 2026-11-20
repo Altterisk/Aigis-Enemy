@@ -633,6 +633,13 @@ export default function Collection() {
         : L("Added {u} unit(s) from screenshots.", "スクリーンショットからユニット {u} を追加しました。", { u: unitIds.length }))
     );
   };
+  const undoScan = (units: UnitIndexEntry[]) => {
+    const unitIds = new Set(units.filter((unit) => !isCollectionPrince(unit)).map((unit) => unit.id));
+    const dots = new Set(units.filter(isCollectionPrince).map((unit) => unit.dot_id));
+    if (unitIds.size) setOwned((current) => current.filter((id) => !unitIds.has(id)));
+    if (dots.size) setPrinceDots((current) => current.filter((dot) => !dots.has(dot)));
+    setMessage("");
+  };
 
   if (loading) return <p className="loading">{L("Loading collection…", "所持状況を読み込み中…")}</p>;
 
@@ -734,6 +741,7 @@ export default function Collection() {
         unitName={collectionName}
         isOwned={scanIsOwned}
         onApply={applyScan}
+        onUndo={undoScan}
       />
 
       {shownPrinces.length > 0 && (
