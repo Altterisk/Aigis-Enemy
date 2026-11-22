@@ -1392,6 +1392,14 @@ function resolveToken(
     const unclaimed = token.startsWith("<")
       ? typed.filter((r) => !(r.tag === `[${name}]` && r.target === "self"))
       : typed;
+    // Every typed row is claimed by "[X]": an "<X>" token then reads the
+    // fallback (ally/conditional) rows before reusing the claimed self row.
+    if (token.startsWith("<") && !unclaimed.length && typed.length && spec.fallback) {
+      const fbRow = (s.influences || []).find((r) => r.influence_type != null
+        && (spec.fallback || []).includes(r.influence_type)
+        && r[spec.field] != null && !r.activate_if);
+      if (fbRow) return rowValue(fbRow, spec.field, "");
+    }
     const rows = (unclaimed.length ? unclaimed : typed)
       .sort((a, b) => Number(PERMANENT_STAT_TYPES.has(a.influence_type!))
         - Number(PERMANENT_STAT_TYPES.has(b.influence_type!)));
