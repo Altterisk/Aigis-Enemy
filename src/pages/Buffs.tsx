@@ -47,6 +47,8 @@ const EFFECTS = [
   { k: "LIMIT", label: "Deploy Limit", ja: "出撃数" },
   { k: "HPCUT", label: "HP Cut", ja: "HP割合ダメージ" },
   { k: "TIMESTOP", label: "Time Stop", ja: "時間停止" },
+  { k: "UTILITY", label: "Utility", ja: "ユーティリティ" },
+  { k: "PLACEMENT", label: "Placement & Tokens", ja: "配置・トークン" },
 ] as const;
 type StatKey = (typeof STATS)[number]["k"] | (typeof DEBUFFS)[number]["k"] | (typeof EFFECTS)[number]["k"];
 const PICKER_ROWS: { label: string; ja: string; tabs: readonly { k: StatKey; label: string; ja: string }[] }[] = [
@@ -101,7 +103,7 @@ function receiverOf(row: BuffRow): Receiver {
 const GROUP_PREVIEW = 10; // rows shown per type before "show all"
 
 const buffSelectionRule = (r: BuffRow): InfluenceSelectionRule | undefined =>
-  r.ns === "special" ? undefined : influenceSelectionRule(r.ns, r.t);
+  r.ns === "special" || r.ns === "class" ? undefined : influenceSelectionRule(r.ns, r.t);
 
 const RULE_TEXT: Partial<Record<InfluenceSelectionRule, [string, string]>> = {
   highest_value: ["Highest value applies; these rows do not stack within the group.", "最も高い値が適用され、同じ種類の中では重複しません。"],
@@ -145,6 +147,7 @@ function fmtValue(r: BuffRow): string {
   if (r.vk === "sec") return r.v >= 9999 ? "∞ (permanent)" : `${r.v}s`;
   if (r.vk === "flat") return `${r.v.toLocaleString()} flat`;
   if (r.vk === "pct") return `${r.v}%`;
+  if (r.vk === "mul") return `x${(r.v / 100).toFixed(2).replace(/\.?0+$/, "")}`;
   // Dancer share: the value is a percent of the SOURCE unit's own stat,
   // added flat to everyone in range -- not a percent of the target's stat.
   if (r.vk === "share") return `${r.v}% of own ${r.stat}`;

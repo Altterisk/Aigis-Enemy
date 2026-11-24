@@ -2985,9 +2985,9 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "tpl": "+{p1}%"
     },
     "145": {
-      "name": "Select All Targets in Area",
+      "name": "Can be placed anywhere (outside deployment spots)",
       "verified": true,
-      "note": "user-tested: Select All Targets in Area"
+      "note": "user-tested: Can be placed anywhere (non deployment spot). Carriers are movement tokens (移動用トークン), target markers (ターゲットマーカー), missile tokens and Imlau's barrier token."
     },
     "155": {
       "name": "Lukifer Death HP buff",

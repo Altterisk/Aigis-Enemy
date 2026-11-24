@@ -84,6 +84,23 @@ test("giving-unit filters limit rows to buffs from matching units", async ({ pag
   expect(black).toBeLessThan(all);
 });
 
+test("utility tab lists auto-skill givers, assassination and omni placement", async ({ page }) => {
+  await page.goto("/buffs?stat=UTILITY");
+  await expect(page.getByRole("group", { name: "Effects" }).locator(".stat-tab[aria-pressed=true]")).toContainText("Utility");
+  await expect(page.locator(".buff-group", { hasText: "Target automatically uses skill" })).toBeVisible();
+  await expect(page.locator(".buff-group", { hasText: "Omni placement" })).toContainText("Suzune");
+  const multiplier = page.locator(".buff-group", { hasText: "Assassination modifier" });
+  await expect(multiplier.locator(".buff-val").first()).toHaveText(/^x\d/);
+});
+
+test("placement tab lists deployment-spot buffs from tokens and deployment-spot units", async ({ page }) => {
+  await page.goto("/buffs?stat=PLACEMENT");
+  const spotAtk = page.locator(".buff-group", { hasText: "Deployment" }).filter({ hasText: "ATK" }).first();
+  await expect(spotAtk).toContainText("Sanara (Black)");
+  await expect(spotAtk).toContainText("unit on the spot");
+  await expect(page.locator(".buff-group", { hasText: "Ivril (Black)" }).first()).toBeVisible();
+});
+
 test("on-hit debuffs visibly rank by duration instead of reduction", async ({ page }) => {
   await page.goto("/buffs?stat=DEF_DEBUFF");
   const group = page.locator(".buff-group", { hasText: "Reduce enemy DEF on hit" });

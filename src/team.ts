@@ -211,7 +211,7 @@ export function total(list: Contribution[]): number {
   }
   const vals = [...byStack.values()];
   const r = list[0].r;
-  const rule = r.ns === "special" ? undefined : influenceSelectionRule(r.ns, r.t);
+  const rule = r.ns === "special" || r.ns === "class" ? undefined : influenceSelectionRule(r.ns, r.t);
   return rule === "additive" ? vals.reduce((a, b) => a + b, 0) : Math.max(...vals);
 }
 

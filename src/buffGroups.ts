@@ -21,6 +21,7 @@ export const GRP_NAME: Record<string, string> = {
   special_limit: "Doesn't count against deployment limit (special property 13)",
   missile_timestop: "100% slow missile (time stop on hit)",
   field_hpcut: "Max-HP damage field",
+  class_omni: "Omni placement (melee or ranged spot)",
 };
 
 /** A group's title: its `grp` name, "<ability name> (stack N)", or the grp itself. */

@@ -664,7 +664,7 @@ export interface BuffRow {
   u: number;            // unit id
   n?: string | null;    // unit name
   stat: string;         // stat key (HP/ATK/...) or effect category (MAKAI/...)
-  ns: "skill" | "ability" | "special";
+  ns: "skill" | "ability" | "special" | "class";
   t: number;            // influence type id
   v: number;            // ranking value = the buff's CAP (max achievable)
   p?: (number | null)[] | null; // raw params (skill: mul/mul2/mul3/add)
@@ -674,7 +674,7 @@ export interface BuffRow {
   mod?: string[];       // same-unit modifier ids folded into v
   // value kind: effect rows carry pct/flag/flat/sec; "share" marks a buff
   // whose value is a percent of the SOURCE unit's own stat (Dancer bonus)
-  vk?: "pct" | "flag" | "flat" | "sec" | "share";
+  vk?: "pct" | "flag" | "flat" | "sec" | "share" | "mul";
   cond?: string;
   // raw expressions: x = which units the row applies to (evaluated per
   // target), ax = the owner-side activation gate, tr = the script narrowing
