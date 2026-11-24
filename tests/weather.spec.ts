@@ -58,3 +58,13 @@ test("the weather a skill generates links back to its unit", async ({ page }) =>
   await link.click();
   await expect(page).toHaveURL(/\/units\/2868$/);
 });
+
+test("weathers show the game's help text, including help matched by icon and effects", async ({ page }) => {
+  await page.goto("/weather");
+  const blizzard = page.locator(".wx-table tr", { hasText: "BLIZZARD" }).first();
+  await expect(blizzard.locator(".wx-help")).toContainText("悪天候：吹雪");
+  await expect(blizzard.locator(".wx-help li").first()).toContainText("移動速度");
+  const mist2 = page.locator(".wx-table tbody tr").filter({ has: page.locator(".wx-name b", { hasText: /^MIST2$/ }) });
+  await expect(mist2.locator(".wx-help")).toContainText("悪天候：霧");
+  await expect(mist2.locator(".wx-help")).toContainText("matched by icon and effects");
+});

@@ -803,9 +803,18 @@ export interface WeatherSource {
   skill_en?: string | null;
   weather: string;
 }
+// an in-game help page (UiText.atb) about one weather
+export interface WeatherHelp {
+  title: string; // 悪天候：<name> / 天候：<name>
+  name: string;
+  text: string; // bullet lines, newline-separated
+  weathers: string[]; // CfgNames the help page belongs to (may be empty)
+  match?: "data" | "effect" | null; // paired by the game's tables, or by icon and effects
+}
 export interface WeatherData {
   weathers: WeatherEntry[];
   sources: WeatherSource[];
+  help?: WeatherHelp[];
 }
 
 // /story: out-of-battle event scenes (data/story/*.json, export_story.py)

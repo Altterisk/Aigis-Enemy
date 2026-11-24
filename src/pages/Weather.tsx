@@ -7,7 +7,7 @@ import { useMemo, useState } from "react";
 import { FallbackImage, SearchBox } from "@altterisk/game-hub";
 import { useWeather } from "../data";
 import { UnitIconLink } from "../components";
-import type { WeatherEntry, WeatherRow, WeatherSource } from "../types";
+import type { WeatherEntry, WeatherHelp, WeatherRow, WeatherSource } from "../types";
 import { gameName, getLang, altName, useL } from "../i18n";
 
 interface EffectMeta {
@@ -119,6 +119,13 @@ export default function Weather() {
     return map;
   }, [data]);
 
+  const helpByWeather = useMemo(() => {
+    const map = new Map<string, WeatherHelp>();
+    for (const h of data?.help || []) for (const n of h.weathers) map.set(n, h);
+    return map;
+  }, [data]);
+  const unmatchedHelp = (data?.help || []).filter((h) => !h.weathers.length);
+
   if (!data) return <p className="loading">{L("Loading weather…", "天候を読み込み中…")}</p>;
 
   const sideRows = (w: WeatherEntry, target: number) =>
@@ -167,6 +174,7 @@ export default function Weather() {
                     <span className="badge sky wx-badge">{L("skill", "スキル")}</span>
                   )}
                 </div>
+                {helpByWeather.get(w.name || "") && <HelpText help={helpByWeather.get(w.name || "")!} />}
               </td>
               <td className="muted">
                 {w.specialty.map((s) => FAMILIES[s]?.[getLang()] || `family ${s}`).join(", ") || "—"}
@@ -177,6 +185,18 @@ export default function Weather() {
           ))}
         </tbody>
       </table>
+
+      {unmatchedHelp.length > 0 && (
+        <section className="wx-panel">
+          <h3>{L("Other in-game help pages about weather", "その他の天候のヘルプ")}</h3>
+          <p className="muted small">
+            {L("The game's help also describes these weathers; their names are not tied to a weather id in the data.", "ゲーム内ヘルプにある天候ですが、データ上で天候IDとの対応がありません。")}
+          </p>
+          <div className="wx-help-list">
+            {unmatchedHelp.map((h) => <HelpText key={h.title} help={h} withTitle />)}
+          </div>
+        </section>
+      )}
 
       {data.sources.length > 0 && (
         <section className="wx-panel">
@@ -205,6 +225,31 @@ export default function Weather() {
           </table>
         </section>
       )}
+    </div>
+  );
+}
+
+// the game's own help text for a weather (Japanese, as shipped)
+function HelpText({ help, withTitle }: { help: WeatherHelp; withTitle?: boolean }) {
+  return (
+    <div className="wx-help" lang="ja">
+      {withTitle && <b>{help.title}</b>}
+      {!withTitle && <span className="muted small">{help.title}</span>}
+      {help.match === "effect" && (
+        <span className="muted small" lang="en">
+          {" "}{getLang() === "ja" ? "(アイコンと効果から対応)" : "(matched by icon and effects)"}
+        </span>
+      )}
+      <ul>
+        {help.text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+          .reduce<string[]>((acc, line) => {
+            // a line that does not start a bullet continues the previous one
+            if (line.startsWith("・") || line.startsWith("※") || !acc.length) acc.push(line);
+            else acc[acc.length - 1] += line;
+            return acc;
+          }, [])
+          .map((line, i) => <li key={i}>{line.replace(/^・/, "")}</li>)}
+      </ul>
     </div>
   );
 }

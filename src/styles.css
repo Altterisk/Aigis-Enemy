@@ -2503,3 +2503,8 @@ main:has(.dps-page) { max-width: 1480px; }
 .team-gain.is-near { border-style: dashed; }
 .team-gain.is-cond { opacity: .65; }
 .lang-picker .hub-seg__btn { padding: 4px 10px; font-size: 12px; }
+
+/* in-game help text under a weather / in the unmatched list */
+.wx-help { margin-top: 6px; font-size: 12px; line-height: 1.5; }
+.wx-help ul { margin: 2px 0 0; padding-left: 18px; }
+.wx-help-list { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }

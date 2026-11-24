@@ -38,6 +38,10 @@ export const RELEASES: Release[] = [
         ja: "バフ: コスト・UPタブ (出撃メンバー・出撃中・スキルによるコスト減少、初期UPとUP生成)、反射・反撃無効、復活・再出撃、ドロップ・ゴールド、所持効果 (第一兵舎) のステータスバフを数値順に追加。隠密に狙われにくい効果、天候に天候を発生させるスキルを追加。",
       } },
       { kind: "feature", text: {
+        en: "Weather: each weather shows the game's own help text.",
+        ja: "天候: 各天候にゲーム内ヘルプの説明を表示。",
+      } },
+      { kind: "feature", text: {
         en: "Unit list: Traits filter — Hero, Support, Crossover, no second awakening, no 150% affection bonus, third scene (bond quest), trading post (rainbow, demonic, time, dark, merit and tower crystals).",
         ja: "ユニット一覧: 特徴で絞り込み — 英傑、サポート、コラボ、第二覚醒なし、好感度150%ボーナスなし、第3シーン (交流クエスト)、交換所 (虹水晶・魔水晶・刻水晶・闇水晶・武勲結晶・塔の結晶)。",
       } },
