@@ -3,6 +3,7 @@ import { SegmentedButtons, SiteShell, homeLink } from "@altterisk/game-hub";
 import { LIST_META } from "./meta";
 import { usePageMeta } from "./usePageMeta";
 import { LANGS, hubLabels, setLang, useL, useLang, type Lang } from "./i18n";
+import { ChangelogDialog } from "./pages/Changelog";
 
 function LanguagePicker() {
   const L = useL();
@@ -46,6 +47,7 @@ export default function App() {
       skipLabel={hub.skip}
       footer={{
         links: [
+          { label: L("What's new", "更新情報"), href: "/changelog" },
           { label: L("Source on GitHub", "ソース (GitHub)"), href: "https://github.com/Altterisk/Aigis-Enemy" },
           { label: L("Portfolio", "ポートフォリオ"), href: "https://altterisk.github.io/portfolio/" },
           { label: "Ko-fi", href: "https://ko-fi.com/altterisk" },
@@ -56,6 +58,7 @@ export default function App() {
       contained={false}
     >
       <Outlet />
+      <ChangelogDialog />
     </SiteShell>
   );
 }

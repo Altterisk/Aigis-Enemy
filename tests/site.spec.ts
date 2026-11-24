@@ -86,3 +86,25 @@ test("unknown paths show not found and are noindex", async ({ page }) => {
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex");
   await expect(page.locator('link[rel="canonical"]')).toHaveCount(0);
 });
+
+test("changelog page lists releases with unit links", async ({ page }) => {
+  await page.goto("/changelog");
+  await expect(page.getByRole("heading", { name: "What's new" })).toBeVisible();
+  const first = page.locator(".hub-release").first();
+  await expect(first).toBeVisible();
+  await expect(page.locator(".hub-release", { hasText: "2026-10-22" }).getByRole("link", { name: "Diana (Shadow)" })).toBeVisible();
+});
+
+test("what's new popup shows once for a returning visitor and never for a first visit", async ({ page }) => {
+  await page.goto("/units");
+  await expect(page.locator(".hub-modal")).toHaveCount(0);
+
+  await page.evaluate(() => localStorage.setItem("aigis.seen", JSON.stringify({ seen: { "changelog:2000-01-01": true } })));
+  await page.reload();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("What's new");
+  await dialog.getByRole("button", { name: "Close" }).click();
+  await expect(dialog).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});

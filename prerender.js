@@ -39,7 +39,7 @@ function pages({ publicDir }) {
 
   const list = [
     page("/units", ul(units.map((u) => a(`/units/${u.id}`, unitLabel(u))))),
-    ...["/prince", "/stages", "/story", "/enemies", "/collection", "/buffs", "/costgen", "/dps", "/team", "/weather", "/artists"].map((p) => page(p)),
+    ...["/prince", "/stages", "/story", "/enemies", "/collection", "/buffs", "/costgen", "/dps", "/team", "/weather", "/artists", "/changelog"].map((p) => page(p)),
   ];
 
   // served by the SPA fallback: in the sitemap only

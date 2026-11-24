@@ -71,6 +71,10 @@ export const LIST_META: Record<string, PageMeta> = {
     title: "Weather",
     description: "Millennium War Aigis weather effects on allies and enemies, and the skills that create each weather.",
   },
+  "/changelog": {
+    title: "What's new",
+    description: "New features and new units on the Millennium War Aigis site, newest first.",
+  },
   "/artists": {
     title: "Artists",
     description: "Every illustrator credited on a Millennium War Aigis unit, with the units they drew.",

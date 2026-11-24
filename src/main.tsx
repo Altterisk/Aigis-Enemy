@@ -21,6 +21,7 @@ import NotFound from "./pages/NotFound";
 import Home from "./pages/Home";
 import Story from "./pages/Story";
 import StoryDetail from "./pages/StoryDetail";
+import Changelog from "./pages/Changelog";
 import "@altterisk/game-hub/hub.css";
 import "@altterisk/game-hub/base.css";
 import "@altterisk/game-hub/components.css";
@@ -52,6 +53,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="dps" element={<Dps />} />
           <Route path="team" element={<Team />} />
           <Route path="collection" element={<Collection />} />
+          <Route path="changelog" element={<Changelog />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
