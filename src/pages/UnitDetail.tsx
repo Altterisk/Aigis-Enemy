@@ -1584,9 +1584,9 @@ function SkillStageRow({
           )}
         </InfluenceViews>
       </td>
-      <td>{s.duration != null ? `${s.duration}${s.duration_max ? ` → ${s.duration_max}` : ""}` : "-"}</td>
-      <td>{s.cooldown ?? "-"}</td>
-      <td>{i === 0 ? s.level_max ?? "-" : "-"}</td>
+      <td className="skill-num" data-label={L("Duration", "効果時間")}>{s.duration != null ? `${s.duration}${s.duration_max ? ` → ${s.duration_max}` : ""}` : "-"}</td>
+      <td className="skill-num" data-label={L("Cooldown", "再使用時間")}>{s.cooldown ?? "-"}</td>
+      <td className="skill-num" data-label={L("Max Level", "最大レベル")}>{i === 0 ? s.level_max ?? "-" : "-"}</td>
     </tr>
   );
 }
@@ -1650,7 +1650,7 @@ function SkillBlock({
         </>
       )}
     >
-      <table className="grid unit-detail-table">
+      <table className="grid unit-detail-table skill-table">
         <thead>
           <tr>
             <th>{L("Name", "名前")}</th><th>{L("Effect", "効果")}</th>

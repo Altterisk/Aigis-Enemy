@@ -17,9 +17,10 @@ test("weather page lists every weather with its per-side effects", async ({ page
 
 test("each weather shows its in-game banner", async ({ page }) => {
   await page.goto("/weather");
-  const banner = page
-    .locator(".wx-table tbody tr", { hasText: "IceLightning" })
-    .locator(".wx-banner");
+  const row = page.locator(".wx-table tbody tr", { hasText: "IceLightning" });
+  const banner = row.locator(".wx-banner");
+  // lazy-loaded: the image has no width until its row scrolls into view
+  await row.scrollIntoViewIfNeeded();
   await expect(banner).toBeVisible();
   expect(await banner.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
 });

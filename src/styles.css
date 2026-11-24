@@ -772,6 +772,25 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 .unit-detail-table th:last-child, .unit-detail-table td:last-child { border-right: none; }
 .unit-detail-table .effects { margin: 0; }
 
+/* phones: each skill stage becomes a card -- name on top, effect at full
+   width, duration / cooldown / max level on one labelled line below */
+@media (max-width: 700px) {
+  .skill-table { overflow-x: visible; }
+  .skill-table thead { display: none; }
+  .skill-table tbody, .skill-table tr { display: block; }
+  .skill-table tr { border-bottom: 1px solid var(--line); padding: 6px 0; }
+  .skill-table tr:last-child { border-bottom: none; }
+  .skill-table td { display: block; border: none; }
+  .skill-table td.unit-class-name-cell { white-space: normal; font-weight: 700; padding-bottom: 2px; }
+  .skill-table td.skill-num { display: inline-block; padding-top: 2px; padding-bottom: 2px; }
+  .skill-table td.skill-num::before {
+    content: attr(data-label) ": ";
+    color: var(--muted);
+    font-weight: 400;
+  }
+  .skill-table .stage-gap-row td { display: block; }
+}
+
 /* substituted skill-text placeholder (derived value, token in tooltip) */
 .ph-sub {
   color: #e0af68;

@@ -267,9 +267,24 @@ test("possession buffs drop placeholder exclusions and read melee + omni", async
 test("readable granted abilities keep their class-change tier and weather names", async ({ page }) => {
   // Murasame: two sortie grants picked by GetClassChange() and a WelcomeRain condition
   await page.goto("/units/2884?tab=abilities");
+  await expect(page.locator(".prose-lines", { hasText: "WelcomeRain" }).first()).toBeVisible();
   const all = (await page.locator(".prose-lines").allInnerTexts()).join(" ");
   expect(all).not.toContain("NaN");
   expect(all).not.toContain("weather is 33");
   expect(all).toContain("WelcomeRain");
   expect(all).not.toMatch(/activestacking/);
+});
+
+test("on a phone the skill effect gets the full width, not the name", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.goto("/units/2272?tab=skills");
+  const row = page.locator(".skill-table tbody tr").first();
+  const name = await row.locator("td.unit-class-name-cell").boundingBox();
+  const effect = await row.locator("td.skill-text").boundingBox();
+  expect(name && effect).toBeTruthy();
+  expect(effect!.y).toBeGreaterThan(name!.y);
+  expect(effect!.width).toBeGreaterThan(300);
+  await expect(row.locator("td.skill-num").first()).toBeVisible();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
 });
