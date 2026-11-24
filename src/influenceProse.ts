@@ -222,6 +222,7 @@ export const SKILL_PROSE: Record<number, ProseTpl> = {
     if (c.add) parts.push("adds {add}% of its DEF to its DEF support to allies");
     return parts.length ? parts.join(" and ") : undefined;
   },
+  147: "its attacks cannot be reflected or countered",
   148: "resets the skill duration of {obj}",
   150: "{subj} can fly again",
   151: (c) => (c.expressionHuman ? `revives a dead or withdrawn ally (eligible: ${c.expressionHuman})` : "revives a dead or withdrawn ally"),
@@ -296,7 +297,9 @@ export const SKILL_PROSE: Record<number, ProseTpl> = {
   56: (c) => (c.mul === 1000 ? "stops time for all enemies for {secs:mul2}"
     : c.mul === -1 ? "stops time for enemies within range for {secs:mul2}" : undefined),
   57: "when {subj} block{s} an enemy's attack, {subj} counter{s} with physical damage equal to {pct} of that enemy's ATK",
-  58: "creates a damage field",
+  58: (c) => (c.mul === 1
+    ? "hits every enemy in a cross through the unit once (bands {mul2} wide on each side, across the whole map)"
+    : c.mul === 2 ? "hits every enemy within {mul2} of the unit once" : undefined),
   59: (c) => (c.mul == null ? undefined : `lowers {of:MR} by ${100 - c.mul}%`),
   60: (c) => (c.mul == null ? undefined : `lowers {of:DEF} by ${100 - c.mul}%`),
   61: "{subj} cannot be targeted",

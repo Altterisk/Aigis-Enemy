@@ -113,7 +113,7 @@ test("can't be reflected tab lists Roza (Black)", async ({ page }) => {
   const rect = page.locator(".buff-group", { hasText: "rectangle, skill 277" });
   await expect(rect).toContainText("Sybilla (Hero)");
   await expect(rect).toContainText("not reflected back");
-  await expect(page.locator(".buff-group", { hasText: "Ignore counterattacks" }).filter({ hasText: "Sandra" }).first()).toBeVisible();
+  await expect(page.locator(".buff-group", { hasText: "Can't be reflected or countered" }).filter({ hasText: "Sandra" }).first()).toBeVisible();
   await expect(page.locator(".buff-group", { hasText: "ATK-based, CreateField" })).toContainText("Grace");
   await expect(page.locator(".buff-group", { hasText: "not an attack" })).toContainText("Kayou");
 });

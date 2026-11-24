@@ -802,10 +802,10 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "note": "Verified."
     },
     "147": {
-      "name": "Ignore counterattacks",
+      "name": "Can't be reflected or countered",
       "verified": true,
-      "hidden": true,
-      "note": "Official name 反撃無効 identifies this internal attack flag. Hidden from the UI by default because carrier text does not expose it separately."
+      "note": "Official name 反撃無効. While active, the unit's attacks skip the enemy counter/reflect handler entirely (same gate as ability 117, 自身の攻撃による反射・反撃無効). Carried by every skill-58 field-damage skill, plus Koharu / Kayou HP-cut skills, Aine, Prince (Kung Fu) and Wonder Heart; no carrier text states it.",
+      "tpl": ""
     },
     "68": {
       "name": "Field projectile (visual)",
@@ -826,9 +826,9 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "note": "cosmetic/visual effect, no gameplay impact. Hidden from the UI by default."
     },
     "58": {
-      "name": "Field damage",
+      "name": "Area attack (cross / circle)",
       "verified": true,
-      "note": "official influence name フィールド(ダメージ). Carriers include cross-shaped, radial, and full-range one-shot damage fields, so the former Cross slash label was too narrow."
+      "note": "official influence name フィールド(ダメージ). One hit on every enemy inside a shape around the unit, not a lingering field. mul = shape (1 cross: two full-map bands through the unit, 2 circle), mul2 = band half-width / circle radius (plus the enemy's own size), mul3 = centre shifted up. Damage per enemy = the unit's attack x skill 66 add (flying) or skill 67 add (ground), 100% when absent. Carriers: cross mul2 60 (Sandra, Sandra (Swimsuit), Colum), circle 170 (Gloria), 280 (Vincent)."
     },
     "159": {
       "name": "Heal unhealable units",
