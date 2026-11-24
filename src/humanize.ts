@@ -173,6 +173,7 @@ export interface ExprNames {
   non_omni_types?: number[]; // class types some real unit deploys melee-only or ranged-only
   npc_cards?: number[]; // NPC / placeholder card ids
   token_types?: number[]; // class types held only by summoned tokens
+  weathers?: Record<string, string>; // weather id -> WeatherConfig name
 }
 
 interface Tables {
@@ -183,11 +184,12 @@ interface Tables {
   nonOmniTypes: Set<number>;
   npcCards: Set<number>;
   tokenTypes: Set<number>;
+  weatherName: Map<number, string>;
 }
 
 let tables: Tables = {
   className: new Map(), classTypeNames: new Map(), classRoot: new Map(), skillName: new Map(),
-  nonOmniTypes: new Set(), npcCards: new Set(), tokenTypes: new Set(),
+  nonOmniTypes: new Set(), npcCards: new Set(), tokenTypes: new Set(), weatherName: new Map(),
 };
 const memo = new Map<string, string | null>();
 
@@ -207,6 +209,7 @@ export function setExprNames(n: ExprNames): void {
     nonOmniTypes: new Set(n.non_omni_types ?? []),
     npcCards: new Set(n.npc_cards ?? []),
     tokenTypes: new Set(n.token_types ?? []),
+    weatherName: new Map(Object.entries(n.weathers ?? {}).map(([k, v]) => [Number(k), v])),
   };
   memo.clear();
 }
@@ -265,6 +268,9 @@ function fmtArgs(name: string, raw: string): string {
   }
   if (name === "IsContainesParty" && parts.length && parts[0] === "ClassID") {
     return "a unit of class " + classIdListText(parts.slice(1));
+  }
+  if (name === "IsWeatherID" && parts.every(isDigits)) {
+    return parts.map((p) => tables.weatherName.get(Number(p)) ?? `#${p}`).join(" / ");
   }
   if (name === "CallEvent") return parts.map((p) => `#${p}`).join(", ");
   if (name === "IsBlood") return parts.map((p) => `[[tag:${p}]]`).join(", ");

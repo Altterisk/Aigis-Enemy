@@ -200,11 +200,25 @@ export const RELEASES: Release[] = [
   },
 ];
 
-export const latestKey = () => `changelog:${RELEASES[0].date}`;
+// the top release's date plus its entry count: entries added to it later
+// show the popup again
+export const latestKey = () => `changelog:${RELEASES[0].date}#${RELEASES[0].entries.length}`;
 
 const seen = createSeenStore("aigis.seen");
 export const restoreSeen = seen.restore;
 export const markSeen = seen.markSeen;
-// a visitor with no record at all has nothing to catch up on
-export const isFreshVisitor = seen.isFresh;
+
+// other site data stored before this module loaded (language, UI state):
+// read once at import, before the app writes anything of its own
+const hadSiteData = (() => {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith("aigis") && k !== "aigis.seen") return true;
+    }
+  } catch { /* storage unavailable */ }
+  return false;
+})();
+// a visitor with no seen record and no other site data has nothing to catch up on
+export const isFreshVisitor = () => seen.isFresh() && !hadSiteData;
 export const useShouldShow = seen.useShouldShow;

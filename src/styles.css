@@ -808,7 +808,7 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 .prose-unverified { color: #cfa15a; }
 .prose-tag {
   display: inline-block;
-  margin-left: 6px;
+  margin-left: 2px;
   padding: 0 6px;
   border: 1px solid var(--line);
   border-radius: 999px;

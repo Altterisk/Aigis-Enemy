@@ -263,3 +263,13 @@ test("possession buffs drop placeholder exclusions and read melee + omni", async
   await expect(table).not.toContainText("Dummy (Battle)");
   await expect(table).not.toContainText("one of 9 units");
 });
+
+test("readable granted abilities keep their class-change tier and weather names", async ({ page }) => {
+  // Murasame: two sortie grants picked by GetClassChange() and a WelcomeRain condition
+  await page.goto("/units/2884?tab=abilities");
+  const all = (await page.locator(".prose-lines").allInnerTexts()).join(" ");
+  expect(all).not.toContain("NaN");
+  expect(all).not.toContain("weather is 33");
+  expect(all).toContain("WelcomeRain");
+  expect(all).not.toMatch(/activestacking/);
+});

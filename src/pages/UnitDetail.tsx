@@ -1240,9 +1240,13 @@ function abilitySentences(
         .map((g) => abilityClause(g, g.influence_type != null ? labels[String(g.influence_type)] : undefined, missiles, names))
         .filter((g): g is ProseClause => !!g);
       if (granted.length) {
-        const key = String(inf.invoke ?? "");
+        // the grant's own activate_command: a bare tier pick groups it under
+        // that tier, any other gate is written into the clause
+        const tier = tierOnly(inf.activate_command);
+        const gate = tier == null ? realCondition(inf.activate_command, humanize(inf.activate_command)) : null;
+        const key = `${inf.invoke ?? ""}|${tier ?? ""}`;
         const cmd = realCondition(inf.command, humanize(inf.command));
-        const head = `${who} gain${cmd ? ` (only units where ${cmd})` : ""}: `;
+        const head = `${who} gain${gate ? ` (if ${gate})` : ""}${cmd ? ` (only units where ${cmd})` : ""}: `;
         groups.set(key, [...(groups.get(key) ?? []),
           { ...granted[0], text: head + granted[0].text }, ...granted.slice(1)]);
         continue;
@@ -1282,6 +1286,7 @@ function ReadableSentences({ sentences }: { sentences: ProseSentence[] }) {
             <span key={j} className={c.verified ? undefined : "prose-unverified"} title={c.note}>
               {j > 0 && "; "}
               <HumanText text={j === 0 && !sen.lead ? capitalize(c.text) : c.text} />
+              {(c.tag || c.rule) && " "}
               {(c.tag || c.rule) && (
                 <span className="prose-tag" title={c.rule ? `${capitalize(c.rule)}.` : undefined}>
                   {c.tag ?? "stacking"}

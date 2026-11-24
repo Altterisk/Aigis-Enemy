@@ -108,3 +108,13 @@ test("what's new popup shows once for a returning visitor and never for a first 
   await page.reload();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
+
+test("what's new popup shows for a visitor with site settings but no seen record", async ({ page }) => {
+  await page.goto("/units");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("aigis-ui-store", JSON.stringify({ state: {}, version: 1 }));
+  });
+  await page.reload();
+  await expect(page.getByRole("dialog")).toContainText("What's new");
+});
