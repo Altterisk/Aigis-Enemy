@@ -349,7 +349,7 @@ export default function Buffs() {
         const ranked = list
           .sort((a, b) => rule === "highest_duration"
             ? (b.selection_priority ?? 0) - (a.selection_priority ?? 0)
-            : (lowerBetter(a) ? a.v - b.v : b.v - a.v))
+            : (lowerBetter(a) || lowerBetter(b) ? a.v - b.v : b.v - a.v))
           .filter((r) => {
             if (seen.has(r.u)) return false;
             seen.add(r.u);

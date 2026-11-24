@@ -103,6 +103,8 @@ test("cost & UP tab splits sortie and deployment cost reduction", async ({ page 
   await expect(page.locator(".buff-group", { hasText: "(sortie)" }).first()).toBeVisible();
   await expect(page.locator(".buff-group", { hasText: "(while deployed)" }).first()).toBeVisible();
   await expect(page.locator(".buff-group", { hasText: "Starting UP" }).locator(".buff-val").first()).toHaveText(/^\+\d+ UP$/);
+  const kerudra = page.locator(".buff-group tr", { hasText: "Kerudra (Black)" }).first();
+  await expect(kerudra.locator(".buff-val")).toHaveText("-90 cost");
 });
 
 test("can't be reflected tab lists Roza (Black)", async ({ page }) => {

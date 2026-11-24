@@ -26,6 +26,7 @@ export const GRP_NAME: Record<string, string> = {
   field_damageratio: "Damage field (max-HP %, CreateField)",
   hp_loss: "HP loss on skill activation (not an attack)",
   ratio_damage: "Current-HP % damage (while the skill is active)",
+  ability_106_to: "Cost reduction (conditional), cost set to %",
   field_rect_damage: "Field damage (rectangle, skill 277)",
   possession_hp: "Possession HP buff", possession_atk: "Possession ATK buff",
   possession_def: "Possession DEF buff", possession_mr: "Possession MR buff",
