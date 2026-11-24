@@ -22,9 +22,22 @@ export const GRP_NAME: Record<string, string> = {
   missile_timestop: "100% slow missile (time stop on hit)",
   field_hpcut: "Max-HP damage field",
   class_omni: "Omni placement (melee or ranged spot)",
+  field_damageattack: "Damage field (ATK-based, CreateField)",
+  field_damageratio: "Damage field (max-HP %, CreateField)",
+  hp_loss: "HP loss on skill activation (not an attack)",
+  ratio_damage: "Current-HP % damage (while the skill is active)",
+  field_rect_damage: "Field damage (rectangle, skill 277)",
   possession_hp: "Possession HP buff", possession_atk: "Possession ATK buff",
   possession_def: "Possession DEF buff", possession_mr: "Possession MR buff",
   possession_range: "Possession range buff",
+};
+
+// Extra explanation shown under a group's title, [EN, JA].
+export const GRP_NOTE: Record<string, [string, string]> = {
+  field_rect_damage: [
+    "The damage does not go through reflection, but is not reflected back at allies either: with no projectile to send back, the reflection is one direct hit on the unit itself.",
+    "反射でダメージは通らないが、味方に跳ね返ることもない。送り返す弾がないため、反射はユニット自身への単発の直接ダメージになる。",
+  ],
 };
 
 /** A group's title: its `grp` name, "<ability name> (stack N)", or the grp itself. */

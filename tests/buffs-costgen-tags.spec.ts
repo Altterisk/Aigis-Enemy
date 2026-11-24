@@ -107,7 +107,13 @@ test("cost & UP tab splits sortie and deployment cost reduction", async ({ page 
 
 test("can't be reflected tab lists Roza (Black)", async ({ page }) => {
   await page.goto("/buffs?stat=CANT_REFLECT");
-  await expect(page.locator(".buff-group").first()).toContainText("Roza (Black)");
+  await expect(page.locator(".buff-group", { hasText: "Roza (Black)" }).first()).toBeVisible();
+  const rect = page.locator(".buff-group", { hasText: "rectangle, skill 277" });
+  await expect(rect).toContainText("Sybilla (Hero)");
+  await expect(rect).toContainText("not reflected back");
+  await expect(page.locator(".buff-group", { hasText: "Ignore counterattacks" }).filter({ hasText: "Sandra" }).first()).toBeVisible();
+  await expect(page.locator(".buff-group", { hasText: "ATK-based, CreateField" })).toContainText("Grace");
+  await expect(page.locator(".buff-group", { hasText: "not an attack" })).toContainText("Kayou");
 });
 
 test("revive, drops and possession tabs list their effects", async ({ page }) => {

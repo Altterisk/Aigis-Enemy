@@ -8,7 +8,7 @@ import type { BuffRow, InfluenceSelectionRule, UnitInfluenceLabel } from "../typ
 import { influenceSelectionRule } from "../influenceLabels";
 import { evaluate, type EvalCtx } from "../condEval";
 import { useUnitFilters } from "../unitFilters";
-import { groupName } from "../buffGroups";
+import { GRP_NOTE, groupName } from "../buffGroups";
 import { gameName, getLang, useL } from "../i18n";
 
 // ally stat buffs, then enemy-facing stat effects (the picker's first two rows)
@@ -477,7 +477,8 @@ export default function Buffs() {
                 {g.grp ? g.nsK : `${g.nsK} ${g.t}`}
                 {lab && !lab.verified && <em className="unverified">{L(" unverified", " 未確認")}</em>}
               </>}
-              note={g.rule && RULE_TEXT[g.rule] && L(RULE_TEXT[g.rule]![0], RULE_TEXT[g.rule]![1])}
+              note={(g.rule && RULE_TEXT[g.rule] && L(RULE_TEXT[g.rule]![0], RULE_TEXT[g.rule]![1]))
+                || (g.grp && GRP_NOTE[g.grp] && L(GRP_NOTE[g.grp][0], GRP_NOTE[g.grp][1]))}
             >
               <table className="grid buff-table hub-table--stack">
                 <thead>
