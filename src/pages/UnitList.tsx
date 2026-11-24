@@ -6,7 +6,7 @@ import { CheckboxGroup, EmptyState, FilterChip, FilterPanel, ListToolbar, Pager,
 import { useUiStore } from "../store";
 import type { UnitIndexEntry, UnitInfluenceLabel, TagMentions } from "../types";
 import { altName, gameName, rarityName, useHubLabels, useL } from "../i18n";
-import { baseRarity, genderOpts, positionOpts, unitFilterOptions } from "../unitFilters";
+import { baseRarity, genderOpts, hasTrait, positionOpts, traitOpts, unitFilterOptions, useBondQuestIds } from "../unitFilters";
 
 const PAGE = 60;
 
@@ -132,6 +132,8 @@ export default function UnitList() {
   const attrF = csv("attr");
   const seasonF = csv("season");
   const yearF = csv("year");
+  const traitF = csv("trait");
+  const bondQuest = useBondQuestIds(traitF.includes("third_scene"));
 
   // sets one param; any filter/search change also resets pagination (an
   // old page number could be out of range otherwise). ?page= is 0-based.
@@ -223,6 +225,7 @@ export default function UnitList() {
       if (attrF.length && !(u.identity_tags || []).some((t) => attrF.includes(t))) return false;
       if (seasonF.length && !(u.genus && seasonF.includes(u.genus))) return false;
       if (yearF.length && !(u.release_year && yearF.includes(String(u.release_year)))) return false;
+      if (traitF.length && !traitF.every((t) => hasTrait(u, t, bondQuest))) return false;
       if (sInfN != null && !(u.s_inf || []).includes(sInfN)) return false;
       if (aInfN != null && !(u.a_inf || []).includes(aInfN)) return false;
       if (term) {
@@ -237,11 +240,11 @@ export default function UnitList() {
       (b.implementation_date || "").localeCompare(a.implementation_date || "") || b.id - a.id);
   }, [
     units, q, sInf, aInf, cls, showNpc, classFilter, tagFilter,
-    rarityF, positionF, genderF, factionF, raceF, attrF, seasonF, yearF,
+    rarityF, positionF, genderF, factionF, raceF, attrF, seasonF, yearF, traitF, bondQuest,
   ]);
 
   const activeCount = rarityF.length + positionF.length + genderF.length + factionF.length
-    + raceF.length + attrF.length + seasonF.length + yearF.length;
+    + raceF.length + attrF.length + seasonF.length + yearF.length + traitF.length;
   const activeParams = [...new Set(params.keys())].filter((k) => k !== "page" && params.get(k)).length;
   const resetAll = () => setParams(new URLSearchParams(), { replace: true });
 
@@ -301,12 +304,13 @@ export default function UnitList() {
         <CheckboxGroup title={L("Attribute", "属性")} options={attrOpts} selected={attrF} onToggle={(v) => toggleCsv("attr", attrF, v)} />
         <CheckboxGroup title={L("Season", "季節")} options={seasonOpts} selected={seasonF} onToggle={(v) => toggleCsv("season", seasonF, v)} />
         <CheckboxGroup title={L("Release Year", "実装年")} options={yearOpts} selected={yearF} onToggle={(v) => toggleCsv("year", yearF, v)} />
+        <CheckboxGroup title={L("Traits", "特徴")} options={traitOpts(L)} selected={traitF} onToggle={(v) => toggleCsv("trait", traitF, v)} />
         {activeCount > 0 && (
           <button
             className="filter-clear-btn"
             onClick={() => {
               const next = new URLSearchParams(params);
-              ["rarity", "position", "gender", "faction", "race", "attr", "season", "year", "page"]
+              ["rarity", "position", "gender", "faction", "race", "attr", "season", "year", "trait", "page"]
                 .forEach((k) => next.delete(k));
               setParams(next, { replace: true });
             }}

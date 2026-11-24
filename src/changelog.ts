@@ -27,11 +27,19 @@ export const KIND_LABEL: Record<ChangeKind, Text> = {
 export const RELEASES: Release[] = [
   {
     date: "2026-11-24",
-    title: { en: "Buff ranking utilities", ja: "バフ一覧にユーティリティ追加" },
+    title: { en: "Buff categories and unit traits", ja: "バフ分類とユニットの特徴" },
     entries: [
       { kind: "feature", text: {
-        en: "Buffs: Utility tab — units that make other units auto-use their skill, assassination chance and its modifiers, omni placement, placement outside the normal spots, and tokens that move their owner's range circle, position or target.",
-        ja: "バフ: ユーティリティタブを追加。他ユニットのスキルを自動発動させるユニット、暗殺率とその補正、近接・遠距離両用配置、通常の配置マス以外への配置、本体の射程円・位置・攻撃対象を動かすトークン。",
+        en: "Buffs: Auto Skill, Assassination, Placement Type and Token Movement tabs — units that make other units auto-use their skill, assassination chance and its modifiers, omni placement and placement outside the normal spots, and tokens that move their owner's range circle, position or target.",
+        ja: "バフ: スキル自動発動・暗殺・配置タイプ・トークンによる移動タブを追加。他ユニットのスキルを自動発動させるユニット、暗殺率とその補正、近接・遠距離両用配置と通常の配置マス以外への配置、本体の射程円・位置・攻撃対象を動かすトークン。",
+      } },
+      { kind: "feature", text: {
+        en: "Buffs: Cost & UP tab (cost reduction from the sortie lineup, while deployed and from skills; starting UP and UP generation), Can't Be Reflected, Revive & Redeploy, Drops & Gold, and Possession (1st barrack) stat buffs ranked by value. Stealth now also lists lower targeting priority; Weather lists units whose skill generates a weather.",
+        ja: "バフ: コスト・UPタブ (出撃メンバー・出撃中・スキルによるコスト減少、初期UPとUP生成)、反射・反撃無効、復活・再出撃、ドロップ・ゴールド、所持効果 (第一兵舎) のステータスバフを数値順に追加。隠密に狙われにくい効果、天候に天候を発生させるスキルを追加。",
+      } },
+      { kind: "feature", text: {
+        en: "Unit list: Traits filter — Hero, Support, Crossover, no second awakening, no 150% affection bonus, third scene (bond quest), trading post (rainbow, demonic, time, dark, merit and tower crystals).",
+        ja: "ユニット一覧: 特徴で絞り込み — 英傑、サポート、コラボ、第二覚醒なし、好感度150%ボーナスなし、第3シーン (交流クエスト)、交換所 (虹水晶・魔水晶・刻水晶・闇水晶・武勲結晶・塔の結晶)。",
       } },
       { kind: "feature", text: {
         en: "Buffs: Placement & Tokens tab — deployment-spot buffs (Sanara's Geo tokens, Enju, Maou's Throne), deployment-spot units (Ivril's ship), tokens usable without deploying, automatic token deployment, alternative units, and effects that heal or reset other units' tokens.",

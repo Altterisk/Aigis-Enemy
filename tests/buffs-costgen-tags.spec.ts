@@ -84,13 +84,39 @@ test("giving-unit filters limit rows to buffs from matching units", async ({ pag
   expect(black).toBeLessThan(all);
 });
 
-test("utility tab lists auto-skill givers, assassination and omni placement", async ({ page }) => {
-  await page.goto("/buffs?stat=UTILITY");
-  await expect(page.getByRole("group", { name: "Effects" }).locator(".stat-tab[aria-pressed=true]")).toContainText("Utility");
+test("auto skill, assassination and placement type tabs list their effects", async ({ page }) => {
+  const effects = page.getByRole("group", { name: "Effects" });
+  await page.goto("/buffs?stat=AUTOSKILL");
+  await expect(effects.locator(".stat-tab[aria-pressed=true]")).toContainText("Auto Skill");
   await expect(page.locator(".buff-group", { hasText: "Target automatically uses skill" })).toBeVisible();
-  await expect(page.locator(".buff-group", { hasText: "Omni placement" })).toContainText("Suzune");
+  await page.goto("/buffs?stat=ASSASSINATE");
   const multiplier = page.locator(".buff-group", { hasText: "Assassination modifier" });
   await expect(multiplier.locator(".buff-val").first()).toHaveText(/^x\d/);
+  await page.goto("/buffs?stat=PLACETYPE");
+  await expect(page.locator(".buff-group", { hasText: "Omni placement" })).toContainText("Suzune");
+  await page.goto("/buffs?stat=TOKENMOVE");
+  await expect(page.locator(".buff-group").first()).toBeVisible();
+});
+
+test("cost & UP tab splits sortie and deployment cost reduction", async ({ page }) => {
+  await page.goto("/buffs?stat=COST_UP");
+  await expect(page.locator(".buff-group", { hasText: "(sortie)" }).first()).toBeVisible();
+  await expect(page.locator(".buff-group", { hasText: "(while deployed)" }).first()).toBeVisible();
+  await expect(page.locator(".buff-group", { hasText: "Starting UP" }).locator(".buff-val").first()).toHaveText(/^\+\d+ UP$/);
+});
+
+test("can't be reflected tab lists Roza (Black)", async ({ page }) => {
+  await page.goto("/buffs?stat=CANT_REFLECT");
+  await expect(page.locator(".buff-group").first()).toContainText("Roza (Black)");
+});
+
+test("revive, drops and possession tabs list their effects", async ({ page }) => {
+  await page.goto("/buffs?stat=REVIVE");
+  await expect(page.locator(".buff-group", { hasText: "Redeploy after death" }).first()).toBeVisible();
+  await page.goto("/buffs?stat=DROP");
+  await expect(page.locator(".buff-group", { hasText: "Gold GET!" }).first()).toBeVisible();
+  await page.goto("/buffs?stat=POSSESSION");
+  await expect(page.locator(".buff-group", { hasText: "Possession ATK buff" }).locator(".buff-val").first()).toHaveText(/^\d+%$/);
 });
 
 test("placement tab lists deployment-spot buffs from tokens and deployment-spot units", async ({ page }) => {

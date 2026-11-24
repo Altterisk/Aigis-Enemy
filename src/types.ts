@@ -674,7 +674,7 @@ export interface BuffRow {
   mod?: string[];       // same-unit modifier ids folded into v
   // value kind: effect rows carry pct/flag/flat/sec; "share" marks a buff
   // whose value is a percent of the SOURCE unit's own stat (Dancer bonus)
-  vk?: "pct" | "flag" | "flat" | "sec" | "share" | "mul";
+  vk?: "pct" | "flag" | "flat" | "sec" | "share" | "mul" | "cost" | "to" | "up" | "ups" | "times";
   cond?: string;
   // raw expressions: x = which units the row applies to (evaluated per
   // target), ax = the owner-side activation gate, tr = the script narrowing
@@ -734,6 +734,8 @@ export interface UnitIndexEntry {
   npc?: boolean;
   prince?: boolean;
   support?: boolean;
+  crossover?: string;
+  trade?: { item: string | null; item_id: string; shop: string; price: number }[];
   acquisition?: "gacha_paid" | "event";
   art_tiers?: number[];
   rarity: string;

@@ -47,8 +47,16 @@ const EFFECTS = [
   { k: "LIMIT", label: "Deploy Limit", ja: "出撃数" },
   { k: "HPCUT", label: "HP Cut", ja: "HP割合ダメージ" },
   { k: "TIMESTOP", label: "Time Stop", ja: "時間停止" },
-  { k: "UTILITY", label: "Utility", ja: "ユーティリティ" },
+  { k: "AUTOSKILL", label: "Auto Skill", ja: "スキル自動発動" },
+  { k: "ASSASSINATE", label: "Assassination", ja: "暗殺" },
+  { k: "PLACETYPE", label: "Placement Type", ja: "配置タイプ" },
+  { k: "TOKENMOVE", label: "Token Movement", ja: "トークンによる移動" },
   { k: "PLACEMENT", label: "Placement & Tokens", ja: "配置・トークン" },
+  { k: "COST_UP", label: "Cost & UP", ja: "コスト・UP" },
+  { k: "CANT_REFLECT", label: "Can't Be Reflected", ja: "反射・反撃無効" },
+  { k: "REVIVE", label: "Revive & Redeploy", ja: "復活・再出撃" },
+  { k: "DROP", label: "Drops & Gold", ja: "ドロップ・ゴールド" },
+  { k: "POSSESSION", label: "Possession (1st barrack)", ja: "所持効果" },
 ] as const;
 type StatKey = (typeof STATS)[number]["k"] | (typeof DEBUFFS)[number]["k"] | (typeof EFFECTS)[number]["k"];
 const PICKER_ROWS: { label: string; ja: string; tabs: readonly { k: StatKey; label: string; ja: string }[] }[] = [
@@ -141,6 +149,9 @@ const isReduction = (r: BuffRow) =>
   r.stat !== "PAD_DEBUFF" &&
   (r.stat.endsWith("_DEBUFF") || r.stat === "PAD_REDUCTION" || r.stat === "CDR");
 
+// "set to N%" values (cost set to, Set PAD) rank lowest first
+const lowerBetter = (r: BuffRow) => isSetPad(r) || r.vk === "to";
+
 function fmtValue(r: BuffRow): string {
   // effect rows carry an explicit value kind
   if (r.vk === "flag") return "✓";
@@ -148,6 +159,11 @@ function fmtValue(r: BuffRow): string {
   if (r.vk === "flat") return `${r.v.toLocaleString()} flat`;
   if (r.vk === "pct") return `${r.v}%`;
   if (r.vk === "mul") return `x${(r.v / 100).toFixed(2).replace(/\.?0+$/, "")}`;
+  if (r.vk === "cost") return `-${r.v} cost`;
+  if (r.vk === "to") return `→ ${r.v}%`;
+  if (r.vk === "up") return `+${r.v} UP`;
+  if (r.vk === "ups") return `+${r.v} UP/s`;
+  if (r.vk === "times") return `${r.v}×`;
   // Dancer share: the value is a percent of the SOURCE unit's own stat,
   // added flat to everyone in range -- not a percent of the target's stat.
   if (r.vk === "share") return `${r.v}% of own ${r.stat}`;
@@ -325,7 +341,7 @@ export default function Buffs() {
           // one value per label: the best one (lowest for Set PAD)
           const cur = tiers.get(r.u) ?? [];
           const at = cur.findIndex((x) => x.label === label);
-          const better = isSetPad(r) ? (at >= 0 && r.v < cur[at].r.v) : (at >= 0 && r.v > cur[at].r.v);
+          const better = lowerBetter(r) ? (at >= 0 && r.v < cur[at].r.v) : (at >= 0 && r.v > cur[at].r.v);
           if (at < 0) cur.push({ label, r }); else if (better) cur[at] = { label, r };
           tiers.set(r.u, cur);
         });
@@ -333,7 +349,7 @@ export default function Buffs() {
         const ranked = list
           .sort((a, b) => rule === "highest_duration"
             ? (b.selection_priority ?? 0) - (a.selection_priority ?? 0)
-            : (isSetPad(a) ? a.v - b.v : b.v - a.v))
+            : (lowerBetter(a) ? a.v - b.v : b.v - a.v))
           .filter((r) => {
             if (seen.has(r.u)) return false;
             seen.add(r.u);

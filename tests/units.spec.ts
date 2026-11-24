@@ -106,3 +106,28 @@ test("avatar units (ability 353) form their own Anywhere position", async ({ pag
   await page.goto("/units/2939");
   await expect(page.locator("main")).not.toContainText("Anywhere (designated tile)");
 });
+
+test("trait filters: hero, support, crossover, third scene and trading post", async ({ page }) => {
+  await page.goto("/units?trait=hero&q=2940");
+  await expect(page.locator(".unit-grid .unit-tile")).toHaveCount(1);
+  await page.goto("/units?trait=support&q=2913");
+  await expect(page.locator(".unit-grid .unit-tile")).toHaveCount(1);
+  await page.goto("/units?trait=crossover&q=2913");
+  await expect(page.locator(".unit-grid .unit-tile")).toHaveCount(0);
+  await page.goto("/units?trait=crossover&q=2700");
+  await expect(page.locator(".unit-grid .unit-tile")).toHaveCount(1);
+  await page.goto("/units?trait=crossover,support&q=2913");
+  await expect(page.locator(".unit-grid .unit-tile")).toHaveCount(0);
+  await page.goto("/units?trait=third_scene&q=32");
+  await expect(page.locator(".unit-grid .unit-tile", { hasText: "Camilla" }).first()).toBeVisible();
+  await page.goto("/units?trait=third_scene&q=2940");
+  await expect(page.locator(".unit-grid .unit-tile")).toHaveCount(0);
+  await page.goto("/units?trait=trading_post&q=Nina");
+  await expect(page.locator(".unit-grid .unit-tile", { hasText: "Nina" }).first()).toBeVisible();
+  await page.goto("/units?trait=trading_post&q=Izelf");
+  await expect(page.locator(".unit-grid .unit-tile", { hasText: "Izelf" }).first()).toBeVisible();
+  await page.goto("/units?trait=trading_post&q=Saki");
+  await expect(page.locator(".unit-grid .unit-tile", { hasText: "Saki" }).first()).toBeVisible();
+  await page.goto("/units?trait=trading_post&q=2913");
+  await expect(page.locator(".unit-grid .unit-tile")).toHaveCount(0);
+});

@@ -1,10 +1,11 @@
 // The unit list's checkbox filters (rarity, position, gender, affiliation, race, attribute,
 // season, release year) as reusable pieces: option lists built from the data, and a hook
 // that keeps a selection in URL params under a prefix and tests units against it.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { SetURLSearchParams } from "react-router-dom";
 import { CheckboxGroup, FilterPanel } from "@altterisk/game-hub";
 import type { Localisation, UnitIndexEntry } from "./types";
+import { loadJSONFile } from "./data";
 import { rarityName, useHubLabels, useL, type Pick } from "./i18n";
 
 // "Platinum Hero" / "Black Hero" are a card-art variant of Platinum/Black,
@@ -24,6 +25,49 @@ export const genderOpts = (L: Pick) => [
   { value: "Female", label: L("Female", "女性") },
   { value: "Male", label: L("Male", "男性") },
 ];
+
+// Unit traits (each checked trait is required): Hero rarity variant, Support
+// (CardData Kind 100), crossover series, no second awakening, no 150%
+// affection bonus (card slot 3), a third (bond-quest) scene, sold in the
+// trading post (crystal shops or Dark / Merit Crystal exchange rows).
+export function useBondQuestIds(needed: boolean): Set<number> | null {
+  const [ids, setIds] = useState<Set<number> | null>(null);
+  useEffect(() => {
+    if (needed && !ids) {
+      loadJSONFile<number[]>("bond_quest_ids").then((l) => setIds(new Set(l))).catch(() => setIds(new Set()));
+    }
+  }, [needed, ids]);
+  return ids;
+}
+export const traitOpts = (L: Pick) => [
+  { value: "hero", label: L("Hero", "英傑") },
+  { value: "support", label: L("Support unit", "サポートユニット") },
+  { value: "crossover", label: L("Crossover", "コラボ") },
+  { value: "no_aw2", label: L("No second awakening", "第二覚醒なし") },
+  { value: "no_aff150", label: L("No 150% affection bonus", "好感度150%ボーナスなし") },
+  { value: "third_scene", label: L("Third scene (bond quest)", "第3シーン (交流クエスト)") },
+  { value: "trading_post", label: L("Trading post (crystals)", "交換所 (水晶・結晶)") },
+];
+// trading-post stock: listings priced in rainbow / demonic / time / dark /
+// merit crystal or a tower crystal. Medal rows (召喚メダル etc.) list gacha
+// units only while they are on banner.
+const TRADING_POST_ITEMS = new Set([
+  "虹水晶", "魔水晶", "刻水晶", "闇水晶", "武勲結晶", "英傑結晶", "統帥結晶", "悪霊結晶",
+]);
+// bondQuest: card ids with a bond-quest scene (data/bond_quest_ids.json),
+// loaded only while the third-scene trait is selected
+export function hasTrait(u: UnitIndexEntry, t: string, bondQuest?: Set<number> | null): boolean {
+  switch (t) {
+    case "hero": return / Hero$/.test(u.rarity || "");
+    case "support": return !!u.support;
+    case "crossover": return !!u.crossover;
+    case "no_aw2": return !u.aw2_branches;
+    case "no_aff150": return !(u.affection_bonuses || []).some((b) => b.slot === 3);
+    case "third_scene": return !!bondQuest?.has(u.id);
+    case "trading_post": return (u.trade || []).some((e) => e.item != null && TRADING_POST_ITEMS.has(e.item));
+    default: return true;
+  }
+}
 
 // Distinct values in use for every checkbox category, translated where a
 // localisation entry exists, in the game's own menu order (each value's
@@ -63,7 +107,7 @@ export function unitFilterOptions(units: UnitIndexEntry[] | null | undefined, lo
   };
 }
 
-const KEYS = ["rarity", "position", "gender", "faction", "race", "attr", "season", "year"] as const;
+const KEYS = ["rarity", "position", "gender", "faction", "race", "attr", "season", "year", "trait"] as const;
 type Key = (typeof KEYS)[number];
 
 // The unit list's filters applied to some other page's units, stored in the URL as
@@ -95,7 +139,8 @@ export function useUnitFilters(
     setParams(next, { replace: true });
   };
   const opts = useMemo(() => unitFilterOptions(units, loc), [units, loc]);
-  const key = KEYS.map((k) => sel[k].join(",")).join("|");
+  const bondQuest = useBondQuestIds(sel.trait.includes("third_scene"));
+  const key = KEYS.map((k) => sel[k].join(",")).join("|") + (bondQuest ? "|bq" : "");
   const activeCount = KEYS.reduce((n, k) => n + sel[k].length, 0);
 
   const matches = useMemo(() => (u: UnitIndexEntry | undefined): boolean => {
@@ -109,6 +154,7 @@ export function useUnitFilters(
     if (sel.attr.length && !(u.identity_tags || []).some((t) => sel.attr.includes(t))) return false;
     if (sel.season.length && !(u.genus && sel.season.includes(u.genus))) return false;
     if (sel.year.length && !(u.release_year && sel.year.includes(String(u.release_year)))) return false;
+    if (sel.trait.length && !sel.trait.every((t) => hasTrait(u, t, bondQuest))) return false;
     return true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
@@ -129,6 +175,7 @@ export function useUnitFilters(
       <CheckboxGroup title={L("Attribute", "属性")} options={opts.attrOpts} selected={sel.attr} onToggle={(v) => toggle("attr", v)} />
       <CheckboxGroup title={L("Season", "季節")} options={opts.seasonOpts} selected={sel.season} onToggle={(v) => toggle("season", v)} />
       <CheckboxGroup title={L("Release Year", "実装年")} options={opts.yearOpts} selected={sel.year} onToggle={(v) => toggle("year", v)} />
+      <CheckboxGroup title={L("Traits", "特徴")} options={traitOpts(L)} selected={sel.trait} onToggle={(v) => toggle("trait", v)} />
       {activeCount > 0 && (
         <button className="hub-btn hub-btn--sm hub-btn--ghost" onClick={clear}>{L("clear", "解除")}</button>
       )}

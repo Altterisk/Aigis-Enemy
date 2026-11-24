@@ -22,6 +22,9 @@ export const GRP_NAME: Record<string, string> = {
   missile_timestop: "100% slow missile (time stop on hit)",
   field_hpcut: "Max-HP damage field",
   class_omni: "Omni placement (melee or ranged spot)",
+  possession_hp: "Possession HP buff", possession_atk: "Possession ATK buff",
+  possession_def: "Possession DEF buff", possession_mr: "Possession MR buff",
+  possession_range: "Possession range buff",
 };
 
 /** A group's title: its `grp` name, "<ability name> (stack N)", or the grp itself. */
@@ -30,5 +33,7 @@ export function groupName(grp: string, influenceName: (t: number) => string | nu
   if (known) return known;
   const stack = /^ability_(\d+)_stack_(\d+)$/.exec(grp);
   if (stack) return `${influenceName(t) || `ability ${t}`} (stack ${stack[2]})`;
+  const invoke = /^ability_(\d+)_(sortie|deployed)$/.exec(grp);
+  if (invoke) return `${influenceName(t) || `ability ${t}`} (${invoke[2] === "sortie" ? "sortie" : "while deployed"})`;
   return grp;
 }
