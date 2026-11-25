@@ -235,3 +235,13 @@ test("stage cards show map, costs, rewards, modifiers and drops", async ({ page 
   await expect(card.locator(".drop-item[title='Diamond'] img")).toBeVisible();
   await expect(card.locator(".stage-drops a[href='/units/58']")).toBeVisible();
 });
+
+test("the drop slot no enemy carries is shown as the complete bonus", async ({ page }) => {
+  // quest 1101 田園の門: Treasure4 = Crave (#8), carried by no enemy
+  await page.goto("/stages?cat=all&q=1101");
+  const card = page.locator(".stage-card", { has: page.getByRole("link", { name: /田園の門/ }) }).first();
+  const bonus = card.locator(".stage-card-section", { hasText: "Complete bonus" });
+  await expect(bonus.locator("a[href='/units/8']")).toBeVisible();
+  await expect(bonus.locator(".drop-count")).toHaveCount(0);
+  await expect(card.locator(".stage-card-section", { hasText: "Drops" }).locator("a[href='/units/8']")).toHaveCount(0);
+});

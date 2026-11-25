@@ -50,13 +50,13 @@ function FirstRun({ start, end }: { start?: string; end?: string }) {
 
 // One drop: the unit's icon (linked) or the item's name, the amount one drop
 // gives, and how many enemies carry it.
-function DropChip({ drop }: { drop: StageDrop }) {
+function DropChip({ drop, bonus = false }: { drop: StageDrop; bonus?: boolean }) {
   const L = useL();
   const lang = useLang();
   const items = useDropItems();
   const unitNames = useUnitNameMap();
   const c = drop.c ?? 0;
-  const count = (
+  const count = bonus ? null : (
     <span className="drop-count" title={L("{n} possible drop(s)", "ドロップ数 {n}", { n: c })}>{c}</span>
   );
   if (drop.card != null) {
@@ -105,7 +105,11 @@ function StageCards({ stages }: { stages: StageIndexEntry[] }) {
       {stages
         .slice()
         .sort((a, b) => a.quest_id - b.quest_id)
-        .map((s) => (
+        .map((s) => {
+          // a drop slot no enemy carries is the complete bonus
+          const dropped = (s.drops || []).filter((d) => (d.c ?? 0) > 0);
+          const bonus = (s.drops || []).filter((d) => !(d.c ?? 0));
+          return (
           <article key={s.quest_id} className={`stage-card${s.active === false ? " archived" : ""}`}>
             <div className="stage-card-head">
               <Link className="stage-card-map" to={`/stages/${s.quest_id}?tab=map`} tabIndex={-1} aria-hidden="true">
@@ -148,20 +152,31 @@ function StageCards({ stages }: { stages: StageIndexEntry[] }) {
                   <Effects effects={s.modifiers} foldAt={3} />
                 </div>
               )}
-              {(s.drops?.length ?? 0) > 0 && (
+              {dropped.length > 0 && (
                 <div className="stage-card-section">
                   <div className="stage-card-heading">
                     {L("Drops", "ドロップ")}{" "}
                     <span className="muted small">{L("(number = possible drops)", "(数字 = ドロップ数)")}</span>
                   </div>
                   <div className="stage-drops">
-                    {s.drops!.map((d, i) => <DropChip key={i} drop={d} />)}
+                    {dropped.map((d, i) => <DropChip key={i} drop={d} />)}
+                  </div>
+                </div>
+              )}
+              {bonus.length > 0 && (
+                <div className="stage-card-section">
+                  <div className="stage-card-heading" title={L("given once every drop above has been obtained", "上のドロップをすべて獲得すると入手")}>
+                    {L("Complete bonus", "コンプリートボーナス")}
+                  </div>
+                  <div className="stage-drops">
+                    {bonus.map((d, i) => <DropChip key={i} drop={d} bonus />)}
                   </div>
                 </div>
               )}
             </div>
           </article>
-        ))}
+          );
+        })}
     </div>
   );
 }
