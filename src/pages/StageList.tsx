@@ -3,20 +3,28 @@ import { Link, useSearchParams } from "react-router-dom";
 import { EmptyState, FallbackImage, ListToolbar, SearchBox } from "@altterisk/game-hub";
 import { listState, searchParamsAdapter } from "@altterisk/game-hub/filters";
 import {
-  useStages, useCurrentMissions, useHistoryYears, useStageCategories, bannerUrl,
-  type StageCategoryTile,
+  useStages, useCurrentMissions, useHistoryYears, useStageCategories, useEventInfo, bannerUrl,
+  type EventInfoEntry, type StageCategoryTile,
 } from "../data";
 import { ColorCodedText } from "../components";
 import type { StageIndexEntry } from "../types";
-import { useHubLabels, useL } from "../i18n";
+import { altName, gameName, useHubLabels, useL, useLang } from "../i18n";
 
 interface EventGroup {
   event: string;
   category?: string | null;
   missionId?: number | null;
   until?: string;
+  // English name and first run (data/event_info.json)
+  en?: string;
+  start?: string;
+  end?: string;
   stages: StageIndexEntry[];
 }
+
+// The Great Imperial War is one continuing event: while any of its corps is
+// open, every earlier corps is open with it.
+const IMPERIAL_WAR = "Empire";
 
 // "2026/11/19 11:00:00" -> "11/19 11:00", "2026-11-19" -> "11/19"
 function untilText(until: string): string {
@@ -25,20 +33,39 @@ function untilText(until: string): string {
   return `${Number(m[1])}/${Number(m[2])}${m[3] ? ` ${m[3]}` : ""}`;
 }
 
-// One event block: banner + title, then its stages.
-function EventBlock({ event, category, missionId, until, stages }: EventGroup) {
+// "2025-04-03", "2025-04-10" -> "2025/4/3 – 4/10" (the end's year only when it differs)
+function runText(start: string, end?: string): string {
+  const p = (d: string) => d.split("-").map(Number);
+  const [sy, sm, sd] = p(start);
+  if (!end) return `${sy}/${sm}/${sd}`;
+  const [ey, em, ed] = p(end);
+  return `${sy}/${sm}/${sd} – ${ey !== sy ? `${ey}/` : ""}${em}/${ed}`;
+}
+
+function FirstRun({ start, end }: { start?: string; end?: string }) {
   const L = useL();
+  if (!start) return null;
+  return <span className="event-run">{L("first run {t}", "初開催 {t}", { t: runText(start, end) })}</span>;
+}
+
+// One event block: banner + title, then its stages.
+function EventBlock({ event, category, missionId, until, en, start, end, stages }: EventGroup) {
+  const L = useL();
+  const lang = useLang();
+  const alt = altName(en, event, lang);
   return (
     <section className="event-group">
       <div className="event-head">
         {missionId && <FallbackImage className="event-banner" srcs={[bannerUrl(missionId)]} missing={null} />}
         <div>
           <h3>
-            {category && <span className="cat-badge">{category}</span>} {event}
+            {category && <span className="cat-badge">{category}</span>} <ColorCodedText text={gameName(en, event, lang)} />
           </h3>
+          {alt && <div className="muted small event-alt"><ColorCodedText text={alt} /></div>}
           <div className="muted small">
             {L("{n} stage(s)", "{n} ステージ", { n: stages.length })}
             {until && <span className="event-until">{L(" · until {t}", " · {t}まで", { t: untilText(until) })}</span>}
+            {start && <> · <FirstRun start={start} end={end} /></>}
           </div>
         </div>
       </div>
@@ -70,22 +97,27 @@ function EventBlock({ event, category, missionId, until, stages }: EventGroup) {
 // opening the mission's stage list.
 function MissionCard({ ev, onOpen }: { ev: EventGroup; onOpen: (mid: number) => void }) {
   const L = useL();
+  const lang = useLang();
   if (!ev.missionId) return null;
   const mid = ev.missionId;
+  const name = gameName(ev.en, ev.event, lang);
+  const alt = altName(ev.en, ev.event, lang);
   return (
     <button type="button" className="mission-card" onClick={() => onOpen(mid)}>
       <FallbackImage
         className="mission-card-banner"
         srcs={[bannerUrl(mid)]}
-        alt={ev.event}
-        missing={<span className="mission-card-missing"><ColorCodedText text={ev.event} /></span>}
+        alt={name}
+        missing={<span className="mission-card-missing"><ColorCodedText text={name} /></span>}
       />
       <span className="mission-card-meta">
-        <span className="mission-card-name"><ColorCodedText text={ev.event} /></span>
+        <span className="mission-card-name"><ColorCodedText text={name} /></span>
+        {alt && <span className="muted small mission-card-alt"><ColorCodedText text={alt} /></span>}
         <span className="muted small">
           {ev.stages.length} stage(s)
           {ev.until && <span className="event-until">{L(" · until {t}", " · {t}まで", { t: untilText(ev.until) })}</span>}
         </span>
+        {ev.start && <span className="muted small"><FirstRun start={ev.start} end={ev.end} /></span>}
       </span>
     </button>
   );
@@ -127,7 +159,9 @@ function PortalTile({ tile, events, onPick }: {
 }
 
 // Group stages into events (one per mission).
-function groupEvents(stages: StageIndexEntry[], untilById: Map<number, string>): EventGroup[] {
+function groupEvents(
+  stages: StageIndexEntry[], untilById: Map<number, string>, info: Record<string, EventInfoEntry>,
+): EventGroup[] {
   const byEvent = new Map<string | number, EventGroup>();
   for (const s of stages) {
     const key = s.mission_id || s.event || "(ungrouped)";
@@ -138,6 +172,7 @@ function groupEvents(stages: StageIndexEntry[], untilById: Map<number, string>):
         category: s.event_category,
         missionId: s.mission_id,
         until: s.mission_id ? untilById.get(s.mission_id) : undefined,
+        ...(s.mission_id ? info[String(s.mission_id)] : undefined),
         stages: [],
       };
       byEvent.set(key, g);
@@ -156,6 +191,7 @@ export default function StageList() {
   const currentMissions = useCurrentMissions();
   const historyYears = useHistoryYears();
   const stageCats = useStageCategories();
+  const eventInfo = useEventInfo();
   // search, view and open mission live in the URL; no ?cat= / ?m= = the portal
   const [params, setParams] = useSearchParams();
   const list = listState(searchParamsAdapter(params, setParams));
@@ -171,8 +207,19 @@ export default function StageList() {
   const [currentSet, permanentSet, untilById] = useMemo(() => {
     const ids = (t: string) => new Set((currentMissions || []).filter((m) => m.timing === t).map((m) => m.mission_id));
     const until = new Map((currentMissions || []).filter((m) => m.until).map((m) => [m.mission_id, m.until!]));
-    return [ids("running"), ids("permanent"), until];
-  }, [currentMissions]);
+    const running = ids("running");
+    // an open Imperial War corps opens every corps
+    const war = (stages || []).filter((s) => s.event_category === IMPERIAL_WAR && s.mission_id).map((s) => s.mission_id!);
+    if (war.some((m) => running.has(m))) {
+      const warUntil = war.map((m) => until.get(m)).find(Boolean);
+      for (const m of war) {
+        running.add(m);
+        if (warUntil && !until.has(m)) until.set(m, warUntil);
+      }
+    }
+    return [running, ids("permanent"), until];
+  }, [currentMissions, stages]);
+  const info = useMemo(() => eventInfo || {}, [eventInfo]);
 
   // Exported tiles, plus a text tile for any category no tile covers.
   const tiles = useMemo<StageCategoryTile[]>(() => {
@@ -187,7 +234,7 @@ export default function StageList() {
   const tile = tiles.find((t) => t.key === cat);
   const listMode = !!term || LIST_VIEWS.includes(cat) || (!!cat && !tile);
 
-  const allEvents = useMemo(() => groupEvents(stages || [], untilById), [stages, untilById]);
+  const allEvents = useMemo(() => groupEvents(stages || [], untilById, info), [stages, untilById, info]);
 
   // the in-game list order: MissionConfig DisplayOrder, then mission id
   const byGameOrder = useMemo(() => {
@@ -220,13 +267,15 @@ export default function StageList() {
     const filtered = stages.filter((s) => {
       if (!inView(s)) return false;
       if (!term) return true;
+      const en = s.mission_id ? info[String(s.mission_id)]?.en : undefined;
       return (
         (s.name || "").toLowerCase().includes(term) ||
         (s.event ? s.event.toLowerCase().includes(term) : false) ||
+        (en ? en.toLowerCase().includes(term) : false) ||
         String(s.quest_id).includes(term)
       );
     });
-    const events = groupEvents(filtered, untilById);
+    const events = groupEvents(filtered, untilById, info);
 
     if (cat === "running") {
       // one section, emergency first, newest missions on top
@@ -249,7 +298,7 @@ export default function StageList() {
     }
     const order = tile ? tile.categories : [...byCat.keys()].sort();
     return order.filter((c) => byCat.has(c)).map((c) => [c, byCat.get(c)!] as [string, EventGroup[]]);
-  }, [stages, listMode, cat, term, tile, currentSet, permanentSet, untilById, L]);
+  }, [stages, listMode, cat, term, tile, currentSet, permanentSet, untilById, info, L]);
 
   // History events clustered into year groups (falls back to a flat list
   // when the year data is missing).
@@ -318,7 +367,7 @@ export default function StageList() {
     <ListToolbar
       search={(
         <>
-          <SearchBox value={q} onChange={(v) => list.setText("q", v)} placeholder={L("Search stage / event / quest id", "ステージ・イベント・クエストIDで検索")} clearLabel={hub.clearSearch} />
+          <SearchBox value={q} onChange={(v) => list.setText("q", v)} placeholder={L("Search stage / event name (EN or JP) / quest id", "ステージ・イベント名（日本語・英語）・クエストIDで検索")} clearLabel={hub.clearSearch} />
           <select className="hub-select" value={cat} onChange={(e) => go({ cat: e.target.value })}>
             <option value="">{L("mission portal", "ミッション一覧")}</option>
             <option value="running">{L("now running", "開催中")}</option>
@@ -373,6 +422,7 @@ export default function StageList() {
   if (tile) {
     const events = allEvents.filter((ev) => tile.categories.includes(ev.category || "")).sort(byGameOrder);
     const isHistory = tile.categories.length === 1 && tile.categories[0] === "History";
+    const isImperialWar = tile.categories.length === 1 && tile.categories[0] === IMPERIAL_WAR;
     const open = events.filter(isOpen);
     const closed = events.filter((ev) => !isOpen(ev));
     return (
@@ -420,7 +470,16 @@ export default function StageList() {
               </div>
             </>
           );
-        })() : (
+        })() : isImperialWar ? (
+          // every corps in one list: the war opens and closes as a whole
+          <div className="cat-section">
+            <h2 className="cat-title">
+              {L("Great Imperial War", "帝国大戦")}{" "}
+              <span className="muted small">{open.length ? L("open now", "開催中") : L("not open now", "開催していません")}</span>
+            </h2>
+            <MissionGrid events={events} onOpen={openMission} />
+          </div>
+        ) : (
           <>
             {open.length > 0 && (
               <div className="cat-section">

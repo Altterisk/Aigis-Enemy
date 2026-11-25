@@ -26,6 +26,20 @@ export const KIND_LABEL: Record<ChangeKind, Text> = {
 
 export const RELEASES: Release[] = [
   {
+    date: "2026-11-25",
+    title: { en: "Event names and dates", ja: "イベント名と開催日" },
+    entries: [
+      { kind: "feature", text: {
+        en: "Stages: every event shows its English name and the dates of its first run, and the search finds events by their English or Japanese name.",
+        ja: "ステージ: 各イベントに英語名と初開催の日付を表示。イベント名は日本語・英語どちらでも検索可能。",
+      } },
+      { kind: "feature", text: {
+        en: "Stages: the Great Imperial War lists all of its corps together, and all of them count as open while the war is on.",
+        ja: "ステージ: 帝国大戦の全陣を一覧にまとめ、開催中は過去の陣もすべて開催中として表示。",
+      } },
+    ],
+  },
+  {
     date: "2026-11-24",
     title: { en: "Buff categories and unit traits", ja: "バフ分類とユニットの特徴" },
     entries: [

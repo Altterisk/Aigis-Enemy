@@ -521,6 +521,22 @@ export function useHistoryYears(): HistoryYear[] | null {
   return years;
 }
 
+// Per mission id: the event's English name and its first run (JST dates,
+// "2025-04-03"); no dates for permanent content.
+export interface EventInfoEntry {
+  en: string;
+  start?: string;
+  end?: string;
+}
+
+export function useEventInfo(): Record<string, EventInfoEntry> | null {
+  const [info, set] = useState<Record<string, EventInfoEntry> | null>(null);
+  useEffect(() => {
+    loadJSON<Record<string, EventInfoEntry>>("event_info").then(set).catch(() => set({}));
+  }, []);
+  return info;
+}
+
 // Stage-list category tiles in the in-game mission portal's order; banner =
 // banners/category_<key>.png exists (the game's general banner for the menu).
 export interface StageCategoryTile {

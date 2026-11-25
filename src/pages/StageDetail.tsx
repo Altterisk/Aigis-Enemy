@@ -4,7 +4,7 @@ import { Breadcrumbs, FallbackImage, MetaChip, MetaChips, PageHeader, Panel, Seg
 import { searchParamsAdapter } from "@altterisk/game-hub/filters";
 import { LIST_META, NOT_FOUND_META, plainText, stageMeta } from "../meta";
 import { usePageMeta } from "../usePageMeta";
-import { useStageDetail, useInfluenceLabels, useRaceLabels, useSpecialtyConfig, useStoryTalk, talkFaceUrl, bannerUrl, useExprNames, useSpriteAlias, sameSprite } from "../data";
+import { useStageDetail, useInfluenceLabels, useRaceLabels, useSpecialtyConfig, useStoryTalk, talkFaceUrl, bannerUrl, useExprNames, useSpriteAlias, sameSprite, useEventInfo } from "../data";
 import { Sprite, DamageBadge, Effects, Tags, auraRadius, periodicRate, missileOnHitText, HumanText, routerLink, extDisplay, ColorCodedText } from "../components";
 import { humanize } from "../humanize";
 import { StageMap } from "../stageMap";
@@ -19,7 +19,7 @@ import type {
   DialogueSection,
   DialogueLine,
 } from "../types";
-import { useL } from "../i18n";
+import { altName, gameName, useL, useLang } from "../i18n";
 
 // safe number formatter: the exported data omits zero/empty fields (compacted),
 // so a missing numeric value means 0.
@@ -538,12 +538,17 @@ export default function StageDetail() {
     useStoryTalk(stage?.mission_id);
   const [bannerFailed, setBannerFailed] = useState(false);
   const L = useL();
+  const lang = useLang();
+  const eventInfo = useEventInfo();
   usePageMeta(loading ? LIST_META["/stages"] : stage ? stageMeta(stage) : NOT_FOUND_META);
   if (loading) return <p className="loading">{L("Loading…", "読み込み中…")}</p>;
   if (!stage) return <p>{L("Stage not found.", "ステージが見つかりません。")} <Link to="/stages">{L("Back", "戻る")}</Link></p>;
 
   const enemies = stage.enemies ?? [];
   const dialogue = stage.dialogue ?? [];
+  const eventEn = stage.mission_id != null ? eventInfo?.[String(stage.mission_id)]?.en : undefined;
+  const eventName = stage.event ? gameName(eventEn, stage.event, lang) : "";
+  const eventAlt = stage.event ? altName(eventEn, stage.event, lang) : "";
   const storySections = storyTalk?.sections ?? [];
   const dialogueCount = dialogue.length + storySections.length;
   const hasDialogue = dialogueCount > 0 || hasStoryTalk;
@@ -563,7 +568,7 @@ export default function StageDetail() {
         renderLink={routerLink}
         items={[
           { label: L("Stages", "ステージ"), href: "/stages" },
-          ...(stage.event ? [{ label: stage.event, href: "/stages" }] : []),
+          ...(stage.event ? [{ label: eventName, href: "/stages" }] : []),
           { label: <ColorCodedText text={stage.name} /> },
         ]}
       />
@@ -582,7 +587,8 @@ export default function StageDetail() {
         title={<ColorCodedText text={stage.name} />}
         subtitle={stage.event ? (
           <span className="event-line">
-            <span className="cat-badge">{stage.event_category}</span> {stage.event}
+            <span className="cat-badge">{stage.event_category}</span> {eventName}
+            {eventAlt && <span className="muted small"> {eventAlt}</span>}
           </span>
         ) : undefined}
         meta={(

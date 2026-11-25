@@ -75,11 +75,27 @@ test("dialogue renders the supplied game portrait refs", async ({ page }) => {
 test("stage list keeps search and category in the URL", async ({ page }) => {
   await page.goto("/stages?cat=all&q=1");
   await expect(page.locator(".hub-list-toolbar select")).toHaveValue("all");
-  await expect(page.getByPlaceholder("Search stage / event / quest id")).toHaveValue("1");
+  await expect(page.getByPlaceholder("Search stage / event name (EN or JP) / quest id")).toHaveValue("1");
   await page.locator(".stage-row li a").first().click();
   await expect(page).toHaveURL(/\/stages\/\d+/);
   await page.goBack();
   await expect(page.locator(".hub-list-toolbar select")).toHaveValue("all");
+});
+
+test("stage search finds an event by its English name and shows its first run", async ({ page }) => {
+  await page.goto("/stages?q=hydose");
+  const block = page.locator(".event-group");
+  await expect(block).toHaveCount(1);
+  await expect(block.locator("h3")).toContainText("Great God Hydose's Advent");
+  await expect(block.locator(".event-alt")).toContainText("大神降臨ハイドース");
+  await expect(block.locator(".event-run")).toContainText("first run 2025/4/3 – 4/10");
+});
+
+test("imperial war corps share one list", async ({ page }) => {
+  await page.goto("/stages?cat=empire");
+  await expect(page.locator(".cat-section")).toHaveCount(1);
+  await expect(page.locator(".cat-section .cat-title")).toContainText("Great Imperial War");
+  await expect(page.locator(".mission-card")).toHaveCount(12);
 });
 
 test("stage list fits a phone screen", async ({ page }) => {

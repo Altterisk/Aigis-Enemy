@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { FallbackImage } from "@altterisk/game-hub";
 import {
-  bannerUrl, summonBannerUrl, useCurrentMissions, useCurrentSummons, useLocalisation, useUnits,
+  bannerUrl, summonBannerUrl, useCurrentMissions, useCurrentSummons, useEventInfo, useLocalisation, useUnits,
 } from "../data";
 import { UnitImage } from "../components";
 import type { UnitIndexEntry } from "../types";
@@ -68,6 +68,7 @@ function UnitTile({ u, loc }: { u: UnitIndexEntry; loc: ReturnType<typeof useLoc
 
 export default function Home() {
   const missions = useCurrentMissions();
+  const eventInfo = useEventInfo();
   const summons = useCurrentSummons();
   const { units, byId } = useUnits();
   const loc = useLocalisation();
@@ -126,7 +127,7 @@ export default function Home() {
                 <FallbackImage className="home-event-banner" srcs={[bannerUrl(m.mission_id)]} missing={null} />
                 <div className="home-event-body">
                   <div><span className="cat-badge">{m.category}</span></div>
-                  <div className="home-event-name">{m.name}</div>
+                  <div className="home-event-name">{gameName(eventInfo?.[String(m.mission_id)]?.en, m.name)}</div>
                   {m.until && <div className="muted small">{L("until {t}", "{t}まで", { t: untilText(m.until) })}</div>}
                 </div>
               </Link>
