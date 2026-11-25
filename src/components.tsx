@@ -242,6 +242,18 @@ export function ColorCodedText({ text }: { text?: string | null }) {
   return <RichText text={text} rules={COLOR_CODES} />;
 }
 
+// A dialogue line: in English the machine translation with the Japanese kept
+// underneath; the Japanese alone when untranslated or in Japanese.
+export function MtlText({ jp, en }: { jp: string; en?: string }) {
+  if (!en || getLang() === "ja") return <ColorCodedText text={jp} />;
+  return (
+    <>
+      <span title="machine translated"><ColorCodedText text={en} /></span>
+      <span className="muted small speech-jp" lang="ja"><ColorCodedText text={jp} /></span>
+    </>
+  );
+}
+
 // %c[rrggbb] sets the colour of the text after it; ffffff is the default text colour
 const COLOR_CODES: MarkupRule[] = [{
   kind: "style",

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SceneControls, SceneFrame, SceneTextBox, sceneTextSetting, useSceneStepper, type SceneLine } from "@altterisk/game-hub";
-import { storyBgUrl, storyCharaUrl } from "./data";
-import { ColorCodedText } from "./components";
+import { storyBgUrl, storyCharaUrl, type DialogueTl } from "./data";
+import { ColorCodedText, MtlText } from "./components";
 import type { StoryChara, StoryPage, StoryScene } from "./types";
-import { useL, useLang } from "./i18n";
+import { gameName, useL, useLang } from "./i18n";
 
 const STAGE_W = 960;
 const STAGE_H = 640;
@@ -67,7 +67,7 @@ function preloadImages(page: StoryPage | undefined) {
   for (const u of urls) if (u) new Image().src = u;
 }
 
-export function StoryViewer({ scene, onClose }: { scene: StoryScene; onClose: () => void }) {
+export function StoryViewer({ scene, tl, onClose }: { scene: StoryScene; tl: DialogueTl; onClose: () => void }) {
   const pages = scene.pages;
   const [allLines, setAllLines] = textMode.use();
   const [log, setLog] = useState(false);
@@ -94,10 +94,13 @@ export function StoryViewer({ scene, onClose }: { scene: StoryScene; onClose: ()
     preloadImages(pages[at + 1]);
   }, [at, done]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const lang = useLang();
+  // the text box holds one language: English when the line is translated
   const textLines = useMemo<SceneLine[]>(() => pages.map((p) => {
     const l = scene.lines[p.l];
-    return { name: l.n || undefined, text: <ColorCodedText text={l.t} /> };
-  }), [pages, scene.lines]);
+    const en = lang === "en" ? tl.text[l.t] : undefined;
+    return { name: l.n ? gameName(tl.speakers[l.n], l.n, lang) : undefined, text: <ColorCodedText text={en || l.t} /> };
+  }), [pages, scene.lines, tl, lang]);
 
   useEffect(() => {
     frameRef.current?.focus();
@@ -108,7 +111,6 @@ export function StoryViewer({ scene, onClose }: { scene: StoryScene; onClose: ()
 
   const speaking = useMemo(() => new Set(line?.w ? [line.w] : []), [line]);
   const L = useL();
-  const lang = useLang();
   const history = useMemo(
     () => pages.slice(0, Math.min(at + 1, pages.length)).map((p) => scene.lines[p.l]),
     [pages, at, scene.lines],
@@ -139,11 +141,11 @@ export function StoryViewer({ scene, onClose }: { scene: StoryScene; onClose: ()
           </div>
         )}
         {log && (
-          <div className="sv-log" onClick={(e) => e.stopPropagation()} lang="ja">
+          <div className="sv-log" onClick={(e) => e.stopPropagation()}>
             {history.map((l, i) => (
               <div className="sv-log-line" key={i}>
-                {l.n && <div className="sv-log-name">{l.n}</div>}
-                <div className="sv-log-text"><ColorCodedText text={l.t} /></div>
+                {l.n && <div className="sv-log-name">{gameName(tl.speakers[l.n], l.n, lang)}</div>}
+                <div className="sv-log-text"><MtlText jp={l.t} en={tl.text[l.t]} /></div>
               </div>
             ))}
           </div>

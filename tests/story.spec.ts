@@ -32,17 +32,18 @@ test("the scene viewer shows lines, advances, logs and closes", async ({ page })
   await page.locator(".story-quest", { hasText: "スライム化する海" }).getByRole("button", { name: "▶ Play" }).click();
   await expect(page).toHaveURL(/play=ev008970/);
   const viewer = page.getByRole("dialog");
-  await expect(viewer.locator(".hub-scene-say.is-on .hub-scene-name")).toHaveText("ヴィディア");
+  // English mode names speakers from the speaker record (ヴィディア, 太上老君)
+  await expect(viewer.locator(".hub-scene-say.is-on .hub-scene-name")).toHaveText("Vidya");
   await expect(viewer.locator(".hub-scene-controls__count")).toHaveText("1 / 16");
   await page.keyboard.press("ArrowRight");
   await expect(viewer.locator(".hub-scene-controls__count")).toHaveText("2 / 16");
-  await expect(viewer.locator(".hub-scene-say.is-on .hub-scene-name")).toHaveText("太上老君");
+  await expect(viewer.locator(".hub-scene-say.is-on .hub-scene-name")).toHaveText("Daode Tianzun");
   // every line is in the page up front for page translators; only one shows
   await expect(viewer.locator(".hub-scene-say")).toHaveCount(16);
   await expect(viewer.locator(".hub-scene-say.is-on")).toHaveCount(1);
   await viewer.getByRole("button", { name: "Text: all lines" }).click();
   await expect(viewer.locator(".hub-scene-say")).toHaveCount(1);
-  await expect(viewer.locator(".hub-scene-say.is-on .hub-scene-name")).toHaveText("太上老君");
+  await expect(viewer.locator(".hub-scene-say.is-on .hub-scene-name")).toHaveText("Daode Tianzun");
   await viewer.getByRole("button", { name: "Text: per line" }).click();
   await viewer.getByRole("button", { name: "Log" }).click();
   await expect(viewer.locator(".sv-log-line")).toHaveCount(2);
@@ -55,4 +56,15 @@ test("episodes are titled from the game's own text", async ({ page }) => {
   await page.goto("/story/ep1");
   await expect(page.locator("h2")).toContainText("第二回人気闘兵決定戦");
   await expect(page.locator(".story-scene-name").first()).toContainText("シルバー部門");
+});
+
+test("translated event dialogue shows English over the Japanese, Japanese mode keeps Japanese", async ({ page }) => {
+  // m920001 魔女を救え！ has a machine translation in data/tl; stage 3 is one of its stages
+  await page.goto("/stages/3?tab=dialogue");
+  const line = page.locator(".dlg-line", { hasText: "この数の魔物を倒すなんて" }).first();
+  await expect(line.locator(".dlg-name")).toHaveText("Cloris");
+  await expect(line.locator(".dlg-text [title='machine translated']")).toContainText("monsters");
+  await expect(line.locator(".dlg-text .speech-jp")).toContainText("この数の魔物を倒すなんて");
+  await page.getByRole("button", { name: "日本語" }).click();
+  await expect(line.locator(".dlg-text [title='machine translated']")).toHaveCount(0);
 });

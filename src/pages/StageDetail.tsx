@@ -4,8 +4,8 @@ import { Breadcrumbs, FallbackImage, MetaChip, MetaChips, PageHeader, Panel, Seg
 import { searchParamsAdapter } from "@altterisk/game-hub/filters";
 import { LIST_META, NOT_FOUND_META, plainText, stageMeta } from "../meta";
 import { usePageMeta } from "../usePageMeta";
-import { useStageDetail, useInfluenceLabels, useRaceLabels, useSpecialtyConfig, useStoryTalk, talkFaceUrl, bannerUrl, useExprNames, useSpriteAlias, sameSprite, useEventInfo } from "../data";
-import { Sprite, DamageBadge, Effects, Tags, auraRadius, periodicRate, missileOnHitText, HumanText, routerLink, extDisplay, ColorCodedText } from "../components";
+import { useStageDetail, useInfluenceLabels, useRaceLabels, useSpecialtyConfig, useStoryTalk, talkFaceUrl, bannerUrl, useExprNames, useSpriteAlias, sameSprite, useEventInfo, useDialogueTl, type DialogueTl } from "../data";
+import { Sprite, DamageBadge, Effects, Tags, auraRadius, periodicRate, missileOnHitText, HumanText, routerLink, extDisplay, ColorCodedText, MtlText } from "../components";
 import { humanize } from "../humanize";
 import { StageMap } from "../stageMap";
 import type {
@@ -494,13 +494,15 @@ const faceUnitId = (face?: string | null): number | null => {
   return m ? Number(m[1]) : null;
 };
 
-function DialogueSectionBlock({ s }: { s: DialogueSection }) {
+function DialogueSectionBlock({ s, tl }: { s: DialogueSection; tl: DialogueTl }) {
   const L = useL();
+  const lang = useLang();
+  const name = (n: string) => gameName(tl.speakers[n], n, lang);
   return (
     <div className="dlg-section">
       <div className="dlg-trigger">{dialogueTriggerText(s)}</div>
       {(s.lines ?? []).map((l, i) => {
-        if (isCaption(l)) return <div className="dlg-caption" key={i}>{l.text}</div>;
+        if (isCaption(l)) return <div className="dlg-caption" key={i}><MtlText jp={l.text ?? ""} en={tl.text[l.text ?? ""]} /></div>;
         const uid = faceUnitId(l.face);
         return (
           <div className="dlg-line" key={i}>
@@ -514,10 +516,10 @@ function DialogueSectionBlock({ s }: { s: DialogueSection }) {
             <div className="dlg-body">
               {l.name && (
                 <div className="dlg-name">
-                  {uid != null ? <Link to={`/units/${uid}`}>{l.name}</Link> : l.name}
+                  {uid != null ? <Link to={`/units/${uid}`}>{name(l.name)}</Link> : name(l.name)}
                 </div>
               )}
-              <div className="dlg-text">{l.text}</div>
+              <div className="dlg-text"><MtlText jp={l.text ?? ""} en={tl.text[l.text ?? ""]} /></div>
             </div>
           </div>
         );
@@ -540,6 +542,7 @@ export default function StageDetail() {
   const L = useL();
   const lang = useLang();
   const eventInfo = useEventInfo();
+  const tl = useDialogueTl(stage?.mission_id != null ? `m${stage.mission_id}` : null);
   usePageMeta(loading ? LIST_META["/stages"] : stage ? stageMeta(stage) : NOT_FOUND_META);
   if (loading) return <p className="loading">{L("Loading…", "読み込み中…")}</p>;
   if (!stage) return <p>{L("Stage not found.", "ステージが見つかりません。")} <Link to="/stages">{L("Back", "戻る")}</Link></p>;
@@ -693,7 +696,7 @@ export default function StageDetail() {
               <div className="muted small">
                 {L("Scenes triggered inside this stage, in trigger order. Conditional scenes (e.g. a specific enemy dying) are listed too.", "このステージ内で発生する会話 (発生順)。条件付きの会話 (特定の敵の撃破など) も含みます。")}
               </div>
-              {dialogue.map((s, i) => <DialogueSectionBlock key={i} s={s} />)}
+              {dialogue.map((s, i) => <DialogueSectionBlock key={i} s={s} tl={tl} />)}
             </>
           )}
           {storySections.length > 0 && (
@@ -702,7 +705,7 @@ export default function StageDetail() {
               <div className="muted small">
                 {L("Story scenes of this event shown outside battle (on entering or after clearing its stages). The exact stage each scene belongs to is not recorded in the map data, so all of the event's scenes are listed in order.", "戦闘外で表示されるイベントのストーリー (ステージ開始時・クリア後)。各シーンがどのステージのものかはマップデータにないため、イベントの全シーンを順に表示します。")}
               </div>
-              {storySections.map((s, i) => <DialogueSectionBlock key={i} s={s} />)}
+              {storySections.map((s, i) => <DialogueSectionBlock key={i} s={s} tl={tl} />)}
             </>
           )}
           {dialogue.length === 0 && storySections.length === 0 && (

@@ -3,11 +3,11 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Breadcrumbs, FallbackImage, MetaChip, MetaChips, PageHeader, StoryLines, type StoryLineView } from "@altterisk/game-hub";
 import { LIST_META, NOT_FOUND_META, plainText } from "../meta";
 import { usePageMeta } from "../usePageMeta";
-import { bannerUrl, storyCharaUrl, talkFaceUrl, useStoryGroup } from "../data";
-import { ColorCodedText, routerLink } from "../components";
+import { bannerUrl, storyCharaUrl, talkFaceUrl, useDialogueTl, useStoryGroup, type DialogueTl } from "../data";
+import { ColorCodedText, MtlText, routerLink } from "../components";
 import { StoryViewer } from "../storyViewer";
 import type { StoryGroup, StoryLine, StoryScene } from "../types";
-import { useL } from "../i18n";
+import { gameName, useL, useLang } from "../i18n";
 
 // The speaker's portrait: a unit's icon, or the top of an event character's art.
 function Avatar({ w, name }: { w?: string; name: string }) {
@@ -20,21 +20,23 @@ function Avatar({ w, name }: { w?: string; name: string }) {
   return <div className="dlg-face dlg-face--none">{name.slice(0, 1) || "…"}</div>;
 }
 
-function toView(l: StoryLine): StoryLineView {
-  if (!l.n) return { kind: "narration", text: <ColorCodedText text={l.t} /> };
+function toView(l: StoryLine, tl: DialogueTl, lang: "en" | "ja"): StoryLineView {
+  const text = <MtlText jp={l.t} en={tl.text[l.t]} />;
+  if (!l.n) return { kind: "narration", text };
   const uid = l.w?.startsWith("u") ? Number(l.w.slice(1)) : null;
   return {
     kind: "say",
-    name: l.n,
+    name: gameName(tl.speakers[l.n], l.n, lang),
     nameHref: uid != null ? `/units/${uid}` : undefined,
-    text: <ColorCodedText text={l.t} />,
+    text,
     avatar: <Avatar w={l.w} name={l.n} />,
   };
 }
 
-function SceneRow({ scene, onPlay }: { scene: StoryScene; onPlay: (key: string) => void }) {
+function SceneRow({ scene, onPlay, tl }: { scene: StoryScene; onPlay: (key: string) => void; tl: DialogueTl }) {
   const [open, setOpen] = useState(false);
   const L = useL();
+  const lang = useLang();
   return (
     <div className="story-scene">
       <div className="story-scene-head">
@@ -49,7 +51,7 @@ function SceneRow({ scene, onPlay }: { scene: StoryScene; onPlay: (key: string) 
           {open ? L("Hide text", "テキストを隠す") : L("Read", "読む")}
         </button>
       </div>
-      {open && <StoryLines className="story-read" lines={scene.lines.map(toView)} renderLink={routerLink} />}
+      {open && <StoryLines className="story-read" lines={scene.lines.map((l) => toView(l, tl, lang))} renderLink={routerLink} />}
     </div>
   );
 }
@@ -61,6 +63,7 @@ function allScenes(g: StoryGroup): StoryScene[] {
 export default function StoryDetail() {
   const { groupId } = useParams();
   const { loading, group } = useStoryGroup(groupId);
+  const tl = useDialogueTl(groupId);
   const [params, setParams] = useSearchParams();
   const [bannerFailed, setBannerFailed] = useState(false);
   const playing = params.get("play");
@@ -116,7 +119,7 @@ export default function StoryDetail() {
           {group.intro.map((s) => (
             <div key={s.key}>
               {s.title !== s.key && <div className="story-scene-name"><ColorCodedText text={s.title} /></div>}
-              <SceneRow scene={s} onPlay={play} />
+              <SceneRow scene={s} onPlay={play} tl={tl} />
             </div>
           ))}
         </section>
@@ -127,7 +130,7 @@ export default function StoryDetail() {
           <h3>
             {q.stage ? <Link to={`/stages/${q.quest_id}`}><ColorCodedText text={q.name} /></Link> : <ColorCodedText text={q.name} />}
           </h3>
-          {q.scenes.map((s) => <SceneRow key={s.key} scene={s} onPlay={play} />)}
+          {q.scenes.map((s) => <SceneRow key={s.key} scene={s} onPlay={play} tl={tl} />)}
           {q.battle > 0 && (
             <div className="story-battle">
               <span>{L("Battle dialogue", "戦闘会話")} <span className="muted small">{L("· {n} scene(s)", "· {n} シーン", { n: q.battle })}</span></span>
@@ -137,7 +140,7 @@ export default function StoryDetail() {
         </section>
       ))}
 
-      {scene && <StoryViewer key={scene.key} scene={scene} onClose={() => play(null)} />}
+      {scene && <StoryViewer key={scene.key} scene={scene} tl={tl} onClose={() => play(null)} />}
     </div>
   );
 }

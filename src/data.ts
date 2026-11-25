@@ -420,6 +420,35 @@ export function useStoryGroup(id: string | undefined) {
   return state;
 }
 
+// Machine translation of one story group's dialogue (tl/s<shard>.json, sharded
+// like the story files and keyed by the Japanese line) and the speakers'
+// English names (tl/speakers.json). Empty until loaded or when a group has none.
+export interface DialogueTl {
+  text: Record<string, string>;
+  speakers: Record<string, string>;
+}
+const EMPTY_TL: DialogueTl = { text: {}, speakers: {} };
+
+export function useDialogueTl(groupId: string | null | undefined): DialogueTl {
+  const [tl, set] = useState<DialogueTl>(EMPTY_TL);
+  useEffect(() => {
+    let alive = true;
+    set(EMPTY_TL);
+    if (!groupId) return;
+    const text = loadJSON<StoryIndex>("story/index")
+      .then((index) => {
+        const entry = index.groups.find((g) => g.id === groupId);
+        if (!entry) return {};
+        return loadJSON<Record<string, Record<string, string>>>(`tl/s${entry.shard}`).then((s) => s[groupId] ?? {});
+      })
+      .catch(() => ({}));
+    const speakers = loadJSON<Record<string, string>>("tl/speakers").catch(() => ({}));
+    Promise.all([text, speakers]).then(([t, s]) => { if (alive) set({ text: t, speakers: s }); });
+    return () => { alive = false; };
+  }, [groupId]);
+  return tl;
+}
+
 export function spriteUrl(patternId: number): string {
   return assetUrl(`sprites/${patternId}.png`);
 }
