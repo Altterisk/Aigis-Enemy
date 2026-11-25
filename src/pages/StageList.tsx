@@ -1,13 +1,13 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { EmptyState, FallbackImage, ListToolbar, SearchBox } from "@altterisk/game-hub";
 import { listState, searchParamsAdapter } from "@altterisk/game-hub/filters";
 import {
-  useStages, useCurrentMissions, useHistoryYears, useStageCategories, useEventInfo, bannerUrl,
+  useStages, useCurrentMissions, useDropItems, useUnitNameMap, mapImageUrl, useHistoryYears, useStageCategories, useEventInfo, bannerUrl,
   type EventInfoEntry, type StageCategoryTile,
 } from "../data";
-import { ColorCodedText } from "../components";
-import type { StageIndexEntry } from "../types";
+import { ColorCodedText, Effects, UnitImage } from "../components";
+import type { StageDrop, StageIndexEntry } from "../types";
 import { altName, gameName, useHubLabels, useL, useLang } from "../i18n";
 
 interface EventGroup {
@@ -48,6 +48,124 @@ function FirstRun({ start, end }: { start?: string; end?: string }) {
   return <span className="event-run">{L("first run {t}", "初開催 {t}", { t: runText(start, end) })}</span>;
 }
 
+// One drop: the unit's icon (linked) or the item's name, the amount one drop
+// gives, and how many enemies carry it.
+function DropChip({ drop }: { drop: StageDrop }) {
+  const L = useL();
+  const lang = useLang();
+  const items = useDropItems();
+  const unitNames = useUnitNameMap();
+  const c = drop.c ?? 0;
+  const count = (
+    <span className="drop-count" title={L("{n} possible drop(s)", "ドロップ数 {n}", { n: c })}>{c}</span>
+  );
+  if (drop.card != null) {
+    const name = unitNames?.get(drop.card) ?? `#${drop.card}`;
+    return (
+      <Link className="drop-chip" to={`/units/${drop.card}`} title={name}>
+        <UnitImage kind="icon" id={drop.card} className="drop-icon" alt={name} />
+        {count}
+      </Link>
+    );
+  }
+  const item = drop.item != null ? items?.[String(drop.item)] : undefined;
+  const name = gameName(item?.en, item?.name, lang) || `#${drop.item}`;
+  // the game's icon prints the amount itself
+  return (
+    <span className="drop-chip drop-item" title={(item?.n ?? 1) > 1 ? `${name} ×${item!.n}` : name}>
+      {item?.icon ? (
+        <img className="drop-icon" src={`${import.meta.env.BASE_URL}item-icons/${item.icon}.png`} alt={name} />
+      ) : (
+        <>
+          <span className="drop-name">{name}</span>
+          {(item?.n ?? 1) > 1 && <span className="muted"> ×{item!.n}</span>}
+        </>
+      )}
+      {count}
+    </span>
+  );
+}
+
+// One stat on a stage card: label above, value below.
+function StageStat({ label, value, title }: { label: string; value: ReactNode; title?: string }) {
+  return (
+    <div className="stage-stat" title={title}>
+      <span className="stage-stat-label">{label}</span>
+      <span className="stage-stat-value">{value}</span>
+    </div>
+  );
+}
+
+// The event's stages as cards: map, name, costs and rewards, stage modifiers, drops.
+function StageCards({ stages }: { stages: StageIndexEntry[] }) {
+  const L = useL();
+  const num = (n?: number) => (n ?? 0).toLocaleString();
+  return (
+    <div className="stage-cards">
+      {stages
+        .slice()
+        .sort((a, b) => a.quest_id - b.quest_id)
+        .map((s) => (
+          <article key={s.quest_id} className={`stage-card${s.active === false ? " archived" : ""}`}>
+            <div className="stage-card-head">
+              <Link className="stage-card-map" to={`/stages/${s.quest_id}?tab=map`} tabIndex={-1} aria-hidden="true">
+                {s.map && (
+                  <img
+                    src={mapImageUrl(s.map)}
+                    alt=""
+                    loading="lazy"
+                    onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
+                  />
+                )}
+              </Link>
+              <div className="stage-card-title">
+                <div className="stage-card-name">
+                  <Link to={`/stages/${s.quest_id}`}>
+                    <ColorCodedText text={s.name} />
+                  </Link>
+                  <span className="muted small"> ×{s.multiplier ?? 1}</span>
+                  {s.active === false && <span className="past-tag">{L("past", "終了")}</span>}
+                </div>
+                {s.description && <p className="stage-card-desc">{s.description}</p>}
+              </div>
+            </div>
+            <div className="stage-card-body">
+              <div className="stage-stats">
+                <StageStat label={L("Stamina", "スタミナ")} value={num(s.stamina)} />
+                <StageStat label={L("EXP", "経験値")} value={num(s.exp)} />
+                <StageStat label={L("Gold", "ゴールド")} value={num(s.gold)} />
+                <StageStat label={L("Start cost", "初期コスト")} value={num(s.start_cost)} />
+                <StageStat label={L("Max deploy", "出撃上限")} value={num(s.capacity)} />
+                <StageStat
+                  label={L("Enemies", "敵数")}
+                  value={<>{s.enemy_count ?? 0}{(s.marker_count ?? 0) > 0 && <span className="muted small"> +{s.marker_count}</span>}</>}
+                  title={(s.marker_count ?? 0) > 0 ? L("+ fixtures / clones the game does not count as enemies", "+ ゲームが敵として数えないオブジェクト・分身") : undefined}
+                />
+              </div>
+              {(s.modifiers?.length ?? 0) > 0 && (
+                <div className="stage-card-section stage-card-mods">
+                  <div className="stage-card-heading">{L("Stage modifiers", "ステージ効果")}</div>
+                  <Effects effects={s.modifiers} foldAt={3} />
+                </div>
+              )}
+              {(s.drops?.length ?? 0) > 0 && (
+                <div className="stage-card-section">
+                  <div className="stage-card-heading">
+                    {L("Drops", "ドロップ")}{" "}
+                    <span className="muted small">{L("(number = possible drops)", "(数字 = ドロップ数)")}</span>
+                  </div>
+                  <div className="stage-drops">
+                    {s.drops!.map((d, i) => <DropChip key={i} drop={d} />)}
+                  </div>
+                </div>
+              )}
+            </div>
+          </article>
+        ))}
+    </div>
+  );
+}
+
 // One event block: banner + title, then its stages.
 function EventBlock({ event, category, missionId, until, en, start, end, stages }: EventGroup) {
   const L = useL();
@@ -69,26 +187,7 @@ function EventBlock({ event, category, missionId, until, en, start, end, stages 
           </div>
         </div>
       </div>
-      <ul className="stage-row">
-        {stages
-          .slice()
-          .sort((a, b) => a.quest_id - b.quest_id)
-          .map((s) => (
-            <li key={s.quest_id} className={s.active === false ? "archived" : ""}>
-              <Link to={`/stages/${s.quest_id}`}>
-                <ColorCodedText text={s.name} />
-                <span className="muted small"> ×{s.multiplier ?? 1}</span>
-                <span className="muted small">{L(" · {n} enemies", " · 敵 {n} 体", { n: s.enemy_count ?? 0 })}</span>
-                {(s.marker_count ?? 0) > 0 && (
-                  <span className="muted small" title={L("fixtures / clones the game does not count as enemies", "ゲームが敵として数えないオブジェクト・分身")}>
-                    {L(" + {n} markers", " + オブジェクト {n}", { n: s.marker_count ?? 0 })}
-                  </span>
-                )}
-                {s.active === false && <span className="past-tag">{L("past", "終了")}</span>}
-              </Link>
-            </li>
-          ))}
-      </ul>
+      <StageCards stages={stages} />
     </section>
   );
 }

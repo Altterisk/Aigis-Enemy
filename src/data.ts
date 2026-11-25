@@ -1,6 +1,7 @@
 // Lightweight data layer: fetch the exported JSON once (shared loader), and index it.
 import { useEffect, useState } from "react";
 import type {
+  DropItem,
   AffectionBonus,
   GlobalEnemy,
   Stage,
@@ -535,6 +536,14 @@ export function useEventInfo(): Record<string, EventInfoEntry> | null {
     loadJSON<Record<string, EventInfoEntry>>("event_info").then(set).catch(() => set({}));
   }, []);
   return info;
+}
+
+export function useDropItems(): Record<string, DropItem> | null {
+  const [items, set] = useState<Record<string, DropItem> | null>(null);
+  useEffect(() => {
+    loadJSON<Record<string, DropItem>>("drop_items").then(set).catch(() => set({}));
+  }, []);
+  return items;
 }
 
 // Stage-list category tiles in the in-game mission portal's order; banner =

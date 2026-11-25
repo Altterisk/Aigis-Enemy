@@ -30,6 +30,10 @@ export const RELEASES: Release[] = [
     title: { en: "Event names and dates", ja: "イベント名と開催日" },
     entries: [
       { kind: "feature", text: {
+        en: "Stages: each event lists its stages as cards with the map, stamina, EXP, gold, start cost, max deploy, enemy count, stage modifiers and drops (amount per drop and how many enemies carry it).",
+        ja: "ステージ: 各イベントのステージをカードで表示。マップ・スタミナ・経験値・ゴールド・初期コスト・出撃上限・敵数・ステージ効果・ドロップ（1回の数とドロップする敵の数）。",
+      } },
+      { kind: "feature", text: {
         en: "Stages: every event shows its English name and the dates of its first run, and the search finds events by their English or Japanese name.",
         ja: "ステージ: 各イベントに英語名と初開催の日付を表示。イベント名は日本語・英語どちらでも検索可能。",
       } },

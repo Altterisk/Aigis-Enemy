@@ -6,7 +6,7 @@ test("stage index lists events with stage links", async ({ page }) => {
   await expect(page.locator(".portal-grid .portal-tile").first()).toBeVisible();
   await page.locator(".mission-card").first().click();
   await expect(page).toHaveURL(/m=\d+/);
-  const links = page.locator(".stage-row li a");
+  const links = page.locator(".stage-card-name a");
   await expect(links.first()).toBeVisible();
   expect(await links.count()).toBeGreaterThan(0);
 });
@@ -18,7 +18,7 @@ test("stage portal opens a category, then a mission from its banner", async ({ p
   await expect(page.locator(".portal-head-title")).toHaveText("Tower");
   await page.locator(".mission-card").first().click();
   await expect(page).toHaveURL(/cat=tower&m=\d+/);
-  await expect(page.locator(".stage-row li a").first()).toBeVisible();
+  await expect(page.locator(".stage-card-name a").first()).toBeVisible();
   await page.getByRole("button", { name: /← Tower/ }).click();
   await expect(page.locator(".mission-card").first()).toBeVisible();
   await page.getByRole("button", { name: /Mission portal/ }).click();
@@ -76,7 +76,7 @@ test("stage list keeps search and category in the URL", async ({ page }) => {
   await page.goto("/stages?cat=all&q=1");
   await expect(page.locator(".hub-list-toolbar select")).toHaveValue("all");
   await expect(page.getByPlaceholder("Search stage / event name (EN or JP) / quest id")).toHaveValue("1");
-  await page.locator(".stage-row li a").first().click();
+  await page.locator(".stage-card-name a").first().click();
   await expect(page).toHaveURL(/\/stages\/\d+/);
   await page.goBack();
   await expect(page.locator(".hub-list-toolbar select")).toHaveValue("all");
@@ -101,7 +101,7 @@ test("imperial war corps share one list", async ({ page }) => {
 test("stage list fits a phone screen", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 800 });
   await page.goto("/stages?cat=all");
-  await expect(page.locator(".stage-row li a").first()).toBeVisible();
+  await expect(page.locator(".stage-card-name a").first()).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
 });
@@ -122,7 +122,8 @@ test("fixture / clone enemies carry a marker badge and are counted apart", async
   await expect(page.locator(".enemy-cards > *").first()).toBeVisible();
   await expect(page.locator(".badge.marker").first()).toBeVisible();
   await page.goto("/stages?cat=all&q=%E7%8E%8B%E9%83%BD%E9%99%A5%E8%90%BD%EF%BC%92");
-  await expect(page.getByRole("link", { name: /王都陥落２/ }).first()).toContainText("+ 9 markers");
+  const card = page.locator(".stage-card", { has: page.getByRole("link", { name: /王都陥落２/ }) }).first();
+  await expect(card.locator(".stage-stat", { hasText: "Enemies" })).toContainText("+9");
 });
 
 test("enemy effect details are written out instead of raw game keys", async ({ page }) => {
@@ -215,4 +216,22 @@ test("spot changes caused by enemies are numbered in a legend", async ({ page })
   await expect(items.first()).toContainText("when enemy #1 is defeated");
   await toggle.locator("input").uncheck();
   await expect(items).toHaveCount(0);
+});
+
+test("stage cards show map, costs, rewards, modifiers and drops", async ({ page }) => {
+  // quest 2041 背水の陣３: EXP 80, gold 750, start cost 10, deploy 5, 3 enemies,
+  // a no-healers term, drops Crystal / Ruby / Diamond and two spirits
+  await page.goto("/stages?cat=all&q=2041");
+  const card = page.locator(".stage-card", { has: page.getByRole("link", { name: /背水の陣３/ }) }).first();
+  await expect(card.locator(".stage-card-map img")).toBeVisible();
+  await expect(card.locator(".stage-card-desc")).toContainText("回復ユニットが出撃できない");
+  const stat = (label: string) => card.locator(".stage-stat", { hasText: label }).locator(".stage-stat-value");
+  await expect(stat("EXP")).toHaveText("80");
+  await expect(stat("Gold")).toHaveText("750");
+  await expect(stat("Start cost")).toHaveText("10");
+  await expect(stat("Max deploy")).toHaveText("5");
+  await expect(stat("Enemies")).toHaveText("3");
+  await expect(card.locator(".stage-card-mods code")).toContainText("influence 24");
+  await expect(card.locator(".drop-item[title='Diamond'] img")).toBeVisible();
+  await expect(card.locator(".stage-drops a[href='/units/58']")).toBeVisible();
 });

@@ -215,7 +215,12 @@ export interface Stage {
   level?: number;
   multiplier?: number;
   charisma?: number;
+  stamina?: number;
+  exp?: number;
+  gold?: number;
+  drops?: StageDrop[];
   capacity?: number;
+  start_cost?: number;
   active?: boolean;
   modifiers?: Effect[];
   popups?: string[];
@@ -279,6 +284,31 @@ export interface StageIndexEntry {
   active?: boolean;
   enemy_count?: number;
   marker_count?: number;
+  map?: string | null; // maps/<map>.webp
+  charisma?: number;
+  stamina?: number;
+  exp?: number;
+  gold?: number;
+  drops?: StageDrop[];
+  start_cost?: number; // starting UP
+  capacity?: number; // max units deployed
+  modifiers?: Effect[];
+  description?: string;
+}
+
+// One quest drop slot: a unit card or an item (drop_items.json key); c = enemies carrying it.
+export interface StageDrop {
+  card?: number;
+  item?: number;
+  c?: number;
+}
+
+// drop_items.json: drop id -> item name (JP), English name when known, n = amount one drop gives.
+export interface DropItem {
+  name?: string;
+  en?: string;
+  n: number;
+  icon?: string; // item-icons/<icon>.png
 }
 
 // a global enemy (Enemy.atb row) in enemies.json.
