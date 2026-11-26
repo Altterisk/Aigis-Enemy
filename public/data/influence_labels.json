@@ -58,7 +58,7 @@
     "19": "Damages allied units standing inside its aura (id 18 sets the radius) over time.",
     "31": "Cosmetic hit effect only (no gameplay effect).",
     "36": "Raises the defense of nearby enemies[[?p2: by +{p2} (flat)]][[?p2|| to {p1} percent]] (does not stack with itself).",
-    "64": "[[?p1|Reduces the damage it takes to {p1} percent of normal.|Caps the damage it takes at {p3} per hit.]]"
+    "64": "[[?p1|Reduces the damage it takes by {p1} percent.|Caps the damage it takes at {p3} per hit.]]"
   },
   "term": {
     "11": "Raises the DEF of enemies matching the expression by {p1} percent.",
