@@ -19,7 +19,8 @@ test("story portal opens a category, history by year, and search", async ({ page
 
 test("an event page links battle dialogue and reads a scene", async ({ page }) => {
   await page.goto("/story/m200570");
-  await expect(page.locator("h2")).toContainText("真夏のぷるぷるビーチ");
+  await expect(page.locator("h2")).toContainText("Midsummer Jiggly Beach");
+  await expect(page.locator(".event-line")).toContainText("真夏のぷるぷるビーチ");
   const quest = page.locator(".story-quest", { hasText: "スライム化する海" });
   await quest.getByRole("button", { name: "Read" }).click();
   await expect(quest.locator(".story-read")).toContainText("スライムになってしまっているようだ");

@@ -3,11 +3,11 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Breadcrumbs, FallbackImage, MetaChip, MetaChips, PageHeader, StoryLines, type StoryLineView } from "@altterisk/game-hub";
 import { LIST_META, NOT_FOUND_META, plainText } from "../meta";
 import { usePageMeta } from "../usePageMeta";
-import { bannerUrl, storyCharaUrl, talkFaceUrl, useDialogueTl, useStoryGroup, type DialogueTl } from "../data";
+import { bannerUrl, storyCharaUrl, talkFaceUrl, useDialogueTl, useEventInfo, useStoryGroup, type DialogueTl } from "../data";
 import { ColorCodedText, MtlText, routerLink } from "../components";
 import { StoryViewer } from "../storyViewer";
 import type { StoryGroup, StoryLine, StoryScene } from "../types";
-import { gameName, useL, useLang } from "../i18n";
+import { altName, gameName, useL, useLang } from "../i18n";
 
 // The speaker's portrait: a unit's icon, or the top of an event character's art.
 function Avatar({ w, name }: { w?: string; name: string }) {
@@ -68,9 +68,14 @@ export default function StoryDetail() {
   const [bannerFailed, setBannerFailed] = useState(false);
   const playing = params.get("play");
   const L = useL();
+  const lang = useLang();
+  const eventInfo = useEventInfo();
+  const eventEn = group?.mission_id != null ? eventInfo?.[String(group.mission_id)]?.en : undefined;
+  const title = group ? gameName(eventEn, group.title, lang) : "";
+  const titleAlt = group ? altName(eventEn, group.title, lang) : "";
   usePageMeta(loading ? LIST_META["/story"] : group ? {
-    title: `${plainText(group.title)} story`,
-    description: `Event story of ${plainText(group.title)} (Millennium War Aigis): ${group.scenes} out-of-battle scenes with a scene viewer, and links to its battle dialogue.`,
+    title: `${plainText(eventEn || group.title)} story`,
+    description: `Event story of ${plainText(eventEn || group.title)} (Millennium War Aigis): ${group.scenes} out-of-battle scenes with a scene viewer, and links to its battle dialogue.`,
   } : NOT_FOUND_META);
   if (loading) return <p className="loading">{L("Loading…", "読み込み中…")}</p>;
   if (!group) return <p>{L("Story not found.", "ストーリーが見つかりません。")} <Link to="/story">{L("Back", "戻る")}</Link></p>;
@@ -86,7 +91,7 @@ export default function StoryDetail() {
     <div className="detail story-detail">
       <Breadcrumbs renderLink={routerLink} items={[
         { label: L("Story", "ストーリー"), href: "/story" },
-        { label: <ColorCodedText text={group.title} /> },
+        { label: <ColorCodedText text={title} /> },
       ]} />
       <PageHeader
         className="stage-header"
@@ -94,8 +99,13 @@ export default function StoryDetail() {
         art={group.mission_id != null && !bannerFailed ? (
           <img className="stage-banner" src={bannerUrl(group.mission_id)} alt="" onError={() => setBannerFailed(true)} />
         ) : undefined}
-        title={<ColorCodedText text={group.title} />}
-        subtitle={<span className="event-line"><span className="cat-badge">{group.category}</span></span>}
+        title={<ColorCodedText text={title} />}
+        subtitle={(
+          <span className="event-line">
+            <span className="cat-badge">{group.category}</span>
+            {titleAlt && <span className="muted small"> <ColorCodedText text={titleAlt} /></span>}
+          </span>
+        )}
         meta={(
           <MetaChips>
             <MetaChip label={L("Scenes", "シーン")} value={group.scenes} />

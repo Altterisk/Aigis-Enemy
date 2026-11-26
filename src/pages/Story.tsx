@@ -2,10 +2,10 @@ import { useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { EmptyState, FallbackImage, ListToolbar, SearchBox } from "@altterisk/game-hub";
 import { listState, searchParamsAdapter } from "@altterisk/game-hub/filters";
-import { bannerUrl, useCurrentMissions, useHistoryYears, useStageCategories, useStoryIndex, type StageCategoryTile } from "../data";
+import { bannerUrl, useCurrentMissions, useEventInfo, useHistoryYears, useStageCategories, useStoryIndex, type EventInfoEntry, type StageCategoryTile } from "../data";
 import { ColorCodedText } from "../components";
 import type { StoryGroupEntry } from "../types";
-import { useHubLabels, useL, type Pick } from "../i18n";
+import { altName, gameName, useHubLabels, useL, useLang, type Pick } from "../i18n";
 
 function counts(g: StoryGroupEntry, L: Pick): string {
   const parts = [];
@@ -21,16 +21,24 @@ function untilText(until: string): string {
   return `${Number(m[1])}/${Number(m[2])}${m[3] ? ` ${m[3]}` : ""}`;
 }
 
-function GroupCard({ g, until }: { g: StoryGroupEntry; until?: string }) {
+// The event's English name from event_info.json, keyed by mission id.
+const eventEn = (g: StoryGroupEntry, info: Record<string, EventInfoEntry> | null) =>
+  g.mission_id != null ? info?.[String(g.mission_id)]?.en : undefined;
+
+function GroupCard({ g, until, info }: { g: StoryGroupEntry; until?: string; info: Record<string, EventInfoEntry> | null }) {
   const L = useL();
-  const name = <span className="mission-card-missing"><ColorCodedText text={g.title} /></span>;
+  const lang = useLang();
+  const title = gameName(eventEn(g, info), g.title, lang);
+  const alt = altName(eventEn(g, info), g.title, lang);
+  const name = <span className="mission-card-missing"><ColorCodedText text={title} /></span>;
   return (
     <Link className="mission-card story-card" to={`/story/${g.id}`}>
       {g.mission_id ? (
-        <FallbackImage className="mission-card-banner" srcs={[bannerUrl(g.mission_id)]} alt={g.title} missing={name} />
+        <FallbackImage className="mission-card-banner" srcs={[bannerUrl(g.mission_id)]} alt={title} missing={name} />
       ) : name}
       <span className="mission-card-meta">
-        <span className="mission-card-name"><ColorCodedText text={g.title} /></span>
+        <span className="mission-card-name"><ColorCodedText text={title} /></span>
+        {alt && <span className="muted small mission-card-alt"><ColorCodedText text={alt} /></span>}
         <span className="muted small">
           {counts(g, L)}
           {until && <span className="event-until">{L(" · until {t}", " · {t}まで", { t: untilText(until) })}</span>}
@@ -42,9 +50,10 @@ function GroupCard({ g, until }: { g: StoryGroupEntry; until?: string }) {
 }
 
 function Grid({ groups, until }: { groups: StoryGroupEntry[]; until?: Map<number, string> }) {
+  const info = useEventInfo();
   return (
     <div className="mission-grid">
-      {groups.map((g) => <GroupCard key={g.id} g={g} until={g.mission_id != null ? until?.get(g.mission_id) : undefined} />)}
+      {groups.map((g) => <GroupCard key={g.id} g={g} info={info} until={g.mission_id != null ? until?.get(g.mission_id) : undefined} />)}
     </div>
   );
 }
@@ -77,6 +86,7 @@ export default function Story() {
   const stageCats = useStageCategories();
   const historyYears = useHistoryYears();
   const currentMissions = useCurrentMissions();
+  const eventInfo = useEventInfo();
   const [params, setParams] = useSearchParams();
   const list = listState(searchParamsAdapter(params, setParams));
   const q = list.text("q");
@@ -144,7 +154,9 @@ export default function Story() {
 
   // --- search: matching events, by category ---
   if (term) {
-    const hits = groups.filter((g) => g.title.toLowerCase().includes(term) && (!tile || tile.categories.includes(g.category)));
+    const matches = (g: StoryGroupEntry) =>
+      g.title.toLowerCase().includes(term) || (eventEn(g, eventInfo)?.toLowerCase().includes(term) ?? false);
+    const hits = groups.filter((g) => matches(g) && (!tile || tile.categories.includes(g.category)));
     const sections = tiles.map((t) => [t, hits.filter((g) => t.categories.includes(g.category)).sort(byGameOrder)] as const)
       .filter(([, gs]) => gs.length);
     return (

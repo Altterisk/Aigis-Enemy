@@ -26,6 +26,13 @@ export const KIND_LABEL: Record<ChangeKind, Text> = {
 
 export const RELEASES: Release[] = [
   {
+    date: "2026-11-26",
+    title: { en: "Game update", ja: "ゲーム更新" },
+    entries: [
+      { kind: "unit", units: [2953, 2942] },
+    ],
+  },
+  {
     date: "2026-11-25",
     title: { en: "Event names and dates", ja: "イベント名と開催日" },
     entries: [
