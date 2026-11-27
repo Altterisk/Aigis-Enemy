@@ -62,9 +62,10 @@ test("dialogue renders the supplied game portrait refs", async ({ page }) => {
   await page.goto("/stages/8983");
   await page.getByRole("tab", { name: /Dialogue/ }).click();
 
+  // the name shows in Japanese until the English speaker names load
   for (const [speaker, unitId, icon] of [
-    ["キュウビ", 465, "465.png"],
-    ["ラタトスク", 1375, "1375_aw1.png"],
+    [/キュウビ|Kyuubi/, 465, "465.png"],
+    [/ラタトスク|Ratatoskr/, 1375, "1375_aw1.png"],
   ] as const) {
     const line = page.locator(".dlg-line", { has: page.locator(".dlg-name", { hasText: speaker }) }).first();
     await expect(line.locator(".dlg-face")).toHaveAttribute("src", new RegExp(`unit-icon/${icon}$`));
@@ -223,7 +224,9 @@ test("stage cards show map, costs, rewards, modifiers and drops", async ({ page 
   // a no-healers term, drops Crystal / Ruby / Diamond and two spirits
   await page.goto("/stages?cat=all&q=2041");
   const card = page.locator(".stage-card", { has: page.getByRole("link", { name: /背水の陣３/ }) }).first();
-  await expect(card.locator(".stage-card-map img")).toBeVisible();
+  // map art is gitignored (served from the maps CDN), so a CI checkout has none
+  const stage = JSON.parse(fs.readFileSync("public/data/stage/2041.json", "utf-8"));
+  if (fs.existsSync(`public/maps/${stage.map.image}.webp`)) await expect(card.locator(".stage-card-map img")).toBeVisible();
   await expect(card.locator(".stage-card-desc")).toContainText("回復ユニットが出撃できない");
   const stat = (label: string) => card.locator(".stage-stat", { hasText: label }).locator(".stage-stat-value");
   await expect(stat("EXP")).toHaveText("80");

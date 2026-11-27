@@ -123,7 +123,7 @@ export default function Home() {
         ) : (
           <div className="home-events">
             {running.map((m) => (
-              <Link key={m.mission_id} to="/stages" className="home-event-card">
+              <Link key={m.mission_id} to={`/stages?cat=running&m=${m.mission_id}`} className="home-event-card">
                 <FallbackImage className="home-event-banner" srcs={[bannerUrl(m.mission_id)]} missing={null} />
                 <div className="home-event-body">
                   <div><span className="cat-badge">{m.category}</span></div>

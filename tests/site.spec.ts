@@ -12,6 +12,20 @@ test("home shows current events and new units", async ({ page }) => {
   await expect(page).toHaveURL(/\/units\/\d+$/);
 });
 
+test("a home event card opens that event", async ({ page }) => {
+  const missions: { mission_id: number; timing: string }[] = JSON.parse(
+    fs.readFileSync("public/data/current_missions.json", "utf-8"));
+  test.skip(!missions.some((m) => m.timing === "running"), "no event running");
+  await page.goto("/");
+  const card = page.locator(".home-event-card").first();
+  const href = await card.getAttribute("href");
+  const mid = /[?&]m=(\d+)/.exec(href ?? "")?.[1];
+  expect(mid).toBeTruthy();
+  await card.click();
+  await expect(page).toHaveURL(new RegExp(`/stages\\?cat=running&m=${mid}$`));
+  await expect(page.locator(".stage-card-name a").first()).toBeVisible();
+});
+
 test("home lists every running rate-up with its units", async ({ page }) => {
   const summons: { key: string; banner_id: number; open: string; close: string; units: number[] }[] = JSON.parse(
     fs.readFileSync("public/data/current_summons.json", "utf-8"));
