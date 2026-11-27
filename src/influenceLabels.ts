@@ -3405,7 +3405,7 @@ const CANONICAL_ABILITY_NAMES: Record<string, string> = {
   "134": "Deployment-spot HP buff",
   "135": "Deployment-spot ATK buff",
   "136": "Deployment-spot DEF buff",
-  "137": "Deployment-spot MR buff (flat)",
+  "137": "Deployment-spot MR buff",
   "145": "Can be placed anywhere (outside deployment spots)",
   "148": "One unit per team",
   "150": "Chef-type flat HP buff",
