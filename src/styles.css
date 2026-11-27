@@ -891,6 +891,11 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
 .stage-map-key--r { background: #3b82f6; color: #fff; }
 .stage-map-key--b { background: #fff; color: #1b1b1b; }
 .stage-map-key--dmg { background: #f59e0b; color: #1b1b1b; }
+/* buff spot key: the same green ring the map draws around the spot */
+.stage-map-key--buff {
+  display: inline-block; width: 20px; height: 12px; border-radius: 50%;
+  border: 3px solid #22c55e; box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.85);
+}
 .stage-map-key--trigger { background: #8b5cf6; color: #fff; border-radius: 999px; }
 .stage-map-triggers { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
 .stage-map-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: auto; }

@@ -3,7 +3,7 @@ import { copyText } from "@altterisk/game-hub";
 import { saveBlob } from "@altterisk/game-hub/persist";
 import { mapImageUrl } from "./data";
 import type { MapEvent, MapSpot, StageMapInfo } from "./types";
-import { useL } from "./i18n";
+import { useL, useLang } from "./i18n";
 
 const COLORS: Record<MapSpot["k"], { fill: string; text: string }> = {
   m: { fill: "#e5484d", text: "#ffffff" },
@@ -234,16 +234,18 @@ function badge(ctx: CanvasRenderingContext2D, s: MapSpot, label: string, cy: num
   ctx.globalAlpha = 1;
 }
 
-function legendHeight(triggers: Trigger[]): number {
-  return triggers.length ? Math.min(triggers.length, LEGEND_MAX + 1) * LEGEND_LINE + 10 : 0;
+// trigger lines (capped, with a "… more" line) + one line per buff key
+function legendHeight(triggers: Trigger[], buffLines: number): number {
+  const lines = Math.min(triggers.length, LEGEND_MAX + 1) + buffLines;
+  return lines ? lines * LEGEND_LINE + 10 : 0;
 }
 
 function draw(
   canvas: HTMLCanvasElement, img: HTMLImageElement, markers: Markers | null, effects: Map<string, Effect | null>,
   map: StageMapInfo, state: { spots: PlacedSpot[]; fx: PlacedFx[] }, labels: Map<number, string>,
-  show: Set<MapSpot["k"]>, footer: string, triggers: Trigger[],
+  show: Set<MapSpot["k"]>, footer: string, triggers: Trigger[], buffLines: string[],
 ) {
-  const legendH = legendHeight(triggers);
+  const legendH = legendHeight(triggers, buffLines.length);
   canvas.width = map.w;
   canvas.height = map.h + legendH + FOOTER;
   const ctx = canvas.getContext("2d")!;
@@ -291,6 +293,12 @@ function draw(
   const ring = (s: MapSpot): [number, number, number] => (markers
     ? [s.y - markers.origin[s.k][1] + markers.img[s.k].height / 2, markers.img[s.k].width * 0.4, 0]
     : [s.y, 20, 0]);
+  // buff spots: a green ring around the marker (the legend says the buff)
+  for (const s of spots) {
+    if (!s.buff) continue;
+    const [cy, r] = ring(s);
+    buffRing(ctx, s.x, cy, r + 5);
+  }
   const present = new Set(state.spots.map((s) => s.name));
   // spots a trigger adds later: a dashed ring where they will appear
   const ghosts = triggers.flatMap((t) => t.add.filter((s) => !present.has(s.name) && show.has(s.k)).map((s) => ({ s, n: t.n })));
@@ -353,6 +361,15 @@ function draw(
     ctx.fillText(`… ${triggers.length - shown.length} more on the stage page`, 36,
       map.h + 8 + shown.length * LEGEND_LINE + LEGEND_LINE / 2);
   }
+  const buffTop = Math.min(triggers.length, LEGEND_MAX + 1);
+  buffLines.forEach((line, i) => {
+    const y = map.h + 8 + (buffTop + i) * LEGEND_LINE + LEGEND_LINE / 2;
+    buffRing(ctx, 20, y, 9);
+    ctx.font = "13px Inter, system-ui, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#e6e8ee";
+    ctx.fillText(line, 36, y);
+  });
   ctx.fillStyle = "#e6e8ee";
   ctx.font = "13px Inter, system-ui, sans-serif";
   ctx.fillText(footer, 10, map.h + legendH + FOOTER / 2);
@@ -360,6 +377,31 @@ function draw(
     ctx.fillStyle = "rgba(255,255,255,0.12)";
     ctx.fillRect(10, map.h + legendH, map.w - 20, 1);
   }
+}
+
+const BUFF_STAT: Record<number, [string, string]> = {
+  134: ["HP", "HP"], 135: ["ATK", "攻撃"], 136: ["DEF", "防御"], 137: ["MR", "魔耐"], 202: ["Range", "射程"],
+};
+
+// "Range ×1.55", "HP +20000, ATK +1000": p1 is a percent (100 = no change), p2 a flat bonus
+export function buffText(buff: [number, number, number][], ja = false): string {
+  return buff.map(([inf, p1, p2]) => {
+    const name = BUFF_STAT[inf]?.[ja ? 1 : 0] ?? `#${inf}`;
+    const parts = [p1 && p1 !== 100 ? `×${+(p1 / 100).toFixed(2)}` : "", p2 ? `+${p2}` : ""].filter(Boolean);
+    return `${name} ${parts.join(" ")}`.trim();
+  }).join(", ");
+}
+
+// the green ring drawn around a buff spot's marker (and as its legend key)
+function buffRing(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
+  ctx.beginPath();
+  ctx.ellipse(x, y, r, r * 0.6, 0, 0, Math.PI * 2);
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = "rgba(0,0,0,0.85)";
+  ctx.stroke();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "#22c55e";
+  ctx.stroke();
 }
 
 function damageText([dmg, ticks]: [number, number]): string {
@@ -397,6 +439,15 @@ export function StageMap({ map, questId, name }: { map: StageMapInfo; questId: n
   const state = useMemo(() => mapState(map, phases, phase), [map, phases, phase]);
   const triggers = useMemo(() => mapTriggers(map, labels), [map, labels]);
   const drawnTriggers = showTriggers ? triggers : [];
+  const lang = useLang();
+  // one key per distinct buff among the shown spots, with its spot count
+  const buffKeys = useMemo(() => [...state.spots.filter((s) => s.buff && show.has(s.k)).reduce((acc, s) => {
+    const key = JSON.stringify(s.buff);
+    acc.set(key, { buff: s.buff!, n: (acc.get(key)?.n ?? 0) + 1 });
+    return acc;
+  }, new Map<string, { buff: [number, number, number][]; n: number }>()).values()], [state.spots, show]);
+  const buffLines = useMemo(() => buffKeys.map(({ buff, n }) =>
+    `${lang === "ja" ? "強化マス" : "Buff spot"}: ${buffText(buff, lang === "ja")} (${n})`), [buffKeys, lang]);
   const link = `${location.origin}/stages/${questId}?tab=map`;
   const phaseText = phases.length > 1 ? ` · ${phases[phase].label}` : "";
   const footer = `${name}${phaseText} · ${link.replace(/^https?:\/\//, "")}`;
@@ -421,9 +472,9 @@ export function StageMap({ map, questId, name }: { map: StageMapInfo; questId: n
 
   useEffect(() => {
     if (img && markers !== undefined && effects && canvasRef.current) {
-      draw(canvasRef.current, img, markers, effects, map, state, labels, show, footer, drawnTriggers);
+      draw(canvasRef.current, img, markers, effects, map, state, labels, show, footer, drawnTriggers, buffLines);
     }
-  }, [img, markers, effects, map, state, labels, show, footer, drawnTriggers]);
+  }, [img, markers, effects, map, state, labels, show, footer, drawnTriggers, buffLines]);
 
   const flash = (text: string) => {
     setNote(text);
@@ -473,6 +524,13 @@ export function StageMap({ map, questId, name }: { map: StageMapInfo; questId: n
             {L("Damage tile", "ダメージ床")} ({damageSpots.length})
           </span>
         )}
+        {buffKeys.map(({ buff, n }) => (
+          <span key={JSON.stringify(buff)} className="stage-map-toggle stage-map-buff"
+            title={L("Buff for the unit placed on the spot", "そのマスに配置したユニットへの強化")}>
+            <span className="stage-map-key--buff" aria-hidden="true" />
+            {L("Buff spot", "強化マス")}: {buffText(buff, lang === "ja")} ({n})
+          </span>
+        ))}
         {triggers.length > 0 && (
           <label className="stage-map-toggle" title={L("Spot changes caused by enemies or stage conditions", "敵やステージの条件による配置場所の変化")}>
             <input type="checkbox" checked={showTriggers} onChange={() => setShowTriggers((v) => !v)} />

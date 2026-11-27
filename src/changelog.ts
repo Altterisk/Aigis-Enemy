@@ -26,6 +26,16 @@ export const KIND_LABEL: Record<ChangeKind, Text> = {
 
 export const RELEASES: Release[] = [
   {
+    date: "2026-11-27",
+    title: { en: "Buff spots on stage maps", ja: "ステージマップの強化マス" },
+    entries: [
+      { kind: "feature", text: {
+        en: "Stage maps: glowing buff spots get a green ring, and the key says what they give the unit placed there (e.g. Range ×1.55; HP +20000, ATK +1000).",
+        ja: "ステージマップ: 光る強化マスを緑の輪で表示し、配置したユニットへの効果を凡例に記載（例: 射程 ×1.55、HP +20000・攻撃 +1000）。",
+      } },
+    ],
+  },
+  {
     date: "2026-11-26",
     title: { en: "Game update", ja: "ゲーム更新" },
     entries: [

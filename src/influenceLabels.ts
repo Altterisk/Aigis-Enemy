@@ -2777,10 +2777,10 @@ export const INFLUENCE_LABELS: UnitInfluenceLabels = {
       "tpl": "{p1}% HP"
     },
     "202": {
-      "name": null,
-      "verified": false,
-      "marker": true,
-      "note": "user-tested: Placement NPC exclusive, unknown"
+      "name": "Deployment Spot range buff",
+      "verified": true,
+      "note": "user-tested: Placement NPC exclusive; R1 and R2 has range buff (quest 45009: プレイスエンチャント3 on spots 300/301, ability 972 = 202 [155]). Official name プレイスエンチャント[射程].",
+      "tpl": "→ {p1}%"
     },
     "268": {
       "name": "Block based MR buff (percent)",

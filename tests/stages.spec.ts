@@ -219,6 +219,12 @@ test("spot changes caused by enemies are numbered in a legend", async ({ page })
   await expect(items).toHaveCount(0);
 });
 
+test("buff spots name the buff a guest card gives the unit on them", async ({ page }) => {
+  // quest 45009: プレイスエンチャント3 on ranged spots 300/301 = ability influence 202 [155]
+  await page.goto("/stages/45009?tab=map");
+  await expect(page.locator(".stage-map-buff")).toHaveText(/Buff spot: Range ×1\.55 \(2\)/);
+});
+
 test("stage cards show map, costs, rewards, modifiers and drops", async ({ page }) => {
   // quest 2041 背水の陣３: EXP 80, gold 750, start cost 10, deploy 5, 3 enemies,
   // a no-healers term, drops Crystal / Ruby / Diamond and two spirits

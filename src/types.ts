@@ -241,6 +241,9 @@ export interface MapSpot {
   y: number;
   id: number; // Location ObjectID; spots are sorted by it
   dmg?: [number, number]; // damage tile: [fixed damage, interval in ticks (60/s)] to the unit on it
+  // buff spot: [ability influence (134 HP, 135 ATK, 136 DEF, 137 MR, 202 range), p1 percent (100 = none), p2 flat]
+  // for the unit placed on it, from the guest card the quest puts there
+  buff?: [number, number, number][];
 }
 
 // A map change from the spawn scripts: +s/-s add/remove a spot, +fx/-fx an effect object (cloud, map piece).
