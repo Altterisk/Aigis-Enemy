@@ -237,11 +237,13 @@ test("stage cards show map, costs, rewards, modifiers and drops", async ({ page 
   // quest 2041 背水の陣３: EXP 80, gold 750, start cost 10, deploy 5, 3 enemies,
   // a no-healers term, drops Crystal / Ruby / Diamond and two spirits
   await page.goto("/stages?cat=all&q=2041");
-  const card = page.locator(".stage-card", { has: page.getByRole("link", { name: /背水の陣３/ }) }).first();
+  const card = page.locator(".stage-card", { has: page.getByRole("link", { name: stageName(2041) }) }).first();
   // map art is gitignored (served from the maps CDN), so a CI checkout has none
   const stage = JSON.parse(fs.readFileSync("public/data/stage/2041.json", "utf-8"));
   if (fs.existsSync(`public/maps/${stage.map.image}.webp`)) await expect(card.locator(".stage-card-map img")).toBeVisible();
-  await expect(card.locator(".stage-card-desc")).toContainText("回復ユニットが出撃できない");
+  // English mode shows the machine-translated description when the stage has one
+  await expect(card.locator(".stage-card-desc")).toContainText(
+    stage.description_en ? stage.description_en.split("\n")[0] : "回復ユニットが出撃できない");
   const stat = (label: string) => card.locator(".stage-stat", { hasText: label }).locator(".stage-stat-value");
   await expect(stat("EXP")).toHaveText("80");
   await expect(stat("Gold")).toHaveText("750");
