@@ -552,6 +552,7 @@ export default function StageDetail() {
   const eventEn = stage.mission_id != null ? eventInfo?.[String(stage.mission_id)]?.en : undefined;
   const eventName = stage.event ? gameName(eventEn, stage.event, lang) : "";
   const eventAlt = stage.event ? altName(eventEn, stage.event, lang) : "";
+  const stageName = gameName(stage.name_en, stage.name, lang);
   const storySections = storyTalk?.sections ?? [];
   const dialogueCount = dialogue.length + storySections.length;
   const hasDialogue = dialogueCount > 0 || hasStoryTalk;
@@ -572,7 +573,7 @@ export default function StageDetail() {
         items={[
           { label: L("Stages", "ステージ"), href: "/stages" },
           ...(stage.event ? [{ label: eventName, href: "/stages" }] : []),
-          { label: <ColorCodedText text={stage.name} /> },
+          { label: <ColorCodedText text={stageName} /> },
         ]}
       />
 
@@ -587,7 +588,7 @@ export default function StageDetail() {
             onError={() => setBannerFailed(true)}
           />
         ) : undefined}
-        title={<ColorCodedText text={stage.name} />}
+        title={<ColorCodedText text={stageName} />}
         subtitle={stage.event ? (
           <span className="event-line">
             <span className="cat-badge">{stage.event_category}</span> {eventName}
@@ -607,7 +608,7 @@ export default function StageDetail() {
       />
 
       {stage.description && (
-        <p className="stage-desc">{stage.description}</p>
+        <p className="stage-desc"><MtlText jp={stage.description} en={stage.description_en} /></p>
       )}
 
       {stage.modifiers && stage.modifiers.length > 0 && (

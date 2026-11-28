@@ -99,6 +99,7 @@ function StageStat({ label, value, title }: { label: string; value: ReactNode; t
 // The event's stages as cards: map, name, costs and rewards, stage modifiers, drops.
 function StageCards({ stages }: { stages: StageIndexEntry[] }) {
   const L = useL();
+  const lang = useLang();
   const num = (n?: number) => (n ?? 0).toLocaleString();
   return (
     <div className="stage-cards">
@@ -125,12 +126,12 @@ function StageCards({ stages }: { stages: StageIndexEntry[] }) {
               <div className="stage-card-title">
                 <div className="stage-card-name">
                   <Link to={`/stages/${s.quest_id}`}>
-                    <ColorCodedText text={s.name} />
+                    <ColorCodedText text={gameName(s.name_en, s.name, lang)} />
                   </Link>
                   <span className="muted small"> ×{s.multiplier ?? 1}</span>
                   {s.active === false && <span className="past-tag">{L("past", "終了")}</span>}
                 </div>
-                {s.description && <p className="stage-card-desc">{s.description}</p>}
+                {s.description && <p className="stage-card-desc"><ColorCodedText text={gameName(s.description_en, s.description, lang)} /></p>}
               </div>
             </div>
             <div className="stage-card-body">
@@ -384,6 +385,7 @@ export default function StageList() {
       const en = s.mission_id ? info[String(s.mission_id)]?.en : undefined;
       return (
         (s.name || "").toLowerCase().includes(term) ||
+        (s.name_en || "").toLowerCase().includes(term) ||
         (s.event ? s.event.toLowerCase().includes(term) : false) ||
         (en ? en.toLowerCase().includes(term) : false) ||
         String(s.quest_id).includes(term)

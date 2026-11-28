@@ -26,6 +26,16 @@ export const KIND_LABEL: Record<ChangeKind, Text> = {
 
 export const RELEASES: Release[] = [
   {
+    date: "2026-11-28",
+    title: { en: "English stage names", ja: "ステージ名の英語表示" },
+    entries: [
+      { kind: "feature", text: {
+        en: "Stages: English machine translation of stage names and descriptions; the stage page keeps the Japanese description underneath, and the stage search also finds English names (more stages are added daily).",
+        ja: "ステージ: ステージ名と説明文の英語機械翻訳を表示（英語モード。ステージページは日本語の説明文を併記、検索は英語名にも対応。順次追加）。",
+      } },
+    ],
+  },
+  {
     date: "2026-11-27",
     title: { en: "Buff spots on stage maps", ja: "ステージマップの強化マス" },
     entries: [

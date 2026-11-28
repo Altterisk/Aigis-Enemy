@@ -206,6 +206,9 @@ export interface Stage {
   quest_id: number;
   name?: string;
   description?: string;
+  // machine translations (python/translate_stages.py)
+  name_en?: string;
+  description_en?: string;
   modifier_notes?: string[];
   event?: string | null;
   event_category?: string | null;
@@ -279,6 +282,8 @@ export interface StageMapInfo {
 export interface StageIndexEntry {
   quest_id: number;
   name?: string;
+  name_en?: string | null;
+  description_en?: string | null;
   event?: string | null;
   event_category?: string | null;
   mission_id?: number | null;

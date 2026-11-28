@@ -1,6 +1,14 @@
 ﻿import fs from "node:fs";
 import { expect, test } from "@playwright/test";
 
+// A stage's name as shown in either language (English mode shows the
+// machine-translated name_en when the stage has one), colour codes removed.
+function stageName(questId: number): RegExp {
+  const st = JSON.parse(fs.readFileSync(`public/data/stage/${questId}.json`, "utf-8"));
+  const plain = (t: string) => t.replace(/%c\[[0-9a-fA-F]{6}\]/g, "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp([st.name, st.name_en].filter(Boolean).map(plain).join("|"));
+}
+
 test("stage index lists events with stage links", async ({ page }) => {
   await page.goto("/stages");
   await expect(page.locator(".portal-grid .portal-tile").first()).toBeVisible();
@@ -45,7 +53,7 @@ test("event history shows one year per page", async ({ page }) => {
 
 test("stage detail loads from the index", async ({ page }) => {
   await page.goto("/stages/1");
-  await expect(page.getByText("魔女の襲撃").first()).toBeVisible();
+  await expect(page.getByText(stageName(1)).first()).toBeVisible();
   await expect(page.locator(".enemy-cards > *").first()).toBeVisible();
 });
 
@@ -123,7 +131,7 @@ test("fixture / clone enemies carry a marker badge and are counted apart", async
   await expect(page.locator(".enemy-cards > *").first()).toBeVisible();
   await expect(page.locator(".badge.marker").first()).toBeVisible();
   await page.goto("/stages?cat=all&q=%E7%8E%8B%E9%83%BD%E9%99%A5%E8%90%BD%EF%BC%92");
-  const card = page.locator(".stage-card", { has: page.getByRole("link", { name: /王都陥落２/ }) }).first();
+  const card = page.locator(".stage-card", { has: page.getByRole("link", { name: stageName(1021) }) }).first();
   await expect(card.locator(".stage-stat", { hasText: "Enemies" })).toContainText("+9");
 });
 
@@ -165,7 +173,7 @@ test("4★ switch rescales enemy stats and popups start collapsed", async ({ pag
 
 test("in-game color markup in stage names renders as colored text", async ({ page }) => {
   await page.goto("/stages/7540");
-  const title = page.locator(".stage-header").getByText("第三陣 飛行部隊の増援").first();
+  const title = page.locator(".stage-header").getByText(stageName(7540)).first();
   await expect(title).toBeVisible();
   await expect(title).toHaveCSS("color", "rgb(255, 0, 0)");
   await expect(page.locator(".stage-header")).not.toContainText("%c[");
@@ -248,7 +256,7 @@ test("stage cards show map, costs, rewards, modifiers and drops", async ({ page 
 test("the drop slot no enemy carries is shown as the complete bonus", async ({ page }) => {
   // quest 1101 田園の門: Treasure4 = Crave (#8), carried by no enemy
   await page.goto("/stages?cat=all&q=1101");
-  const card = page.locator(".stage-card", { has: page.getByRole("link", { name: /田園の門/ }) }).first();
+  const card = page.locator(".stage-card", { has: page.getByRole("link", { name: stageName(1101) }) }).first();
   const bonus = card.locator(".stage-card-section", { hasText: "Complete bonus" });
   await expect(bonus.locator("a[href='/units/8']")).toBeVisible();
   await expect(bonus.locator(".drop-count")).toHaveCount(0);
