@@ -586,6 +586,9 @@ export interface UnitClass {
   // be placed in -- almost always matches `ranged`, but a handful of units
   // (e.g. #1313 Miriam) are deployable in either spot.
   deploy_slot?: string | null;
+  // ClassData.BattleStyle: bit 1 = IsVanguard(), bit 2 = IsRearguard() in condition scripts
+  battle_style?: number | null;
+  block_num?: number | null; // ClassData.BlockNum as written (`block` is empty for ranged classes)
   range?: number | null;
   block?: number | null;
   max_target?: number;
@@ -812,6 +815,9 @@ export interface UnitIndexEntry {
   s_inf?: number[];
   a_inf?: number[];
   aw_ab?: boolean;      // has an awakened ability (it replaces the default one)
+  // per class tier: [class_id, BlockNum, BattleStyle, has tokens] (deploy restrictions)
+  tiers?: [number | null, number | null, number | null, boolean][] | null;
+  faction_res_id?: number | null; // PlayerAssignType _ResID = CRC32 of the faction's internal name
   formation_exclusion?: FormationExclusion;
 }
 

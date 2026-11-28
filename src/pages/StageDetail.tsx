@@ -5,6 +5,7 @@ import { searchParamsAdapter } from "@altterisk/game-hub/filters";
 import { LIST_META, NOT_FOUND_META, plainText, stageMeta } from "../meta";
 import { usePageMeta } from "../usePageMeta";
 import { useStageDetail, useInfluenceLabels, useRaceLabels, useSpecialtyConfig, useStoryTalk, talkFaceUrl, bannerUrl, useExprNames, useSpriteAlias, sameSprite, useEventInfo, useDialogueTl, type DialogueTl } from "../data";
+import { deployExpression, restrictsUnits } from "../deployRule";
 import { Sprite, DamageBadge, Effects, Tags, auraRadius, periodicRate, missileOnHitText, HumanText, routerLink, extDisplay, ColorCodedText, MtlText } from "../components";
 import { humanize } from "../humanize";
 import { StageMap } from "../stageMap";
@@ -528,6 +529,9 @@ function DialogueSectionBlock({ s, tl }: { s: DialogueSection; tl: DialogueTl })
   );
 }
 
+// mission id of the Tower of Evil Spirits (悪霊の塔)
+const TOWER_OF_EVIL_SPIRITS = 110003;
+
 export default function StageDetail() {
   useExprNames();
   const { questId } = useParams();
@@ -553,6 +557,9 @@ export default function StageDetail() {
   const eventName = stage.event ? gameName(eventEn, stage.event, lang) : "";
   const eventAlt = stage.event ? altName(eventEn, stage.event, lang) : "";
   const stageName = gameName(stage.name_en, stage.name, lang);
+  // Tower of Evil Spirits floors: link to the units the deploy restriction allows
+  const rule = deployExpression(stage);
+  const ruleLink = stage.mission_id === TOWER_OF_EVIL_SPIRITS && !!rule && restrictsUnits(rule);
   const storySections = storyTalk?.sections ?? [];
   const dialogueCount = dialogue.length + storySections.length;
   const hasDialogue = dialogueCount > 0 || hasStoryTalk;
@@ -614,6 +621,14 @@ export default function StageDetail() {
       {stage.modifiers && stage.modifiers.length > 0 && (
         <Panel title={L("Stage modifiers", "ステージ効果")}>
           <Effects effects={stage.modifiers} />
+          {ruleLink && (
+            <p className="deploy-rule-link">
+              <Link to={`/units?stage=${stage.quest_id}`}>
+                {L("Units allowed to deploy here", "このステージに出撃可能なユニット")}
+              </Link>
+              <span className="muted small">{L(" · the Prince and tokens are not in the list", " · 王子・トークンは一覧に含まれません")}</span>
+            </p>
+          )}
         </Panel>
       )}
 

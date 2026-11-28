@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useUnits, useUnitInfluenceLabels, useLocalisation, loadJSONFile, tagName } from "../data";
+import { useUnits, useUnitInfluenceLabels, useLocalisation, useEventInfo, loadJSONFile, tagName } from "../data";
+import { canDeploy, deployExpression } from "../deployRule";
 import { UnitImage } from "../components";
 import { CheckboxGroup, EmptyState, FilterChip, FilterPanel, ListToolbar, Pager, SearchBox } from "@altterisk/game-hub";
 import { useUiStore } from "../store";
-import type { UnitIndexEntry, UnitInfluenceLabel, TagMentions } from "../types";
-import { altName, gameName, rarityName, useHubLabels, useL } from "../i18n";
+import type { Stage, UnitIndexEntry, UnitInfluenceLabel, TagMentions } from "../types";
+import { altName, gameName, rarityName, useHubLabels, useL, useLang } from "../i18n";
 import { baseRarity, genderOpts, hasTrait, positionOpts, traitOpts, unitFilterOptions, useBondQuestIds } from "../unitFilters";
 
 const PAGE = 60;
@@ -98,6 +99,9 @@ function influenceOption(
   return lab?.name ? `${id} — ${lab.name}` : `influence ${id}`;
 }
 
+// a stage name without its %c[rrggbb] colour codes
+const plainName = (s: string) => s.replace(/%c\[[0-9a-fA-F]{6}\]/g, "");
+
 export default function UnitList() {
   const { loading, units } = useUnits();
   const influenceLabels = useUnitInfluenceLabels();
@@ -119,6 +123,24 @@ export default function UnitList() {
   // detail pages (?class=<JP name> / ?tag=<JP tag>).
   const classFilter = params.get("class") || "";
   const tagFilter = params.get("tag") || "";
+  // ?stage=<quest id>: only the cards that stage's deploy restriction allows
+  // (linked from the stage page)
+  const stageId = params.get("stage") || "";
+  const [ruleStage, setRuleStage] = useState<Stage | null>(null);
+  useEffect(() => {
+    setRuleStage(null);
+    if (!stageId) return;
+    let alive = true;
+    loadJSONFile<Stage>(`stage/${stageId}`).then((st) => { if (alive) setRuleStage(st); }).catch(() => {});
+    return () => { alive = false; };
+  }, [stageId]);
+  const rule = stageId ? deployExpression(ruleStage) : null;
+  const eventInfo = useEventInfo();
+  const lang = useLang();
+  // cards the stage's rule cannot be decided for from the data (left out of the list)
+  const ruleUnknown = useMemo(
+    () => (rule && units ? units.filter((u) => !u.npc && !u.prince && canDeploy(rule, u) === null).length : 0),
+    [rule, units]);
 
   const csv = (key: string): string[] => {
     const v = params.get(key);
@@ -216,6 +238,7 @@ export default function UnitList() {
       if (u.prince) return false;
       if (classFilter && !(u.class_names || []).includes(classFilter)) return false;
       if (tagFilter && !(u.tags || []).includes(tagFilter)) return false;
+      if (stageId && !(rule && canDeploy(rule, u) === true)) return false;
       if (cls && !(u.class_names || []).includes(cls)) return false;
       if (rarityF.length && !rarityF.includes(baseRarity(u.rarity))) return false;
       if (positionF.length && !positionF.includes(u.position || "")) return false;
@@ -239,7 +262,7 @@ export default function UnitList() {
       // newest release first; a card can ship long after its id was assigned
       (b.implementation_date || "").localeCompare(a.implementation_date || "") || b.id - a.id);
   }, [
-    units, q, sInf, aInf, cls, showNpc, classFilter, tagFilter,
+    units, q, sInf, aInf, cls, showNpc, classFilter, tagFilter, stageId, rule,
     rarityF, positionF, genderF, factionF, raceF, attrF, seasonF, yearF, traitF, bondQuest,
   ]);
 
@@ -320,7 +343,7 @@ export default function UnitList() {
         )}
       </FilterPanel>
 
-      {(classFilter || tagFilter) && (
+      {(classFilter || tagFilter || stageId) && (
         <div className="active-filters">
           {classFilter && (
             <span className="filter-chip">
@@ -332,6 +355,23 @@ export default function UnitList() {
             <span className="filter-chip">
               {L("tag", "タグ")}: {loc?.tags[tagFilter] || loc?.races[tagFilter] || tagFilter}
               <button onClick={() => setParam("tag", null)}>×</button>
+            </span>
+          )}
+          {stageId && (
+            <span className="filter-chip">
+              {L("can deploy on", "出撃可能")}:{" "}
+              <Link to={`/stages/${stageId}`}>
+                {ruleStage
+                  ? [gameName(ruleStage.mission_id != null ? eventInfo?.[String(ruleStage.mission_id)]?.en : undefined, ruleStage.event, lang),
+                    plainName(gameName(ruleStage.name_en, ruleStage.name, lang))].filter(Boolean).join(" ")
+                  : `#${stageId}`}
+              </Link>
+              <button onClick={() => setParam("stage", null)}>×</button>
+            </span>
+          )}
+          {stageId && ruleUnknown > 0 && (
+            <span className="muted small">
+              {L("{n} units can't be checked from the data and are not listed", "データから判定できない{n}ユニットは含まれません", { n: ruleUnknown })}
             </span>
           )}
         </div>

@@ -264,3 +264,27 @@ test("the drop slot no enemy carries is shown as the complete bonus", async ({ p
   await expect(bonus.locator(".drop-count")).toHaveCount(0);
   await expect(card.locator(".stage-card-section", { hasText: "Drops" }).locator("a[href='/units/8']")).toHaveCount(0);
 });
+
+test("tower deploy rules link to exactly the units they allow", async ({ page }) => {
+  const units: { id: number; name?: string; npc?: boolean; prince?: boolean; faction_id?: number | null }[] =
+    JSON.parse(fs.readFileSync("public/data/units.json", "utf-8"));
+  const cards = units.filter((u) => !u.npc && !u.prince);
+  // quest 12021 (Tower of Evil Spirits floor 21): IsToken() || IsAssign("砂漠") -- faction 5, shown as 砂漠の国
+  const desert = cards.filter((u) => u.faction_id === 5).length;
+  await page.goto("/stages/12021");
+  const link = page.locator(".deploy-rule-link a");
+  await expect(link).toHaveAttribute("href", "/units?stage=12021");
+  await link.click();
+  await expect(page.locator(".filter-chip a[href='/stages/12021']")).toBeVisible();
+  await expect(page.getByText(`${desert.toLocaleString("en-US")} units`)).toBeVisible();
+  // quest 12008 (floor 8): GetNameCharCount() == 3
+  const three = cards.filter((u) => [...(u.name || "")].length === 3).length;
+  await page.goto("/units?stage=12008");
+  await expect(page.getByText(`${three.toLocaleString("en-US")} units`)).toBeVisible();
+});
+
+test("stages outside the Tower of Evil Spirits get no deploy-rule link", async ({ page }) => {
+  await page.goto("/stages/1");
+  await expect(page.locator(".enemy-cards > *").first()).toBeVisible();
+  await expect(page.locator(".deploy-rule-link")).toHaveCount(0);
+});

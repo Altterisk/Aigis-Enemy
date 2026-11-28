@@ -17,7 +17,7 @@ export interface TargetFacts {
   faction: string | null;
   identities: string[];
   prince: boolean;
-  slot: "melee" | "ranged" | null;
+  battleStyle: number | null; // ClassData.BattleStyle: bit 1 = IsVanguard, bit 2 = IsRearguard
   initialCost: number | null; // the class tier's starting deploy cost
 }
 
@@ -33,7 +33,7 @@ export function targetFacts(u: Unit, cl: UnitClass): TargetFacts {
     faction: u.faction ?? null,
     identities: u.identity_tags ?? [],
     prince: !!u.prince,
-    slot: cl.deploy_slot === "melee" ? "melee" : cl.deploy_slot === "ranged" ? "ranged" : null,
+    battleStyle: cl.battle_style ?? null,
     initialCost: cl.cost_max ?? null,
   };
 }
@@ -108,6 +108,8 @@ export interface EvalCtx {
   possession?: boolean;
   // functions pinned to a value (null = can't tell), checked before anything else
   fixed?: Record<string, Val>;
+  // functions answered from their arguments, checked after `fixed`
+  fns?: Record<string, (args: (number | string)[]) => Val>;
 }
 
 export type Val = number | string | boolean | null;
@@ -133,6 +135,7 @@ export function evaluate(src: string, ctx: EvalCtx): Tri {
     const strs = rawArgs.map(String);
     const nums = rawArgs.map(Number);
     if (ctx.fixed && name in ctx.fixed) return ctx.fixed[name];
+    if (ctx.fns && name in ctx.fns) return ctx.fns[name](rawArgs);
     switch (name) {
       case "IsInvokedSkill": return ctx.skillUnknown ? null : ctx.skillActive;
       case "IsSkillID": return ctx.skillUnknown ? null : ctx.skillId != null && nums.includes(ctx.skillId);
@@ -166,8 +169,9 @@ export function evaluate(src: string, ctx: EvalCtx): Tri {
         case "IsIdentitiy":
         case "IsIdentity": return strs.some((s) => t.identities.includes(s));
         case "IsPrince": return t.prince;
-        case "IsVanguard": return t.slot == null ? null : t.slot === "melee";
-        case "IsRearguard": return t.slot == null ? null : t.slot === "ranged";
+        // the game reads ClassData.BattleStyle bits here, not PlaceAttribute (deploy_slot)
+        case "IsVanguard": return t.battleStyle == null ? null : (t.battleStyle & 1) !== 0;
+        case "IsRearguard": return t.battleStyle == null ? null : (t.battleStyle & 2) !== 0;
         // the calculated unit is a deployed player card
         case "IsToken":
         case "IsServantToken":
@@ -200,18 +204,18 @@ export function evaluate(src: string, ctx: EvalCtx): Tri {
     }
     return null;
   };
+  // left to right like C: `a <= 3 == 1` is `(a <= 3) == 1`
   const cmp = (): Val => {
-    const l = primary();
-    const op = peek();
-    if (op && ["<=", ">=", "==", "!=", "<", ">"].includes(op)) {
+    let l = primary();
+    for (let op = peek(); op && ["<=", ">=", "==", "!=", "<", ">"].includes(op); op = peek()) {
       next();
       const r = primary();
-      if (l === null || r === null) return null;
+      if (l === null || r === null) { l = null; continue; }
       const a = Number(l);
       const b = Number(r);
       switch (op) {
-        case "<=": return a <= b; case ">=": return a >= b; case "==": return a === b;
-        case "!=": return a !== b; case "<": return a < b; default: return a > b;
+        case "<=": l = a <= b; break; case ">=": l = a >= b; break; case "==": l = a === b; break;
+        case "!=": l = a !== b; break; case "<": l = a < b; break; default: l = a > b;
       }
     }
     return l;

@@ -1642,6 +1642,11 @@ a.meta-chip:hover { border-color: var(--accent); text-decoration: none; color: v
   background: var(--hub-bg);
 }
 .past-chip { border-color: #4a3535; color: #d0a0a0; }
+.deploy-rule-link {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
 .stage-desc {
   white-space: pre-line;
   color: var(--muted);

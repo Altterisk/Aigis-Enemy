@@ -89,7 +89,8 @@ export function indexFacts(u: UnitIndexEntry): TargetFacts {
     faction: u.faction ?? null,
     identities: u.identity_tags ?? [],
     prince: !!u.prince,
-    slot: u.position === "melee" ? "melee" : u.position === "ranged" ? "ranged" : null,
+    // the base tier's ClassData.BattleStyle, like classId above
+    battleStyle: u.tiers?.[0]?.[2] ?? null,
     initialCost: null,
   };
 }

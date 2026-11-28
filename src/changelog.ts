@@ -33,6 +33,10 @@ export const RELEASES: Release[] = [
         en: "Stages: English machine translation of stage names and descriptions; the stage page keeps the Japanese description underneath, and the stage search also finds English names (more stages are added daily).",
         ja: "ステージ: ステージ名と説明文の英語機械翻訳を表示（英語モード。ステージページは日本語の説明文を併記、検索は英語名にも対応。順次追加）。",
       } },
+      { kind: "feature", text: {
+        en: "Tower of Evil Spirits: each floor links to the unit list filtered to exactly the units its deploy rule allows (faction, season, race, rarity, class, name letters or length, gender, vanguard, block count…).",
+        ja: "悪霊の塔: 各階層から、出撃条件（所属・季節・種族・レア度・クラス・名前の文字や文字数・性別・近接・ブロック数など）を満たすユニットだけに絞ったユニット一覧へリンク。",
+      } },
     ],
   },
   {
